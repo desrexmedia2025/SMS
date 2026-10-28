@@ -817,10 +817,27 @@
     const stClassEl = document.getElementById('st-class-select');
     if (stClassEl) stClassEl.innerHTML = optionalClassOpts;
 
-    ['asg-class', 'tt-class'].forEach((id) => {
+    ['tt-class'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = classOpts;
     });
+    const asgClsWrap = document.getElementById('asg-classes-checkboxes');
+    if (asgClsWrap) {
+      if (acad.classes.length > 0) {
+        const prevAsgCls = new Set(getCheckedValues('asg-classes-checkboxes'));
+        asgClsWrap.innerHTML = acad.classes
+          .map(
+            (c) => `<label class="subject-check-pill">
+              <input type="checkbox" value="${c.id}" ${prevAsgCls.has(Number(c.id)) ? 'checked' : ''}>
+              <span>${esc(c.name)}</span>
+            </label>`
+          )
+          .join('');
+      } else {
+        asgClsWrap.innerHTML =
+          '<span class="multi-subject-hint">No classes created yet — add a class first under Academic Setup.</span>';
+      }
+    }
     const ttFilterEl = document.getElementById('tt-filter-class');
     if (ttFilterEl) {
       const prevVal = ttFilterEl.value;
@@ -1866,22 +1883,46 @@
     }
   });
 
+  document.getElementById('asg-all-classes-chk')?.addEventListener('change', (e) => {
+    const checked = e.target.checked;
+    document.querySelectorAll('#asg-classes-checkboxes input[type="checkbox"]').forEach((cb) => {
+      cb.checked = checked;
+    });
+  });
+
+  document.getElementById('asg-classes-checkboxes')?.addEventListener('change', () => {
+    const boxes = Array.from(document.querySelectorAll('#asg-classes-checkboxes input[type="checkbox"]'));
+    const allChk = document.getElementById('asg-all-classes-chk');
+    if (allChk && boxes.length > 0) {
+      allChk.checked = boxes.every((b) => b.checked);
+    }
+  });
+
   document.getElementById('assign-teacher-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target).entries());
+    const allClasses = Boolean(document.getElementById('asg-all-classes-chk')?.checked);
+    const classIds = getCheckedValues('asg-classes-checkboxes');
+    if (!allClasses && !classIds.length) {
+      toast('Please select at least one class or check All Classes.', 'error');
+      return;
+    }
     const subjectIds = getCheckedValues('asg-subjects-checkboxes');
     if (!subjectIds.length) {
       toast('Please select at least one subject to assign.', 'error');
       return;
     }
+    fd.classIds = classIds;
+    fd.applyToAllClasses = allClasses;
     fd.subjectIds = subjectIds;
     fd.academicYearId = state.overview?.activeYear?.id;
     fd.termId = state.overview?.activeTerm?.id;
     try {
       const res = await api('/api/superadmin/teachers/assign', { method: 'POST', body: fd });
       const count = res.assignedCount || subjectIds.length;
+      const clsCount = Array.isArray(res.classIds) ? res.classIds.length : classIds.length;
       toast(
-        `Assigned ${count} ${count === 1 ? 'subject' : 'subjects'} to teacher for the selected class.`,
+        `Assigned ${count} class-subject teaching slot(s) across ${clsCount} class(es).`,
         'success'
       );
       await loadAcademicAndSelectors();

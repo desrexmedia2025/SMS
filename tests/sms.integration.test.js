@@ -1741,6 +1741,31 @@ test('19. Class stream removal, teacher coursework/exams with PDF/image/video up
     g11Ov.json.announcements.some((a) => a.title === 'Mathematics Department Revision Clinic'),
     true
   );
+
+  // 19i. Verify Homework & Test categories + Teacher deleting own class announcement
+  for (const wType of ['homework', 'test']) {
+    const wf = new FormData();
+    wf.set('workType', wType);
+    wf.set('subjectId', String(mathSub.id));
+    wf.set('title', `Weekly ${wType.toUpperCase()} Exercise`);
+    wf.set('instructions', `Complete all ${wType} problems and upload your work.`);
+    wf.set('maxScore', '40');
+    wf.set('classIds', JSON.stringify([grade10.id, grade11.id]));
+    const r = await teacher.request('/api/teacher/coursework', { method: 'POST', body: wf });
+    assert.equal(r.status, 201);
+    assert.equal(r.json.coursework.workType, wType);
+    assert.equal(r.json.coursework.targetClassIds.length, 2);
+  }
+
+  const delOwnAnn = await teacher.request(`/api/teacher/announcements/${g10OnlyAnn.json.id}`, {
+    method: 'DELETE',
+  });
+  assert.equal(delOwnAnn.status, 200);
+  const g10OvAfterDel = await studentG10A.request('/api/student/overview');
+  assert.equal(
+    g10OvAfterDel.json.announcements.some((a) => a.title === 'Grade 10 Calculator Reminder'),
+    false
+  );
 });
 
 

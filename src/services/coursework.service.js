@@ -687,6 +687,31 @@ async function createTeacherClassAnnouncement(user, {
   });
 }
 
+async function deleteTeacherClassAnnouncement(user, { announcementId, ipAddress }) {
+  await requireTeacherRecord(user);
+  const ann = await db.get('SELECT * FROM announcements WHERE id = ?', [announcementId]);
+  if (!ann) throw new AppError(404, 'Announcement not found.');
+  if (Number(ann.author_user_id) !== Number(user.id)) {
+    throw new AppError(403, 'You can only delete announcements created by you.');
+  }
+  await db.withTransaction(async (tx) => {
+    await tx.run('DELETE FROM announcement_classes WHERE announcement_id = ?', [announcementId]);
+    await tx.run('DELETE FROM announcements WHERE id = ?', [announcementId]);
+    await recordAudit(
+      {
+        actorUserId: user.id,
+        actorRole: user.role,
+        action: 'TEACHER_CLASS_ANNOUNCEMENT_DELETED',
+        targetType: 'announcement',
+        targetId: String(announcementId),
+        ipAddress,
+      },
+      tx
+    );
+  });
+  return { deleted: true };
+}
+
 // ---------------- STUDENT COURSEWORK & ANSWER SUBMISSION ----------------
 async function listStudentCoursework(user, query = {}) {
   const student = await requireStudentRecord(user);
@@ -998,6 +1023,7 @@ module.exports = {
   gradeSubmission,
   deleteCoursework,
   createTeacherClassAnnouncement,
+  deleteTeacherClassAnnouncement,
   listStudentCoursework,
   submitStudentCoursework,
   getAuthorizedMediaAttachment,

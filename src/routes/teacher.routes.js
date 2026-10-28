@@ -23,6 +23,7 @@ router.delete('/coursework/:id', verifyCsrfToken, ctrl.deleteCoursework);
 
 // Teacher Class Announcements (to any assigned class or all assigned classes)
 router.post('/announcements', verifyCsrfToken, ctrl.createClassAnnouncement);
+router.delete('/announcements/:id', verifyCsrfToken, ctrl.deleteClassAnnouncement);
 
 router.post('/assessments', verifyCsrfToken, ctrl.createAssessment);
 router.get('/assessments/:id/marksheet', ctrl.getMarksheet);

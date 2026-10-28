@@ -313,25 +313,25 @@ async function seedDemoData() {
     for (const [tid, cid, subid, yid, trmid] of assignments) {
       const key = `${yid}-${trmid}-${cid}-0-${subid}`;
       await tx.run(
-        `INSERT INTO teacher_assignments (teacher_id, class_id, stream_id, subject_id, academic_year_id, term_id, assignment_key)
-         VALUES (?, ?, NULL, ?, ?, ?, ?)`,
+        `INSERT INTO teacher_assignments (teacher_id, class_id, subject_id, academic_year_id, term_id, assignment_key)
+         VALUES (?, ?, ?, ?, ?, ?)`,
         [tid, cid, subid, yid, trmid, key]
       );
     }
 
     // Timetable entries
     const ttEntries = [
-      [yearId, term1Id, cls10.insertId, null, subMath.insertId, t1.insertId, 'Monday', '08:00', '09:30', 'Block A-101'],
-      [yearId, term1Id, cls10.insertId, null, subEng.insertId, t2.insertId, 'Monday', '09:45', '11:15', 'Block A-101'],
-      [yearId, term1Id, cls10.insertId, null, subPhys.insertId, t1.insertId, 'Tuesday', '08:00', '09:30', 'Science Lab 1'],
-      [yearId, term1Id, cls10.insertId, null, subIct.insertId, t1.insertId, 'Wednesday', '10:00', '11:30', 'ICT Lab'],
-      [yearId, term1Id, cls11.insertId, null, subMath.insertId, t1.insertId, 'Thursday', '08:00', '09:30', 'Block B-201'],
-      [yearId, term1Id, cls11.insertId, null, subEng.insertId, t2.insertId, 'Friday', '08:00', '09:30', 'Block B-201'],
+      [yearId, term1Id, cls10.insertId, subMath.insertId, t1.insertId, 'Monday', '08:00', '09:30', 'Block A-101'],
+      [yearId, term1Id, cls10.insertId, subEng.insertId, t2.insertId, 'Monday', '09:45', '11:15', 'Block A-101'],
+      [yearId, term1Id, cls10.insertId, subPhys.insertId, t1.insertId, 'Tuesday', '08:00', '09:30', 'Science Lab 1'],
+      [yearId, term1Id, cls10.insertId, subIct.insertId, t1.insertId, 'Wednesday', '10:00', '11:30', 'ICT Lab'],
+      [yearId, term1Id, cls11.insertId, subMath.insertId, t1.insertId, 'Thursday', '08:00', '09:30', 'Block B-201'],
+      [yearId, term1Id, cls11.insertId, subEng.insertId, t2.insertId, 'Friday', '08:00', '09:30', 'Block B-201'],
     ];
     for (const row of ttEntries) {
       await tx.run(
-        `INSERT INTO timetables (academic_year_id, term_id, class_id, stream_id, subject_id, teacher_id, day_of_week, start_time, end_time, room)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO timetables (academic_year_id, term_id, class_id, subject_id, teacher_id, day_of_week, start_time, end_time, room)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         row
       );
     }
@@ -414,8 +414,8 @@ async function seedDemoData() {
         [su.insertId, st.adm, st.first, st.last, st.gender, st.dob, st.guardian, st.gPhone, st.gEmail]
       );
       await tx.run(
-        `INSERT INTO student_enrolments (student_id, class_id, stream_id, academic_year_id, term_id, roll_number, status)
-         VALUES (?, ?, NULL, ?, ?, ?, 'enrolled')`,
+        `INSERT INTO student_enrolments (student_id, class_id, academic_year_id, term_id, roll_number, status)
+         VALUES (?, ?, ?, ?, ?, 'enrolled')`,
         [sr.insertId, st.classId, yearId, term1Id, st.roll]
       );
       studentIds.push(sr.insertId);
@@ -426,8 +426,8 @@ async function seedDemoData() {
     for (const dt of dates) {
       const sessKey = `${yearId}-${term1Id}-${cls10.insertId}-0-${subMath.insertId}-${dt}`;
       const sess = await tx.run(
-        `INSERT INTO attendance_sessions (class_id, stream_id, subject_id, academic_year_id, term_id, session_date, session_key, taken_by_user_id, status, notes)
-         VALUES (?, NULL, ?, ?, ?, ?, ?, ?, 'submitted', 'Morning Mathematics Roll Call')`,
+        `INSERT INTO attendance_sessions (class_id, subject_id, academic_year_id, term_id, session_date, session_key, taken_by_user_id, status, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'submitted', 'Morning Mathematics Roll Call')`,
         [cls10.insertId, subMath.insertId, yearId, term1Id, dt, sessKey, tUser1.insertId]
       );
       await tx.run(
@@ -450,29 +450,29 @@ async function seedDemoData() {
 
     // Assessments & Marks (Published + Unpublished Draft)
     const aMathTest = await tx.run(
-      `INSERT INTO assessments (title, assessment_type, class_id, stream_id, subject_id, academic_year_id, term_id, max_score, weight_percent, scheduled_date, is_published, created_by_user_id)
-       VALUES ('Term 1 Class Test 1 - Algebra', 'class_test', ?, NULL, ?, ?, ?, 100, 30, '2026-10-05', 1, ?)`,
+      `INSERT INTO assessments (title, assessment_type, class_id, subject_id, academic_year_id, term_id, max_score, weight_percent, scheduled_date, is_published, created_by_user_id)
+       VALUES ('Term 1 Class Test 1 - Algebra', 'class_test', ?, ?, ?, ?, 100, 30, '2026-10-05', 1, ?)`,
       [cls10.insertId, subMath.insertId, yearId, term1Id, tUser1.insertId]
     );
     const aMathMid = await tx.run(
-      `INSERT INTO assessments (title, assessment_type, class_id, stream_id, subject_id, academic_year_id, term_id, max_score, weight_percent, scheduled_date, is_published, created_by_user_id)
-       VALUES ('Term 1 Midterm Exam - Core Math', 'midterm', ?, NULL, ?, ?, ?, 100, 70, '2026-10-20', 1, ?)`,
+      `INSERT INTO assessments (title, assessment_type, class_id, subject_id, academic_year_id, term_id, max_score, weight_percent, scheduled_date, is_published, created_by_user_id)
+       VALUES ('Term 1 Midterm Exam - Core Math', 'midterm', ?, ?, ?, ?, 100, 70, '2026-10-20', 1, ?)`,
       [cls10.insertId, subMath.insertId, yearId, term1Id, tUser1.insertId]
     );
     const aPhysMid = await tx.run(
-      `INSERT INTO assessments (title, assessment_type, class_id, stream_id, subject_id, academic_year_id, term_id, max_score, weight_percent, scheduled_date, is_published, created_by_user_id)
-       VALUES ('Term 1 Midterm - Mechanics & Optics', 'midterm', ?, NULL, ?, ?, ?, 100, 100, '2026-10-21', 1, ?)`,
+      `INSERT INTO assessments (title, assessment_type, class_id, subject_id, academic_year_id, term_id, max_score, weight_percent, scheduled_date, is_published, created_by_user_id)
+       VALUES ('Term 1 Midterm - Mechanics & Optics', 'midterm', ?, ?, ?, ?, 100, 100, '2026-10-21', 1, ?)`,
       [cls10.insertId, subPhys.insertId, yearId, term1Id, tUser1.insertId]
     );
     const aEngMid = await tx.run(
-      `INSERT INTO assessments (title, assessment_type, class_id, stream_id, subject_id, academic_year_id, term_id, max_score, weight_percent, scheduled_date, is_published, created_by_user_id)
-       VALUES ('Term 1 Comprehension & Essay Exam', 'midterm', ?, NULL, ?, ?, ?, 100, 100, '2026-10-22', 1, ?)`,
+      `INSERT INTO assessments (title, assessment_type, class_id, subject_id, academic_year_id, term_id, max_score, weight_percent, scheduled_date, is_published, created_by_user_id)
+       VALUES ('Term 1 Comprehension & Essay Exam', 'midterm', ?, ?, ?, ?, 100, 100, '2026-10-22', 1, ?)`,
       [cls10.insertId, subEng.insertId, yearId, term1Id, tUser2.insertId]
     );
     // Draft (unpublished) ICT Practical so Student only sees published results while Teacher/Superadmin sees draft too!
     const aIctDraft = await tx.run(
-      `INSERT INTO assessments (title, assessment_type, class_id, stream_id, subject_id, academic_year_id, term_id, max_score, weight_percent, scheduled_date, is_published, created_by_user_id)
-       VALUES ('Term 1 Practical Lab Assessment (Draft)', 'project', ?, NULL, ?, ?, ?, 100, 100, '2026-10-27', 0, ?)`,
+      `INSERT INTO assessments (title, assessment_type, class_id, subject_id, academic_year_id, term_id, max_score, weight_percent, scheduled_date, is_published, created_by_user_id)
+       VALUES ('Term 1 Practical Lab Assessment (Draft)', 'project', ?, ?, ?, ?, 100, 100, '2026-10-27', 0, ?)`,
       [cls10.insertId, subIct.insertId, yearId, term1Id, tUser1.insertId]
     );
 

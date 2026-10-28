@@ -125,8 +125,8 @@
                   : `<div class="form-group">
                       <label>Upload Images, Documents (PDF / Word / Slides / Sheets), or Videos</label>
                       <div class="upload-dropzone-box">
-                        <input type="file" name="attachments" class="st-cw-file-input" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.mp4,.webm,.ogg,.mov,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv">
-                        <div class="upload-hint">Attach photos of handwritten work, PDFs, Word documents, spreadsheets, or video demonstrations (up to 8 files, max 60 MB per file).</div>
+                        <input type="file" name="attachments" class="st-cw-file-input" multiple accept="image/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv,.rtf,.odt">
+                        <div class="upload-hint">Attach photos of handwritten work, PDFs, Word documents, spreadsheets, or video demonstrations (up to 10 files, max 100 MB per file).</div>
                         <div class="st-selected-files subject-badges-wrap" style="margin-top:6px;"></div>
                       </div>
                     </div>

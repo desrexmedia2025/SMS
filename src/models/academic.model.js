@@ -94,5 +94,4 @@ module.exports = {
   getTeacherAssignments,
   isTeacherAssignedTo,
   getStudentsInClass,
-  getStudentsInClassStream: getStudentsInClass,
 };

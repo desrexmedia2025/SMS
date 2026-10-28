@@ -64,6 +64,7 @@
       container.innerHTML = '<div class="empty-state">No announcements yet.</div>';
       return;
     }
+    const currentUserId = Number(SMS.getUser()?.id || 0);
     container.innerHTML = items
       .map((a) => {
         const classPills =
@@ -72,13 +73,17 @@
                 .map((c) => `<span class="subject-badge-tag">Class: ${esc(c.name)}</span>`)
                 .join('')}</div>`
             : `<div style="margin-top:4px;"><span class="badge badge-neutral">Audience: ${esc(a.audience)}</span></div>`;
+        const isOwn = currentUserId > 0 && Number(a.author_user_id) === currentUserId;
         return `<div style="padding:14px 0;border-bottom:1px solid var(--border);">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
             <div>
               <strong>${esc(a.title)}</strong>
               ${a.author_name ? `<small style="color:var(--text-light);margin-left:8px;">by ${esc(a.author_name)}</small>` : ''}
             </div>
-            ${statusBadge(a.priority)}
+            <div style="display:flex;align-items:center;gap:8px;">
+              ${statusBadge(a.priority)}
+              ${isOwn ? `<button type="button" class="btn btn-danger btn-sm" data-del-ann="${a.id}">Delete</button>` : ''}
+            </div>
           </div>
           ${classPills}
           <p style="margin:8px 0 0;color:var(--text-muted);white-space:pre-wrap;">${esc(a.body)}</p>
@@ -138,7 +143,11 @@
 
   async function loadCourseworkList() {
     const filterType = document.getElementById('cw-filter-type')?.value || '';
-    const qs = filterType ? `?workType=${encodeURIComponent(filterType)}` : '';
+    const filterClass = document.getElementById('cw-filter-class')?.value || '';
+    const params = new URLSearchParams();
+    if (filterType) params.set('workType', filterType);
+    if (filterClass) params.set('classId', filterClass);
+    const qs = params.toString() ? `?${params.toString()}` : '';
     const data = await api(`/api/teacher/coursework${qs}`);
     renderTeacherCourseworkList(data.items || []);
   }
@@ -283,6 +292,15 @@
     const assignedClasses = data.assignedClasses || [];
     renderAssignedClassCheckboxes('cw-target-classes-grid', assignedClasses);
     renderAssignedClassCheckboxes('tc-ann-classes-grid', assignedClasses);
+
+    const cwFilterCls = document.getElementById('cw-filter-class');
+    if (cwFilterCls) {
+      const prevClsFilter = cwFilterCls.value;
+      cwFilterCls.innerHTML =
+        '<option value="">All My Classes</option>' +
+        assignedClasses.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+      if (prevClsFilter) cwFilterCls.value = prevClsFilter;
+    }
 
     renderTeacherCourseworkList(data.coursework || []);
 
@@ -512,7 +530,7 @@
     activateSection('announcements');
   });
 
-  // Toggle All Assigned Classes checkboxes for Coursework & Announcements
+  // Toggle All Assigned Classes checkboxes for Coursework & Announcements (with two-way sync)
   document.getElementById('cw-all-classes-chk')?.addEventListener('change', (e) => {
     const checked = e.target.checked;
     document
@@ -522,6 +540,16 @@
       });
   });
 
+  document.getElementById('cw-target-classes-grid')?.addEventListener('change', () => {
+    const boxes = Array.from(
+      document.querySelectorAll('#cw-target-classes-grid input[type="checkbox"]')
+    );
+    const allChk = document.getElementById('cw-all-classes-chk');
+    if (allChk && boxes.length > 0) {
+      allChk.checked = boxes.every((b) => b.checked);
+    }
+  });
+
   document.getElementById('tc-ann-all-classes')?.addEventListener('change', (e) => {
     const checked = e.target.checked;
     document
@@ -529,6 +557,16 @@
       .forEach((cb) => {
         cb.checked = checked;
       });
+  });
+
+  document.getElementById('tc-ann-classes-grid')?.addEventListener('change', () => {
+    const boxes = Array.from(
+      document.querySelectorAll('#tc-ann-classes-grid input[type="checkbox"]')
+    );
+    const allChk = document.getElementById('tc-ann-all-classes');
+    if (allChk && boxes.length > 0) {
+      allChk.checked = boxes.every((b) => b.checked);
+    }
   });
 
   // Show selected upload files before publishing coursework
@@ -594,6 +632,9 @@
   });
 
   document.getElementById('cw-filter-type')?.addEventListener('change', () => {
+    loadCourseworkList().catch((err) => toast(err.message, 'error'));
+  });
+  document.getElementById('cw-filter-class')?.addEventListener('change', () => {
     loadCourseworkList().catch((err) => toast(err.message, 'error'));
   });
   document.getElementById('cw-refresh-btn')?.addEventListener('click', () => {
@@ -680,6 +721,19 @@
       const res = await api('/api/teacher/announcements', { method: 'POST', body: payload });
       form.reset();
       toast(`Announcement sent to ${res.targetClassIds.length} class(es).`, 'success');
+      await loadOverview();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+
+  document.getElementById('tc-announcements')?.addEventListener('click', async (e) => {
+    const delBtn = e.target.closest('[data-del-ann]');
+    if (!delBtn) return;
+    if (!confirm('Delete this class announcement?')) return;
+    try {
+      await api(`/api/teacher/announcements/${delBtn.dataset.delAnn}`, { method: 'DELETE' });
+      toast('Class announcement deleted.', 'info');
       await loadOverview();
     } catch (err) {
       toast(err.message, 'error');

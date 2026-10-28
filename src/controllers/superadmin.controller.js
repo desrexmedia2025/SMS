@@ -224,9 +224,17 @@ async function updateTeacherSubjects(req, res) {
 
 async function assignTeacher(req, res) {
   const hasSubjectIds = Array.isArray(req.body.subjectIds) && req.body.subjectIds.length > 0;
+  const hasClassIds = Array.isArray(req.body.classIds) && req.body.classIds.length > 0;
+  const allClasses =
+    req.body.applyToAllClasses === true ||
+    req.body.applyToAllClasses === 'true' ||
+    req.body.applyToAllClasses === '1' ||
+    req.body.applyToAllClasses === 1;
   const created = await superadminService.assignTeacher({
     teacherId: requirePositiveInt(req.body.teacherId, 'Teacher'),
-    classId: requirePositiveInt(req.body.classId, 'Class'),
+    classId: !hasClassIds && !allClasses ? requirePositiveInt(req.body.classId, 'Class') : null,
+    classIds: hasClassIds ? req.body.classIds : undefined,
+    applyToAllClasses: allClasses,
     subjectId: !hasSubjectIds ? requirePositiveInt(req.body.subjectId, 'Subject') : null,
     subjectIds: hasSubjectIds ? req.body.subjectIds : undefined,
     academicYearId: optionalPositiveInt(req.body.academicYearId),

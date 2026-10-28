@@ -693,8 +693,8 @@ async function createTeacher({
             const exists = await tx.get('SELECT id FROM teacher_assignments WHERE assignment_key = ?', [key]);
             if (!exists) {
               await tx.run(
-                `INSERT INTO teacher_assignments (teacher_id, class_id, stream_id, subject_id, academic_year_id, term_id, assignment_key)
-                 VALUES (?, ?, NULL, ?, ?, ?, ?)`,
+                `INSERT INTO teacher_assignments (teacher_id, class_id, subject_id, academic_year_id, term_id, assignment_key)
+                 VALUES (?, ?, ?, ?, ?, ?)`,
                 [tRes.insertId, cid, sub.id, activeYr.id, activeTr ? activeTr.id : null, key]
               );
             }
@@ -781,7 +781,18 @@ async function updateTeacherSubjects({ teacherId, subjectIds, customSubjects, sp
   });
 }
 
-async function assignTeacher({ teacherId, classId, subjectId, subjectIds, academicYearId, termId, actor, ipAddress }) {
+async function assignTeacher({
+  teacherId,
+  classId,
+  classIds,
+  applyToAllClasses,
+  subjectId,
+  subjectIds,
+  academicYearId,
+  termId,
+  actor,
+  ipAddress,
+}) {
   let resolvedYearId = academicYearId;
   let resolvedTermId = termId;
   if (!resolvedYearId) {
@@ -796,6 +807,19 @@ async function assignTeacher({ teacherId, classId, subjectId, subjectIds, academ
     resolvedTermId = activeTr ? activeTr.id : null;
   }
 
+  let targetClassIds = [];
+  if (applyToAllClasses === true || applyToAllClasses === 'true' || applyToAllClasses === '1' || applyToAllClasses === 1) {
+    const allCls = await db.query("SELECT id FROM classes WHERE status = 'active' ORDER BY level_order ASC, id ASC");
+    targetClassIds = allCls.map((c) => Number(c.id));
+  } else {
+    targetClassIds = parseSubjectIdList(
+      Array.isArray(classIds) && classIds.length > 0 ? classIds : classId
+    );
+  }
+  if (!targetClassIds.length) {
+    throw new AppError(400, 'Please select at least one class to assign.');
+  }
+
   const targetSubjectIds = parseSubjectIdList(
     Array.isArray(subjectIds) && subjectIds.length > 0 ? subjectIds : subjectId
   );
@@ -807,42 +831,47 @@ async function assignTeacher({ teacherId, classId, subjectId, subjectIds, academ
     const createdIds = [];
     let skippedCount = 0;
 
-    for (const sid of targetSubjectIds) {
-      const subRow = await tx.get('SELECT id FROM subjects WHERE id = ?', [sid]);
-      if (!subRow) throw new AppError(400, `Subject #${sid} not found.`);
+    for (const cid of targetClassIds) {
+      const clsRow = await tx.get('SELECT id FROM classes WHERE id = ?', [cid]);
+      if (!clsRow) throw new AppError(400, `Class #${cid} not found.`);
 
-      const linked = await tx.get(
-        'SELECT id FROM teacher_subjects WHERE teacher_id = ? AND subject_id = ?',
-        [teacherId, sid]
-      );
-      if (!linked) {
-        await tx.run('INSERT INTO teacher_subjects (teacher_id, subject_id) VALUES (?, ?)', [
-          teacherId,
-          sid,
-        ]);
+      for (const sid of targetSubjectIds) {
+        const subRow = await tx.get('SELECT id FROM subjects WHERE id = ?', [sid]);
+        if (!subRow) throw new AppError(400, `Subject #${sid} not found.`);
+
+        const linked = await tx.get(
+          'SELECT id FROM teacher_subjects WHERE teacher_id = ? AND subject_id = ?',
+          [teacherId, sid]
+        );
+        if (!linked) {
+          await tx.run('INSERT INTO teacher_subjects (teacher_id, subject_id) VALUES (?, ?)', [
+            teacherId,
+            sid,
+          ]);
+        }
+
+        const key = `${teacherId}:${cid}:0:${sid}:${resolvedYearId}`;
+        const existing = await tx.get('SELECT id FROM teacher_assignments WHERE assignment_key = ?', [key]);
+        if (existing) {
+          skippedCount += 1;
+          continue;
+        }
+
+        const ins = await tx.run(
+          `INSERT INTO teacher_assignments (teacher_id, class_id, subject_id, academic_year_id, term_id, assignment_key)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [teacherId, cid, sid, resolvedYearId, resolvedTermId || null, key]
+        );
+        createdIds.push(ins.insertId);
       }
-
-      const key = `${teacherId}:${classId}:0:${sid}:${resolvedYearId}`;
-      const existing = await tx.get('SELECT id FROM teacher_assignments WHERE assignment_key = ?', [key]);
-      if (existing) {
-        skippedCount += 1;
-        continue;
-      }
-
-      const ins = await tx.run(
-        `INSERT INTO teacher_assignments (teacher_id, class_id, stream_id, subject_id, academic_year_id, term_id, assignment_key)
-         VALUES (?, ?, NULL, ?, ?, ?, ?)`,
-        [teacherId, classId, sid, resolvedYearId, resolvedTermId || null, key]
-      );
-      createdIds.push(ins.insertId);
     }
 
     if (createdIds.length === 0) {
       throw new AppError(
         409,
-        targetSubjectIds.length === 1
+        targetSubjectIds.length === 1 && targetClassIds.length === 1
           ? 'This teacher is already assigned to that class and subject.'
-          : 'This teacher is already assigned to all selected subjects for that class.'
+          : 'This teacher is already assigned to all selected classes and subjects.'
       );
     }
 
@@ -854,7 +883,7 @@ async function assignTeacher({ teacherId, classId, subjectId, subjectIds, academ
         targetType: 'teacher_assignment',
         targetId: String(createdIds[0]),
         ipAddress,
-        metadata: { teacherId, classId, subjectIds: targetSubjectIds, createdIds },
+        metadata: { teacherId, classIds: targetClassIds, subjectIds: targetSubjectIds, createdIds },
       },
       tx
     );
@@ -863,6 +892,7 @@ async function assignTeacher({ teacherId, classId, subjectId, subjectIds, academ
       id: createdIds[0],
       ids: createdIds,
       assignedCount: createdIds.length,
+      classIds: targetClassIds,
       skippedCount,
     };
   });
@@ -987,8 +1017,8 @@ async function enrolStudent({
 
     if (classId && resolvedYearId) {
       await tx.run(
-        `INSERT INTO student_enrolments (student_id, class_id, stream_id, academic_year_id, term_id, roll_number, status)
-         VALUES (?, ?, NULL, ?, ?, ?, 'enrolled')`,
+        `INSERT INTO student_enrolments (student_id, class_id, academic_year_id, term_id, roll_number, status)
+         VALUES (?, ?, ?, ?, ?, 'enrolled')`,
         [sRes.insertId, classId, resolvedYearId, resolvedTermId || null, rollNumber || '']
       );
     }
@@ -1095,8 +1125,8 @@ async function createTimetableSlot({
   }
 
   const ins = await db.run(
-    `INSERT INTO timetables (academic_year_id, term_id, class_id, stream_id, subject_id, teacher_id, day_of_week, start_time, end_time, room)
-     VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO timetables (academic_year_id, term_id, class_id, subject_id, teacher_id, day_of_week, start_time, end_time, room)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [resolvedYearId, resolvedTermId || null, classId, subjectId, teacherId, dayOfWeek, startTime, endTime, room || '']
   );
 
@@ -1772,8 +1802,8 @@ async function reviewStudentRegistrationRequest({
       );
       if (activeYear) {
         await tx.run(
-          `INSERT INTO student_enrolments (student_id, class_id, stream_id, academic_year_id, term_id, status)
-           VALUES (?, ?, NULL, ?, ?, 'enrolled')`,
+          `INSERT INTO student_enrolments (student_id, class_id, academic_year_id, term_id, status)
+           VALUES (?, ?, ?, ?, 'enrolled')`,
           [sRes.insertId, targetClassId, activeYear.id, activeTerm?.id || null]
         );
       }

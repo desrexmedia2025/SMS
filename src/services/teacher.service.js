@@ -230,8 +230,8 @@ async function submitAttendance(user, { classId, subjectId, sessionDate, notes, 
     if (!session) {
       const ins = await tx.run(
         `INSERT INTO attendance_sessions
-         (class_id, stream_id, subject_id, academic_year_id, term_id, session_date, session_key, taken_by_user_id, status, notes)
-         VALUES (?, NULL, ?, ?, ?, ?, ?, ?, 'submitted', ?)`,
+         (class_id, subject_id, academic_year_id, term_id, session_date, session_key, taken_by_user_id, status, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'submitted', ?)`,
         [
           classId,
           subjectId || null,
@@ -313,8 +313,8 @@ async function createAssessment(user, payload, ipAddress) {
 
   const ins = await db.run(
     `INSERT INTO assessments
-     (title, assessment_type, class_id, stream_id, subject_id, academic_year_id, term_id, max_score, weight_percent, scheduled_date, is_published, created_by_user_id)
-     VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, 0, ?)`,
+     (title, assessment_type, class_id, subject_id, academic_year_id, term_id, max_score, weight_percent, scheduled_date, is_published, created_by_user_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
     [
       payload.title,
       payload.assessmentType,

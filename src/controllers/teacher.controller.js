@@ -108,6 +108,15 @@ async function createClassAnnouncement(req, res) {
   });
 }
 
+async function deleteClassAnnouncement(req, res) {
+  const announcementId = requirePositiveInt(req.params.id, 'Announcement ID');
+  await courseworkService.deleteTeacherClassAnnouncement(req.user, {
+    announcementId,
+    ipAddress: req.ip,
+  });
+  return res.json({ ok: true, message: 'Announcement deleted.' });
+}
+
 async function createAssessment(req, res) {
   const created = await teacherService.createAssessment(
     req.user,
@@ -181,6 +190,7 @@ module.exports = {
   gradeCourseworkSubmission,
   deleteCoursework,
   createClassAnnouncement,
+  deleteClassAnnouncement,
   createAssessment,
   getMarksheet,
   submitMarks,

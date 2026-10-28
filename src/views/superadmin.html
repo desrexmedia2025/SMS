@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Superadmin Dashboard - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=2.6">
+  <link rel="stylesheet" href="/css/styles.css?v=2.7">
 </head>
 <body>
   <div class="app-layout sa-layout">
@@ -579,26 +579,38 @@
             <div class="card">
               <div class="card-header">
                 <div>
-                  <h2 class="card-title">Assign Teacher to Class &amp; Subjects</h2>
-                  <div class="card-subtitle">Select one or multiple subjects at once to grant attendance and mark-entry access for a class</div>
+                  <h2 class="card-title">Assign Teacher to Classes &amp; Subjects</h2>
+                  <div class="card-subtitle">Select one, multiple, or all classes and subjects to grant coursework, exam, attendance, announcement, and mark-entry access</div>
                 </div>
               </div>
               <form id="assign-teacher-form">
                 <div class="form-grid">
                   <div class="form-group"><label>Teacher</label><select name="teacherId" id="asg-teacher" required></select></div>
-                  <div class="form-group"><label>Class</label><select name="classId" id="asg-class" required></select></div>
+                </div>
+                <div class="multi-subject-box" style="margin-top:12px;">
+                  <div class="multi-subject-head">
+                    <div>
+                      <div class="multi-subject-title">Target Classes (Choose Any Class(es) or All Classes)</div>
+                      <div class="multi-subject-hint">Check the specific class(es) this teacher teaches, or select All Classes.</div>
+                    </div>
+                    <label class="subject-check-pill" style="margin:0;">
+                      <input type="checkbox" id="asg-all-classes-chk">
+                      <span><strong>All Classes</strong></span>
+                    </label>
+                  </div>
+                  <div id="asg-classes-checkboxes" class="multi-check-grid" style="margin-bottom:0;"></div>
                 </div>
                 <div class="multi-subject-box" style="margin-top:12px;">
                   <div class="multi-subject-head">
                     <div>
                       <div class="multi-subject-title">Subjects to Assign (Select 1 or More)</div>
-                      <div class="multi-subject-hint">Selecting a teacher automatically highlights their registered subjects — check all subjects they teach in this class.</div>
+                      <div class="multi-subject-hint">Selecting a teacher automatically highlights their registered subjects — check all subjects they teach in the selected class(es).</div>
                     </div>
                     <span class="badge badge-info" id="asg-selected-subjects-count">0 subjects selected</span>
                   </div>
                   <div id="asg-subjects-checkboxes" class="multi-check-grid" style="margin-bottom:0;"></div>
                 </div>
-                <div class="form-actions-end"><button class="btn btn-primary" type="submit">Assign Selected Subjects</button></div>
+                <div class="form-actions-end"><button class="btn btn-primary" type="submit">Assign Classes &amp; Subjects</button></div>
               </form>
             </div>
 
@@ -1341,7 +1353,7 @@
     </div>
   </div>
 
-  <script src="/js/common.js?v=2.6"></script>
-  <script src="/js/superadmin.js?v=2.6"></script>
+  <script src="/js/common.js?v=2.7"></script>
+  <script src="/js/superadmin.js?v=2.7"></script>
 </body>
 </html>

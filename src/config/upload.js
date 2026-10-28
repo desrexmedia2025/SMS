@@ -22,45 +22,49 @@ const EXTENSION_MEDIA_MAP = {
   '.png': { kind: 'image', mimes: ['image/png'] },
   '.webp': { kind: 'image', mimes: ['image/webp'] },
   '.gif': { kind: 'image', mimes: ['image/gif'] },
+  '.avif': { kind: 'image', mimes: ['image/avif'] },
+  '.bmp': { kind: 'image', mimes: ['image/bmp'] },
+  '.heic': { kind: 'image', mimes: ['image/heic'] },
+  '.heif': { kind: 'image', mimes: ['image/heif'] },
   '.mp4': { kind: 'video', mimes: ['video/mp4', 'application/mp4'] },
   '.webm': { kind: 'video', mimes: ['video/webm'] },
   '.mov': { kind: 'video', mimes: ['video/quicktime'] },
   '.m4v': { kind: 'video', mimes: ['video/x-m4v', 'video/mp4'] },
+  '.mkv': { kind: 'video', mimes: ['video/x-matroska'] },
+  '.avi': { kind: 'video', mimes: ['video/x-msvideo'] },
+  '.3gp': { kind: 'video', mimes: ['video/3gpp'] },
   '.ogg': { kind: 'video', mimes: ['video/ogg', 'application/ogg'] },
   '.ogv': { kind: 'video', mimes: ['video/ogg'] },
   '.doc': {
     kind: 'document',
-    mimes: ['application/msword', 'application/octet-stream'],
+    mimes: ['application/msword'],
   },
   '.docx': {
     kind: 'document',
     mimes: [
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/octet-stream',
       'application/zip',
     ],
   },
   '.ppt': {
     kind: 'document',
-    mimes: ['application/vnd.ms-powerpoint', 'application/octet-stream'],
+    mimes: ['application/vnd.ms-powerpoint'],
   },
   '.pptx': {
     kind: 'document',
     mimes: [
       'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-      'application/octet-stream',
       'application/zip',
     ],
   },
   '.xls': {
     kind: 'document',
-    mimes: ['application/vnd.ms-excel', 'application/octet-stream'],
+    mimes: ['application/vnd.ms-excel'],
   },
   '.xlsx': {
     kind: 'document',
     mimes: [
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/octet-stream',
       'application/zip',
     ],
   },
@@ -75,7 +79,9 @@ function classifyUploadFile(originalName, mimeType) {
   const rule = EXTENSION_MEDIA_MAP[ext];
   if (!rule) return null;
   const normalizedMime = String(mimeType || '').toLowerCase().split(';')[0].trim();
+  const isGenericBinary = !normalizedMime || normalizedMime === 'application/octet-stream';
   const mimeAllowed =
+    isGenericBinary ||
     rule.mimes.includes(normalizedMime) ||
     (rule.kind === 'image' && normalizedMime.startsWith('image/') && normalizedMime !== 'image/svg+xml') ||
     (rule.kind === 'video' && normalizedMime.startsWith('video/'));
@@ -83,7 +89,7 @@ function classifyUploadFile(originalName, mimeType) {
   return {
     ext,
     kind: rule.kind,
-    mimeType: normalizedMime || rule.mimes[0],
+    mimeType: isGenericBinary ? rule.mimes[0] : normalizedMime,
   };
 }
 
