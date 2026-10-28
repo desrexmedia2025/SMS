@@ -392,10 +392,58 @@ async function createVerifiedBackup(actorUserId) {
   };
 }
 
+async function ensureActiveAcademicPeriod(runner = db) {
+  let activeYear = await runner.get(
+    'SELECT * FROM academic_years WHERE is_active = 1 ORDER BY id DESC LIMIT 1'
+  );
+  if (!activeYear) {
+    const anyYear = await runner.get('SELECT * FROM academic_years ORDER BY id DESC LIMIT 1');
+    if (anyYear) {
+      await runner.run('UPDATE academic_years SET is_active = 1 WHERE id = ?', [anyYear.id]);
+      activeYear = { ...anyYear, is_active: 1 };
+    } else {
+      const yNow = new Date().getFullYear();
+      const yName = `${yNow}/${yNow + 1}`;
+      const insYr = await runner.run(
+        `INSERT INTO academic_years (name, start_date, end_date, is_active, status)
+         VALUES (?, ?, ?, 1, 'active')`,
+        [yName, `${yNow}-09-01`, `${yNow + 1}-07-31`]
+      );
+      activeYear = { id: insYr.insertId, name: yName, is_active: 1 };
+    }
+  }
+
+  let activeTerm = await runner.get(
+    'SELECT * FROM terms WHERE academic_year_id = ? AND is_active = 1 ORDER BY id DESC LIMIT 1',
+    [activeYear.id]
+  );
+  if (!activeTerm) {
+    const anyTerm = await runner.get(
+      'SELECT * FROM terms WHERE academic_year_id = ? ORDER BY id DESC LIMIT 1',
+      [activeYear.id]
+    );
+    if (anyTerm) {
+      await runner.run('UPDATE terms SET is_active = 1 WHERE id = ?', [anyTerm.id]);
+      activeTerm = { ...anyTerm, is_active: 1 };
+    } else {
+      const yNow = new Date().getFullYear();
+      const insTr = await runner.run(
+        `INSERT INTO terms (academic_year_id, name, start_date, end_date, is_active)
+         VALUES (?, 'Term 1', ?, ?, 1)`,
+        [activeYear.id, `${yNow}-09-01`, `${yNow}-12-20`]
+      );
+      activeTerm = { id: insTr.insertId, academic_year_id: activeYear.id, name: 'Term 1', is_active: 1 };
+    }
+  }
+
+  return { yearId: activeYear.id, termId: activeTerm.id, activeYear, activeTerm };
+}
+
 module.exports = {
   getSchoolContext,
   getPublicSchoolContext,
   getPaystackRuntimeSecrets,
+  ensureActiveAcademicPeriod,
   updateCurrency,
   enrichAnnouncementsWithClasses,
   listAnnouncementsForAudience,

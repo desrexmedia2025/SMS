@@ -1225,14 +1225,16 @@ test('16. Superadmin Custom Grading Scale Management & Clean Sub-Tabbed Workspac
   const admin = new SessionClient();
   await admin.login('admin@school.edu.gh', 'Admin@2026!');
 
-  // Verify clean sub-tabbed Superadmin HTML loads with structured sub-navigation
+  // Verify clean sub-tabbed Superadmin HTML loads with structured sub-navigation & zero bloat
   const htmlRes = await admin.request('/dashboard/superadmin');
   assert.equal(htmlRes.status, 200);
   assert.match(htmlRes.text, /data-tab-group="academic"/);
   assert.match(htmlRes.text, /data-tab-group="students"/);
   assert.match(htmlRes.text, /data-tab-group="teachers"/);
   assert.match(htmlRes.text, /data-tab-group="finance"/);
-  assert.match(htmlRes.text, /data-tab-group="exams"/);
+  assert.doesNotMatch(htmlRes.text, /Security Audit Logs/i);
+  assert.doesNotMatch(htmlRes.text, /Database Backups/i);
+  assert.doesNotMatch(htmlRes.text, /Hide Figures/i);
 
   // Create and remove a custom grading band
   const createBand = await admin.request('/api/superadmin/exams/grading-scales', {
@@ -1767,6 +1769,82 @@ test('19. Class stream removal, teacher coursework/exams with PDF/image/video up
     false
   );
 });
+
+test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Period Auto-Bootstrap', async () => {
+  const admin = new SessionClient();
+  const teacher = new SessionClient();
+  const student = new SessionClient();
+  const finance = new SessionClient();
+
+  await admin.login('admin@school.edu.gh', 'Admin@2026!');
+  await teacher.login('kofi.mensah@school.edu.gh', 'Teacher@2026!');
+  await student.login('kwame.asante@student.school.edu.gh', 'Student@2026!');
+  await finance.login('finance@school.edu.gh', 'Finance@2026!');
+
+  const [saHtml, tcHtml, stHtml, fnHtml] = await Promise.all([
+    admin.request('/dashboard/superadmin').then((r) => r.text),
+    teacher.request('/dashboard/teacher').then((r) => r.text),
+    student.request('/dashboard/student').then((r) => r.text),
+    finance.request('/dashboard/financial').then((r) => r.text),
+  ]);
+
+  // Every dashboard includes Show/Hide Menu button & clean v3.0 assets with unneeded bloat removed
+  for (const html of [saHtml, tcHtml, stHtml, fnHtml]) {
+    assert.match(html, /id="mobile-menu-btn"/);
+    assert.match(html, /\?v=3\.0/);
+    assert.doesNotMatch(html, /Hide Figures/i);
+    assert.doesNotMatch(html, /Audit Log/i);
+    assert.doesNotMatch(html, /Database Backups/i);
+    assert.doesNotMatch(html, /Reconciliation/i);
+    assert.doesNotMatch(html, /Mark Correction/i);
+    assert.doesNotMatch(html, /Profile Correction/i);
+    assert.doesNotMatch(html, /Record Attendance/i);
+  }
+
+  // Simulate a fresh school with no active academic year/term and verify auto-bootstrap
+  await db.run('UPDATE academic_years SET is_active = 0');
+  await db.run('UPDATE terms SET is_active = 0');
+
+  const clsRes = await admin.request('/api/superadmin/academic/classes', {
+    method: 'POST',
+    body: { name: 'Simple Form 1', levelOrder: 21, capacity: 35 },
+  });
+  assert.equal(clsRes.status, 201);
+
+  const stuRes = await admin.request('/api/superadmin/students', {
+    method: 'POST',
+    body: {
+      firstName: 'Efua',
+      lastName: 'Mensima',
+      email: 'efua.mensima.simple@student.school.edu.gh',
+      classId: clsRes.json.id,
+    },
+  });
+  assert.equal(stuRes.status, 201);
+
+  const catRes = await finance.request('/api/financial/categories', {
+    method: 'POST',
+    body: {
+      code: 'SIMP-FEE',
+      name: 'Simple Term Fee',
+      defaultAmount: 300,
+      frequency: 'termly',
+    },
+  });
+  assert.equal(catRes.status, 201);
+
+  const billRes = await finance.request('/api/financial/assignments', {
+    method: 'POST',
+    body: {
+      targetType: 'class',
+      classId: clsRes.json.id,
+      feeCategoryId: catRes.json.id,
+    },
+  });
+  assert.equal(billRes.status, 201);
+  assert.equal(billRes.json.assignedCount, 1);
+});
+
 
 
 

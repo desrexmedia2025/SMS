@@ -75,11 +75,13 @@ async function assignFee(req, res) {
   }
   const targetType = requireEnum(rawTargetType, ['student', 'class'], 'Target type');
 
-  const academicYearId =
+  let academicYearId =
     optionalPositiveInt(req.body.academicYearId) || context.activeYear?.id;
-  const termId = optionalPositiveInt(req.body.termId) || context.activeTerm?.id;
+  let termId = optionalPositiveInt(req.body.termId) || context.activeTerm?.id;
   if (!academicYearId || !termId) {
-    throw new AppError(400, 'Active academic year and term must be configured.');
+    const ensured = await systemModel.ensureActiveAcademicPeriod();
+    academicYearId = academicYearId || ensured.yearId;
+    termId = termId || ensured.termId;
   }
 
   const result = await financialService.assignFeeToTarget({

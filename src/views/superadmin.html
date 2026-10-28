@@ -3,464 +3,215 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Superadmin Dashboard - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=2.7">
+  <title>Superadmin - School Management System</title>
+  <link rel="stylesheet" href="/css/styles.css?v=3.0">
 </head>
 <body>
-  <div class="app-layout sa-layout">
+  <div class="app-layout">
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
-        <div class="sa-brand-row">
-          <span class="sa-brand-mark" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 10L12 5 2 10l10 5 10-5z"/>
-              <path d="M6 12.5V17c0 1.7 2.7 3 6 3s6-1.3 6-3v-4.5"/>
-            </svg>
-          </span>
-          <div>
-            <div class="sidebar-title" id="sb-school-name">School Management System</div>
-            <span class="sidebar-role-tag">Superadmin</span>
-          </div>
-        </div>
+        <div class="sidebar-title" id="sb-school-name">School Management System</div>
+        <span class="sidebar-role-tag">Superadmin</span>
       </div>
 
       <nav class="sidebar-nav">
-        <div class="nav-section-label">Workspace</div>
-        <button class="nav-btn active" data-section="overview" data-title="Executive Overview" data-subtitle="School-wide summary, setup progress and recent activity">
-          <span class="nav-item-main">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
-            <span class="nav-item-label">Overview</span>
-          </span>
+        <div class="nav-section-label">School Management</div>
+        <button class="nav-btn active" data-section="overview" data-title="Overview">
+          <span class="nav-item-label">Overview</span>
         </button>
-        <button class="nav-btn" data-section="academic" data-title="Academic Setup" data-subtitle="Manage academic years, terms, classes and subjects">
-          <span class="nav-item-main">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-            <span class="nav-item-label">Academic Setup</span>
-          </span>
+        <button class="nav-btn" data-section="academic" data-title="Classes &amp; Subjects">
+          <span class="nav-item-label">Classes &amp; Subjects</span>
         </button>
-        <button class="nav-btn" data-section="students" data-title="Students &amp; Admissions" data-subtitle="Enrolled students directory, direct enrolment and join proposals">
-          <span class="nav-item-main">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            <span class="nav-item-label">Students</span>
-          </span>
+        <button class="nav-btn" data-section="teachers" data-title="Teachers">
+          <span class="nav-item-label">Teachers</span>
+        </button>
+        <button class="nav-btn" data-section="students" data-title="Students">
+          <span class="nav-item-label">Students</span>
           <span class="nav-count-pill hidden" id="nav-pending-proposals-pill">0</span>
         </button>
-        <button class="nav-btn" data-section="teachers" data-title="Teachers &amp; Assignments" data-subtitle="Register teaching staff and assign classes and subjects">
-          <span class="nav-item-main">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
-            <span class="nav-item-label">Teachers</span>
-          </span>
+        <button class="nav-btn" data-section="timetables" data-title="Timetable">
+          <span class="nav-item-label">Timetable</span>
         </button>
 
-        <div class="nav-section-label">Academics &amp; Oversight</div>
-        <button class="nav-btn" data-section="timetables" data-title="Timetables" data-subtitle="Conflict-checked lesson scheduling across classes and teachers">
-          <span class="nav-item-main">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            <span class="nav-item-label">Timetables</span>
-          </span>
+        <div class="nav-section-label">Administration</div>
+        <button class="nav-btn" data-section="finance" data-title="Finance &amp; Paystack">
+          <span class="nav-item-label">Finance &amp; Paystack</span>
         </button>
-        <button class="nav-btn" data-section="attendance" data-title="Attendance Overview" data-subtitle="Monitor submitted class and subject attendance sessions">
-          <span class="nav-item-main">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-            <span class="nav-item-label">Attendance</span>
-          </span>
+        <button class="nav-btn" data-section="users" data-title="Staff Accounts">
+          <span class="nav-item-label">Staff Accounts</span>
         </button>
-        <button class="nav-btn" data-section="exams" data-title="Exams, Grading &amp; Approvals" data-subtitle="Result publication, correction approvals and grading scale bands">
-          <span class="nav-item-main">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-            <span class="nav-item-label">Exams &amp; Grading</span>
-          </span>
+        <button class="nav-btn" data-section="announcements" data-title="Announcements">
+          <span class="nav-item-label">Announcements</span>
         </button>
-        <button class="nav-btn" data-section="reports" data-title="School Reports" data-subtitle="Class performance, attendance and fee collection analytics">
-          <span class="nav-item-main">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-            <span class="nav-item-label">Reports</span>
-          </span>
-        </button>
-
-        <div class="nav-section-label">Finance &amp; Access</div>
-        <button class="nav-btn" data-section="finance" data-title="Financial &amp; Paystack" data-subtitle="Revenue targets, fee categories, student billing and Paystack ledger">
-          <span class="nav-item-main">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-            <span class="nav-item-label">Financial &amp; Paystack</span>
-          </span>
-        </button>
-        <button class="nav-btn" data-section="users" data-title="Users &amp; Role Access" data-subtitle="Provision staff logins, manage role boundaries and session security">
-          <span class="nav-item-main">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            <span class="nav-item-label">Users &amp; Access</span>
-          </span>
-        </button>
-
-        <div class="nav-section-label">System</div>
-        <button class="nav-btn" data-section="announcements" data-title="Announcements" data-subtitle="Publish targeted notices to staff and student portals">
-          <span class="nav-item-main">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-            <span class="nav-item-label">Announcements</span>
-          </span>
-        </button>
-        <button class="nav-btn" data-section="settings" data-title="Settings &amp; Currency" data-subtitle="School profile, active currency, Google OAuth and portal policies">
-          <span class="nav-item-main">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.77 1.02 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-            <span class="nav-item-label">Settings</span>
-          </span>
-        </button>
-        <button class="nav-btn" data-section="audit" data-title="Security Audit Logs" data-subtitle="Immutable record of administrative, academic and financial actions">
-          <span class="nav-item-main">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            <span class="nav-item-label">Audit Logs</span>
-          </span>
-        </button>
-        <button class="nav-btn" data-section="backups" data-title="Database Backups" data-subtitle="Database health status and downloadable verified snapshots">
-          <span class="nav-item-main">
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-            <span class="nav-item-label">Backups</span>
-          </span>
+        <button class="nav-btn" data-section="settings" data-title="Settings">
+          <span class="nav-item-label">Settings</span>
         </button>
       </nav>
+
       <div class="sidebar-footer" id="sb-user-info">Signed in as Superadmin</div>
     </aside>
 
     <div class="main-area">
       <header class="topbar">
         <div class="topbar-left">
-          <button class="mobile-menu-btn" id="mobile-menu-btn" type="button">Menu</button>
-          <h1 class="topbar-title" id="topbar-title">Executive Overview</h1>
-          <span class="badge badge-primary" id="active-period-badge">No Active Period</span>
+          <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle Menu">Menu</button>
+          <div class="topbar-heading">
+            <h1 class="topbar-title" id="topbar-title">Overview</h1>
+          </div>
         </div>
         <div class="topbar-right">
-          <div class="currency-switcher" title="Active school currency">
-            <select id="header-currency-select" aria-label="School Currency"></select>
+          <div class="topbar-select-group" title="Active School Currency">
+            <span class="topbar-select-label">Currency</span>
+            <select id="sa-currency-switcher" aria-label="Switch School Currency"></select>
           </div>
-          <button type="button" class="btn btn-secondary btn-sm" id="privacy-toggle-btn">Hide Figures</button>
           <a href="/auth/google?mode=link" class="btn btn-secondary btn-sm hidden" id="google-link-btn">Link Google</a>
-          <span class="topbar-divider" aria-hidden="true"></span>
-          <button class="btn btn-secondary btn-sm" id="logout-btn" type="button">Sign Out</button>
+          <button class="btn btn-secondary btn-sm" id="logout-btn">Sign Out</button>
         </div>
       </header>
 
       <main class="content-body">
-        <div class="page-context-subtitle" id="topbar-subtitle">School-wide summary, setup progress and recent activity</div>
-        <!-- ==================== 1. OVERVIEW ==================== -->
-        <section id="sec-overview" class="module-panel">
-          <div class="subnav-bar" style="justify-content:flex-end;">
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button type="button" class="btn btn-secondary btn-sm" id="goto-student-requests-btn">
-                Join Proposals
-              </button>
-              <button type="button" class="btn btn-primary btn-sm" id="goto-finance-stats-btn">
-                Financial &amp; Paystack
-              </button>
+        <!-- Issued Staff / Student Credentials Banner -->
+        <div id="sa-issued-creds-banner" class="card hidden" style="border-left:4px solid var(--primary);background:#eff6ff;">
+          <div class="card-header" style="margin-bottom:8px;padding-bottom:8px;">
+            <div>
+              <h2 class="card-title" style="color:#1e3a8a;">Account Created — Copy Login Details</h2>
+              <div class="card-subtitle">Share these credentials securely with the user</div>
             </div>
+            <button type="button" class="btn btn-secondary btn-sm" id="close-creds-banner">Dismiss</button>
           </div>
+          <div id="sa-issued-creds-body" style="font-size:13.5px;display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;"></div>
+        </div>
 
-          <!-- Clean Setup Checklist (auto-shown while workspace has empty foundational tables) -->
-          <div id="sa-setup-guide" class="setup-guide-card hidden"></div>
+        <!-- 1. OVERVIEW -->
+        <section id="sec-overview" class="module-panel">
+          <div id="ov-pending-banner" class="hidden" style="margin-bottom:16px;"></div>
 
           <div class="kpi-grid" id="ov-kpis"></div>
 
-          <div class="grid-2">
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <h2 class="card-title">Recent Announcements</h2>
-                  <div class="card-subtitle">Latest published notices across portals</div>
-                </div>
-                <button type="button" class="btn btn-secondary btn-sm" data-jump-section="announcements">New Notice</button>
-              </div>
-              <div id="ov-announcements"></div>
-            </div>
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <h2 class="card-title">Recent System Activity</h2>
-                  <div class="card-subtitle">Latest administrative and security events</div>
-                </div>
-                <button type="button" class="btn btn-secondary btn-sm" data-jump-section="audit">View All</button>
-              </div>
-              <div class="table-wrap">
-                <table>
-                  <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Target</th></tr></thead>
-                  <tbody id="ov-audits-body"></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- ==================== 2. ACADEMIC SETUP ==================== -->
-        <section id="sec-academic" class="module-panel hidden">
-          <div class="subnav-bar">
-            <div class="subnav-tabs" data-tab-group="academic">
-              <button type="button" class="subtab-btn active" data-subtab="acad-calendar">Years &amp; Terms</button>
-              <button type="button" class="subtab-btn" data-subtab="acad-classes">Classes</button>
-              <button type="button" class="subtab-btn" data-subtab="acad-subjects">Subjects Catalogue</button>
-            </div>
-          </div>
-
-          <!-- Subtab: Years & Terms -->
-          <div id="subtab-acad-calendar" class="subtab-pane" data-tab-pane="academic">
-            <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
               <div>
-                <div class="card">
-                  <div class="card-header">
-                    <div>
-                      <h2 class="card-title">Add Academic Year</h2>
-                      <div class="card-subtitle">First academic year created becomes active automatically</div>
-                    </div>
-                  </div>
-                  <form id="create-year-form" class="form-grid">
-                    <div class="form-group"><label>Academic Year Name</label><input type="text" name="name" placeholder="e.g. 2026/2027" required></div>
-                    <div class="form-group"><label>Start Date</label><input type="date" name="startDate" required></div>
-                    <div class="form-group"><label>End Date</label><input type="date" name="endDate" required></div>
-                    <div class="form-actions-end" style="grid-column:1 / -1;"><button class="btn btn-primary btn-sm" type="submit">Create Academic Year</button></div>
-                  </form>
-                </div>
-
-                <div class="card">
-                  <div class="card-header">
-                    <div>
-                      <h2 class="card-title">Add Term / Semester</h2>
-                      <div class="card-subtitle">Attach terms to an academic year</div>
-                    </div>
-                  </div>
-                  <form id="create-term-form" class="form-grid">
-                    <div class="form-group"><label>Academic Year</label><select name="academicYearId" id="term-year-select" required></select></div>
-                    <div class="form-group"><label>Term Name</label><input type="text" name="name" placeholder="e.g. Term 1" required></div>
-                    <div class="form-group"><label>Start Date</label><input type="date" name="startDate" required></div>
-                    <div class="form-group"><label>End Date</label><input type="date" name="endDate" required></div>
-                    <div class="form-actions-end" style="grid-column:1 / -1;"><button class="btn btn-primary btn-sm" type="submit">Create Term</button></div>
-                  </form>
-                </div>
+                <h2 class="card-title">Quick Actions</h2>
+                <div class="card-subtitle">Jump straight to common tasks</div>
               </div>
-
-              <div class="card">
-                <div class="card-header">
-                  <div>
-                    <h2 class="card-title">Active Academic Period</h2>
-                    <div class="card-subtitle">Switch the current school-wide year and term</div>
-                  </div>
-                </div>
-                <form id="activate-period-form" class="toolbar" style="margin-bottom:18px;">
-                  <select name="academicYearId" id="act-year-select"></select>
-                  <select name="termId" id="act-term-select"></select>
-                  <button class="btn btn-secondary btn-sm" type="submit">Set Active Period</button>
-                </form>
-
-                <div class="form-section-divider">Configured Years &amp; Terms</div>
-                <div class="table-wrap">
-                  <table>
-                    <thead><tr><th>Academic Year</th><th>Term</th><th>Date Range</th><th>Status</th></tr></thead>
-                    <tbody id="years-terms-tbody"></tbody>
-                  </table>
-                </div>
-              </div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button type="button" class="btn btn-primary btn-sm" data-jump-section="academic">+ Add Class or Subject</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-jump-section="teachers">+ Register Teacher</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-jump-section="students">+ Enrol Student</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-jump-section="timetables">+ Schedule Timetable</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-jump-section="announcements">+ Post Announcement</button>
             </div>
           </div>
 
-          <!-- Subtab: Classes -->
-          <div id="subtab-acad-classes" class="subtab-pane hidden" data-tab-pane="academic">
-            <div class="grid-2">
-              <div class="card">
-                <div class="card-header">
-                  <div>
-                    <h2 class="card-title">Create Class</h2>
-                    <div class="card-subtitle">Add grade levels or forms for student enrolment</div>
-                  </div>
-                </div>
-                <form id="create-class-form" class="form-grid">
-                  <div class="form-group"><label>Class Name</label><input type="text" name="name" placeholder="e.g. Grade 10" required></div>
-                  <div class="form-group"><label>Level Order</label><input type="number" name="levelOrder" value="1" min="1"></div>
-                  <div class="form-group"><label>Capacity</label><input type="number" name="capacity" value="40" min="1"></div>
-                  <div class="form-actions-end" style="grid-column:1 / -1;"><button class="btn btn-primary btn-sm" type="submit">Add Class</button></div>
-                </form>
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Recent Announcements</h2>
+                <div class="card-subtitle">Latest school and class notices</div>
               </div>
-
-              <div class="card">
-                <div class="card-header"><h2 class="card-title">Classes Directory</h2></div>
-                <div class="table-wrap">
-                  <table>
-                    <thead><tr><th>Class</th><th class="num">Order</th><th class="num">Capacity</th><th>Status</th></tr></thead>
-                    <tbody id="classes-tbody"></tbody>
-                  </table>
-                </div>
-              </div>
+              <button type="button" class="btn btn-secondary btn-sm" data-jump-section="announcements">Manage Announcements</button>
             </div>
-          </div>
-
-          <!-- Subtab: Subjects Catalogue -->
-          <div id="subtab-acad-subjects" class="subtab-pane hidden" data-tab-pane="academic">
-            <div class="grid-2">
-              <div class="card">
-                <div class="card-header">
-                  <div>
-                    <h2 class="card-title">Add Subject</h2>
-                    <div class="card-subtitle">Register core or elective subjects in the school catalogue</div>
-                  </div>
-                </div>
-                <form id="create-subject-form">
-                  <div class="form-grid">
-                    <div class="form-group"><label>Subject Code</label><input type="text" name="code" placeholder="e.g. MTH101" required></div>
-                    <div class="form-group"><label>Subject Name</label><input type="text" name="name" placeholder="e.g. Core Mathematics" required></div>
-                    <div class="form-group"><label>Department</label><input type="text" name="department" placeholder="e.g. Mathematics"></div>
-                    <div class="form-group"><label>Pass Mark (%)</label><input type="number" name="passMark" value="50" min="0" max="100"></div>
-                  </div>
-                  <div class="form-actions-end"><button class="btn btn-primary btn-sm" type="submit">Add Subject</button></div>
-                </form>
-              </div>
-
-              <div class="card">
-                <div class="card-header"><h2 class="card-title">Subjects Catalogue</h2></div>
-                <div class="table-wrap">
-                  <table>
-                    <thead><tr><th>Code</th><th>Subject</th><th>Department</th><th class="num">Pass Mark</th></tr></thead>
-                    <tbody id="subjects-tbody"></tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+            <div id="ov-announcements"></div>
           </div>
         </section>
 
-        <!-- ==================== 3. STUDENTS & ADMISSIONS ==================== -->
-        <section id="sec-students" class="module-panel hidden">
-          <div class="subnav-bar">
-            <div class="subnav-tabs" data-tab-group="students">
-              <button type="button" class="subtab-btn active" data-subtab="stu-directory">Enrolled Directory</button>
-              <button type="button" class="subtab-btn" data-subtab="stu-enrol">Enrol Student</button>
-              <button type="button" class="subtab-btn" data-subtab="stu-proposals" id="stu-proposals-subtab-btn">Join Proposals</button>
-            </div>
-          </div>
-
-          <!-- Subtab: Enrolled Directory -->
-          <div id="subtab-stu-directory" class="subtab-pane" data-tab-pane="students">
+        <!-- 2. CLASSES & SUBJECTS -->
+        <section id="sec-academic" class="module-panel hidden">
+          <div class="grid-2" data-tab-group="academic">
+            <!-- Classes -->
             <div class="card">
               <div class="card-header">
                 <div>
-                  <h2 class="card-title">Enrolled Students Directory</h2>
-                  <div class="card-subtitle">Active and archived student records</div>
-                </div>
-                <div class="toolbar" style="margin:0;">
-                  <input type="text" id="students-search" placeholder="Search admission or name...">
-                  <button class="btn btn-secondary btn-sm" id="students-search-btn" type="button">Search</button>
-                  <button class="btn btn-primary btn-sm" type="button" data-open-subtab="students:stu-enrol">+ Enrol Student</button>
+                  <h2 class="card-title">Classes</h2>
+                  <div class="card-subtitle">Create and view school classes</div>
                 </div>
               </div>
-              <div class="table-wrap">
-                <table>
-                  <thead><tr><th>Admission #</th><th>Full Name</th><th>Gender</th><th>Class</th><th>Guardian</th><th>Portal Email</th><th>Status</th></tr></thead>
-                  <tbody id="students-tbody"></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <!-- Subtab: Enrol New Student -->
-          <div id="subtab-stu-enrol" class="subtab-pane hidden" data-tab-pane="students">
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <h2 class="card-title">Enrol New Student</h2>
-                  <div class="card-subtitle">Create a student record and issue portal login credentials immediately</div>
+              <form id="create-class-form" class="form-grid" style="margin-bottom:16px;">
+                <div class="form-group">
+                  <label>Class Name</label>
+                  <input type="text" name="name" placeholder="e.g. Grade 10 or 1 Science 2B" required>
                 </div>
-              </div>
-              <div id="issued-student-creds-box" class="alert alert-info hidden"></div>
-              <form id="enrol-student-form">
-                <div class="form-section-divider" style="margin-top:0;">Student Identity &amp; Academic Placement</div>
-                <div class="form-grid">
-                  <div class="form-group"><label>Admission Number</label><input type="text" name="admissionNumber" placeholder="e.g. ADM-2026-001" required></div>
-                  <div class="form-group"><label>First Name</label><input type="text" name="firstName" required></div>
-                  <div class="form-group"><label>Last Name</label><input type="text" name="lastName" required></div>
-                  <div class="form-group"><label>Gender</label><select name="gender"><option value="">Select Gender</option><option value="Female">Female</option><option value="Male">Male</option></select></div>
-                  <div class="form-group"><label>Date of Birth</label><input type="date" name="dateOfBirth"></div>
-                  <div class="form-group"><label>Class</label><select name="classId" id="st-class-select"><option value="">Unassigned</option></select></div>
+                <div class="form-group">
+                  <label>Order / Level</label>
+                  <input type="number" name="levelOrder" value="1" min="1" required>
                 </div>
-
-                <div class="form-section-divider">Guardian &amp; Portal Login</div>
-                <div class="form-grid">
-                  <div class="form-group"><label>Student Portal Email</label><input type="email" name="email" placeholder="student@school.edu" required></div>
-                  <div class="form-group"><label>Initial Password (Optional)</label><input type="password" name="password" placeholder="Auto-generated if blank" autocomplete="new-password"></div>
-                  <div class="form-group"><label>Guardian Name</label><input type="text" name="guardianName"></div>
-                  <div class="form-group"><label>Guardian Phone</label><input type="text" name="guardianPhone"></div>
-                </div>
-                <div class="form-actions-end">
-                  <button type="submit" class="btn btn-primary">Enrol Student &amp; Issue Login</button>
+                <div class="form-actions-end" style="grid-column:1 / -1;">
+                  <button class="btn btn-primary btn-sm" type="submit">Add Class</button>
                 </div>
               </form>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Class Name</th><th class="num">Level</th><th>Status</th></tr></thead>
+                  <tbody id="classes-list-tbody"></tbody>
+                </table>
+              </div>
             </div>
-          </div>
 
-          <!-- Subtab: Student Join Proposals -->
-          <div id="subtab-stu-proposals" class="subtab-pane hidden" data-tab-pane="students">
+            <!-- Subjects -->
             <div class="card">
               <div class="card-header">
                 <div>
-                  <h2 class="card-title">Student Join Proposals</h2>
-                  <div class="card-subtitle">Applications submitted via "Create one" on the login page</div>
-                </div>
-                <div class="toolbar" style="margin:0;">
-                  <select id="stu-req-status-filter">
-                    <option value="pending">Pending Review</option>
-                    <option value="">All Proposals</option>
-                    <option value="approved">Approved</option>
-                    <option value="rejected">Rejected</option>
-                  </select>
-                  <button class="btn btn-secondary btn-sm" id="stu-req-filter-btn" type="button">Refresh</button>
+                  <h2 class="card-title">Subjects</h2>
+                  <div class="card-subtitle">Create and view school subjects</div>
                 </div>
               </div>
+              <form id="create-subject-form" class="form-grid" style="margin-bottom:16px;">
+                <div class="form-group">
+                  <label>Subject Code</label>
+                  <input type="text" name="code" placeholder="e.g. MTH101" required>
+                </div>
+                <div class="form-group">
+                  <label>Subject Name</label>
+                  <input type="text" name="name" placeholder="e.g. Core Mathematics" required>
+                </div>
+                <div class="form-group">
+                  <label>Department (Optional)</label>
+                  <input type="text" name="department" placeholder="e.g. Sciences">
+                </div>
+                <div class="form-actions-end" style="align-items:flex-end;">
+                  <button class="btn btn-primary btn-sm" type="submit">Add Subject</button>
+                </div>
+              </form>
               <div class="table-wrap">
                 <table>
-                  <thead>
-                    <tr>
-                      <th>Submitted</th>
-                      <th>Applicant</th>
-                      <th>Email / Phone</th>
-                      <th>Class Assignment</th>
-                      <th>Admission #</th>
-                      <th>Status</th>
-                      <th>Decision</th>
-                    </tr>
-                  </thead>
-                  <tbody id="student-requests-tbody"></tbody>
+                  <thead><tr><th>Code</th><th>Subject</th><th>Department</th></tr></thead>
+                  <tbody id="subjects-list-tbody"></tbody>
                 </table>
               </div>
             </div>
           </div>
         </section>
 
-        <!-- ==================== 4. TEACHERS & ASSIGNMENTS ==================== -->
+        <!-- 3. TEACHERS -->
         <section id="sec-teachers" class="module-panel hidden">
           <div class="subnav-bar">
             <div class="subnav-tabs" data-tab-group="teachers">
-              <button type="button" class="subtab-btn active" data-subtab="tch-staff">Teaching Staff</button>
-              <button type="button" class="subtab-btn" data-subtab="tch-assignments">Class &amp; Subject Assignments</button>
+              <button type="button" class="subtab-btn active" data-subtab="tch-staff">Register &amp; Teachers List</button>
+              <button type="button" class="subtab-btn" data-subtab="tch-assignments">Assign Classes &amp; Subjects</button>
             </div>
           </div>
 
-          <!-- Subtab: Teaching Staff -->
+          <!-- Register & Teachers List -->
           <div id="subtab-tch-staff" class="subtab-pane" data-tab-pane="teachers">
             <div class="card">
               <div class="card-header">
                 <div>
                   <h2 class="card-title">Register Teacher</h2>
-                  <div class="card-subtitle">Provisioned solely by the Superadmin — assign one or multiple subjects and share the issued login credentials with the teacher</div>
+                  <div class="card-subtitle">Create a teacher account, link one or more subjects, and optionally assign classes right away</div>
                 </div>
               </div>
-              <div id="issued-teacher-creds-box" class="alert alert-info hidden"></div>
               <form id="create-teacher-form">
-                <div class="form-section-divider" style="margin-top:0;">Teacher Identity &amp; Portal Login</div>
                 <div class="form-grid">
-                  <div class="form-group"><label>Staff Number</label><input type="text" name="staffNumber" placeholder="e.g. STF-2026-001" required></div>
+                  <div class="form-group"><label>Staff Number</label><input type="text" name="staffNumber" placeholder="e.g. STF-001" required></div>
                   <div class="form-group"><label>First Name</label><input type="text" name="firstName" required></div>
                   <div class="form-group"><label>Last Name</label><input type="text" name="lastName" required></div>
-                  <div class="form-group"><label>Portal Email</label><input type="email" name="email" placeholder="teacher@school.edu" required></div>
-                  <div class="form-group"><label>Phone (Optional)</label><input type="text" name="phone" placeholder="e.g. +233 24 000 0000"></div>
-                  <div class="form-group"><label>Department</label><input type="text" name="department" placeholder="e.g. Sciences &amp; Mathematics"></div>
-                  <div class="form-group"><label>Qualification</label><input type="text" name="qualification" placeholder="e.g. B.Ed, M.Sc"></div>
+                  <div class="form-group"><label>Email</label><input type="email" name="email" placeholder="teacher@school.edu" required></div>
+                  <div class="form-group"><label>Phone (Optional)</label><input type="text" name="phone"></div>
+                  <div class="form-group"><label>Department (Optional)</label><input type="text" name="department" placeholder="e.g. Sciences"></div>
                   <div class="form-group"><label>Initial Password (Optional)</label><input type="password" name="password" placeholder="Auto-generated if blank" autocomplete="new-password"></div>
                 </div>
 
-                <div class="form-section-divider">Subjects Taught (Teachers Can Teach 1 or More Subjects)</div>
                 <datalist id="subject-suggestions-list">
                   <option value="Mathematics"></option>
                   <option value="Further Mathematics"></option>
@@ -477,16 +228,13 @@
                   <option value="History"></option>
                   <option value="Government"></option>
                   <option value="French"></option>
-                  <option value="Financial Accounting"></option>
-                  <option value="Business Management"></option>
-                  <option value="Creative Arts &amp; Design"></option>
-                  <option value="Physical Education"></option>
                 </datalist>
-                <div class="multi-subject-box">
+
+                <div class="multi-subject-box" style="margin-top:12px;">
                   <div class="multi-subject-head">
                     <div>
-                      <div class="multi-subject-title">Assign One or Multiple Teaching Subjects</div>
-                      <div class="multi-subject-hint">Check existing subjects from the catalogue or enter Subject 1, Subject 2, Subject 3... below for teachers who teach more than one subject.</div>
+                      <div class="multi-subject-title">Subjects Taught (1 or More)</div>
+                      <div class="multi-subject-hint">Check existing subjects or type Subject 1, Subject 2... below.</div>
                     </div>
                     <span class="badge badge-info" id="tch-selected-subjects-count">0 subjects selected</span>
                   </div>
@@ -499,7 +247,7 @@
                     </div>
                     <div class="subject-row-item" data-subject-row>
                       <span class="subject-row-label">Subject 2</span>
-                      <input type="text" class="tch-subject-row-input" list="subject-suggestions-list" placeholder="e.g. Physics (optional — leave blank if 1 subject)">
+                      <input type="text" class="tch-subject-row-input" list="subject-suggestions-list" placeholder="Optional second subject">
                       <button type="button" class="btn btn-secondary btn-sm" data-remove-subject-row>Remove</button>
                     </div>
                   </div>
@@ -507,35 +255,26 @@
                   <div class="subject-add-row-bar">
                     <button type="button" class="btn btn-secondary btn-sm" id="btn-add-tch-subject-row">+ Add Another Subject</button>
                     <div class="subject-inline-adder" style="margin-top:0;">
-                      <input type="text" id="tch-custom-subject-input" list="subject-suggestions-list" placeholder="Or quick-add comma-separated subjects...">
-                      <button type="button" class="btn btn-secondary btn-sm" id="btn-add-tch-subject">+ Add Tag</button>
+                      <input type="text" id="tch-custom-subject-input" list="subject-suggestions-list" placeholder="Or comma-separated subjects...">
+                      <button type="button" class="btn btn-secondary btn-sm" id="btn-add-tch-subject">+ Add</button>
                     </div>
                   </div>
                   <div id="tch-custom-subject-chips" class="subject-chip-list"></div>
                 </div>
 
-                <div class="form-grid" style="margin-top:12px;">
-                  <div class="form-group" id="tch-reg-classes-group">
-                    <label>Assign Classes Immediately (Optional)</label>
-                    <div id="tch-reg-class-checkboxes" class="multi-check-grid" style="margin-bottom:0;"></div>
-                  </div>
-                  <div class="form-group">
-                    <label>Additional Specialization Notes (Optional)</label>
-                    <input type="text" name="specialization" placeholder="Auto-filled from selected subjects if left blank">
-                  </div>
+                <div class="form-group" id="tch-reg-classes-group" style="margin-top:12px;">
+                  <label>Assign Classes Now (Optional)</label>
+                  <div id="tch-reg-class-checkboxes" class="multi-check-grid" style="margin-bottom:0;"></div>
                 </div>
 
-                <div class="form-actions-end"><button class="btn btn-primary" type="submit">Register Teacher &amp; Issue Login</button></div>
+                <div class="form-actions-end"><button class="btn btn-primary" type="submit">Register Teacher</button></div>
               </form>
             </div>
 
             <!-- Inline Edit Teacher Subjects Card -->
             <div class="card hidden" id="edit-teacher-subjects-card">
               <div class="card-header">
-                <div>
-                  <h2 class="card-title" id="edit-teacher-subjects-title">Update Teacher Subjects</h2>
-                  <div class="card-subtitle">Check or uncheck subjects taught by this teacher, or add new subjects below</div>
-                </div>
+                <h2 class="card-title" id="edit-teacher-subjects-title">Update Teacher Subjects</h2>
                 <button type="button" class="btn btn-secondary btn-sm" id="btn-cancel-edit-teacher-subjects">Close</button>
               </div>
               <form id="edit-teacher-subjects-form">
@@ -547,52 +286,46 @@
                   </div>
                   <div id="edit-tch-subject-checkboxes" class="multi-check-grid"></div>
                   <div class="subject-inline-adder">
-                    <input type="text" id="edit-tch-custom-subject-input" placeholder="Add additional subject(s), e.g. Chemistry, Biology">
-                    <button type="button" class="btn btn-secondary btn-sm" id="btn-add-edit-tch-subject">+ Add Subject</button>
+                    <input type="text" id="edit-tch-custom-subject-input" placeholder="Add new subject(s)...">
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-add-edit-tch-subject">+ Add</button>
                   </div>
                   <div id="edit-tch-custom-subject-chips" class="subject-chip-list"></div>
                 </div>
                 <div class="form-actions-end" style="margin-top:12px;">
-                  <button type="submit" class="btn btn-primary">Save Teacher Subjects</button>
+                  <button type="submit" class="btn btn-primary">Save Subjects</button>
                 </div>
               </form>
             </div>
 
             <div class="card">
-              <div class="card-header">
-                <div>
-                  <h2 class="card-title">Registered Teachers Directory</h2>
-                  <div class="card-subtitle">All registered teaching staff and their assigned teaching subjects</div>
-                </div>
-              </div>
+              <div class="card-header"><h2 class="card-title">Registered Teachers</h2></div>
               <div class="table-wrap">
                 <table>
-                  <thead><tr><th>Staff #</th><th>Teacher</th><th>Email</th><th>Department</th><th>Subjects Taught</th><th>Status</th><th>Actions</th></tr></thead>
+                  <thead><tr><th>Staff #</th><th>Name</th><th>Email</th><th>Subjects Taught</th><th>Status</th><th>Action</th></tr></thead>
                   <tbody id="teachers-list-tbody"></tbody>
                 </table>
               </div>
             </div>
           </div>
 
-          <!-- Subtab: Assignments -->
+          <!-- Assign Classes & Subjects -->
           <div id="subtab-tch-assignments" class="subtab-pane hidden" data-tab-pane="teachers">
             <div class="card">
               <div class="card-header">
                 <div>
                   <h2 class="card-title">Assign Teacher to Classes &amp; Subjects</h2>
-                  <div class="card-subtitle">Select one, multiple, or all classes and subjects to grant coursework, exam, attendance, announcement, and mark-entry access</div>
+                  <div class="card-subtitle">Choose a teacher, select one or all classes, and check their subjects</div>
                 </div>
               </div>
               <form id="assign-teacher-form">
-                <div class="form-grid">
-                  <div class="form-group"><label>Teacher</label><select name="teacherId" id="asg-teacher" required></select></div>
+                <div class="form-group">
+                  <label>Select Teacher</label>
+                  <select name="teacherId" id="asg-teacher" required></select>
                 </div>
+
                 <div class="multi-subject-box" style="margin-top:12px;">
                   <div class="multi-subject-head">
-                    <div>
-                      <div class="multi-subject-title">Target Classes (Choose Any Class(es) or All Classes)</div>
-                      <div class="multi-subject-hint">Check the specific class(es) this teacher teaches, or select All Classes.</div>
-                    </div>
+                    <div class="multi-subject-title">Classes</div>
                     <label class="subject-check-pill" style="margin:0;">
                       <input type="checkbox" id="asg-all-classes-chk">
                       <span><strong>All Classes</strong></span>
@@ -600,760 +333,439 @@
                   </div>
                   <div id="asg-classes-checkboxes" class="multi-check-grid" style="margin-bottom:0;"></div>
                 </div>
+
                 <div class="multi-subject-box" style="margin-top:12px;">
                   <div class="multi-subject-head">
-                    <div>
-                      <div class="multi-subject-title">Subjects to Assign (Select 1 or More)</div>
-                      <div class="multi-subject-hint">Selecting a teacher automatically highlights their registered subjects — check all subjects they teach in the selected class(es).</div>
-                    </div>
+                    <div class="multi-subject-title">Subjects</div>
                     <span class="badge badge-info" id="asg-selected-subjects-count">0 subjects selected</span>
                   </div>
                   <div id="asg-subjects-checkboxes" class="multi-check-grid" style="margin-bottom:0;"></div>
                 </div>
-                <div class="form-actions-end"><button class="btn btn-primary" type="submit">Assign Classes &amp; Subjects</button></div>
+
+                <div class="form-actions-end"><button class="btn btn-primary" type="submit">Save Assignment</button></div>
               </form>
             </div>
 
             <div class="card">
-              <div class="card-header"><h2 class="card-title">Active Class &amp; Subject Assignments</h2></div>
+              <div class="card-header"><h2 class="card-title">Current Class &amp; Subject Assignments</h2></div>
               <div class="table-wrap">
                 <table>
-                  <thead><tr><th>Staff #</th><th>Teacher</th><th>Class</th><th>Subject</th><th>Academic Year</th></tr></thead>
-                  <tbody id="teacher-assignments-tbody"></tbody>
+                  <thead><tr><th>Staff #</th><th>Teacher</th><th>Class</th><th>Subject</th></tr></thead>
+                  <tbody id="assignments-tbody"></tbody>
                 </table>
               </div>
             </div>
           </div>
         </section>
 
-        <!-- ==================== 5. TIMETABLES ==================== -->
+        <!-- 4. STUDENTS -->
+        <section id="sec-students" class="module-panel hidden">
+          <div class="subnav-bar">
+            <div class="subnav-tabs" data-tab-group="students">
+              <button type="button" class="subtab-btn active" data-subtab="stu-directory">Students List</button>
+              <button type="button" class="subtab-btn" data-subtab="stu-enrol">Enrol Student</button>
+              <button type="button" class="subtab-btn" data-subtab="stu-proposals" id="stu-proposals-subtab-btn">Join Proposals</button>
+            </div>
+          </div>
+
+          <div id="subtab-stu-directory" class="subtab-pane" data-tab-pane="students">
+            <div class="card">
+              <div class="card-header">
+                <h2 class="card-title">Enrolled Students</h2>
+                <div class="toolbar" style="margin:0;">
+                  <input type="text" id="stu-search" placeholder="Search name or admission #..." style="width:230px;">
+                  <button class="btn btn-secondary btn-sm" id="stu-filter-btn">Search</button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Admission #</th><th>Student Name</th><th>Class</th><th>Email</th><th>Guardian Phone</th><th>Status</th></tr></thead>
+                  <tbody id="students-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div id="subtab-stu-enrol" class="subtab-pane hidden" data-tab-pane="students">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Enrol Student</h2>
+                  <div class="card-subtitle">Create a student record and issue login credentials</div>
+                </div>
+              </div>
+              <form id="create-student-form" class="form-grid">
+                <div class="form-group"><label>Admission Number</label><input type="text" name="admissionNumber" placeholder="e.g. ADM-001" required></div>
+                <div class="form-group"><label>First Name</label><input type="text" name="firstName" required></div>
+                <div class="form-group"><label>Last Name</label><input type="text" name="lastName" required></div>
+                <div class="form-group"><label>Student Email</label><input type="email" name="email" required></div>
+                <div class="form-group"><label>Class</label><select name="classId" id="st-class-select"></select></div>
+                <div class="form-group"><label>Gender</label><select name="gender"><option value="">Select</option><option>Male</option><option>Female</option></select></div>
+                <div class="form-group"><label>Guardian Name</label><input type="text" name="guardianName"></div>
+                <div class="form-group"><label>Guardian Phone</label><input type="text" name="guardianPhone"></div>
+                <div class="form-group"><label>Initial Password (Optional)</label><input type="password" name="password" placeholder="Auto-generated if blank" autocomplete="new-password"></div>
+                <div class="form-actions-end" style="grid-column:1 / -1;"><button class="btn btn-primary" type="submit">Enrol Student</button></div>
+              </form>
+            </div>
+          </div>
+
+          <div id="subtab-stu-proposals" class="subtab-pane hidden" data-tab-pane="students">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Student Join Proposals</h2>
+                  <div class="card-subtitle">Approve or reject students who requested an account from the login page</div>
+                </div>
+                <select id="stu-req-status-filter" style="width:160px;">
+                  <option value="pending">Pending</option>
+                  <option value="">All</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Submitted</th>
+                      <th>Applicant</th>
+                      <th>Email / Username</th>
+                      <th>Requested Class</th>
+                      <th>Guardian</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="student-requests-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. TIMETABLE -->
         <section id="sec-timetables" class="module-panel hidden">
           <div class="card">
             <div class="card-header">
               <div>
-                <h2 class="card-title">Schedule Lesson Slot</h2>
-                <div class="card-subtitle">Automatically checks for overlapping teacher or class conflicts</div>
+                <h2 class="card-title">Add Lesson to Timetable</h2>
+                <div class="card-subtitle">Overlapping lessons for the same class or teacher are prevented automatically</div>
               </div>
             </div>
-            <form id="create-tt-form">
-              <div class="form-grid">
-                <div class="form-group"><label>Class</label><select name="classId" id="tt-class" required></select></div>
-                <div class="form-group"><label>Subject</label><select name="subjectId" id="tt-subject" required></select></div>
-                <div class="form-group"><label>Teacher</label><select name="teacherId" id="tt-teacher" required></select></div>
-                <div class="form-group">
-                  <label>Day of Week</label>
-                  <select name="dayOfWeek" required>
-                    <option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option>
-                  </select>
-                </div>
-                <div class="form-group"><label>Start Time</label><input type="time" name="startTime" value="08:00" required></div>
-                <div class="form-group"><label>End Time</label><input type="time" name="endTime" value="09:00" required></div>
-                <div class="form-group"><label>Room</label><input type="text" name="room" placeholder="e.g. Room 101"></div>
+            <form id="create-tt-form" class="form-grid">
+              <div class="form-group"><label>Class</label><select name="classId" id="tt-class" required></select></div>
+              <div class="form-group"><label>Subject</label><select name="subjectId" id="tt-subject" required></select></div>
+              <div class="form-group"><label>Teacher</label><select name="teacherId" id="tt-teacher" required></select></div>
+              <div class="form-group">
+                <label>Day</label>
+                <select name="dayOfWeek" required>
+                  <option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option>
+                </select>
               </div>
-              <div class="form-actions-end"><button class="btn btn-primary" type="submit">Add Timetable Slot</button></div>
+              <div class="form-group"><label>Start Time</label><input type="time" name="startTime" value="08:00" required></div>
+              <div class="form-group"><label>End Time</label><input type="time" name="endTime" value="09:00" required></div>
+              <div class="form-group"><label>Room (Optional)</label><input type="text" name="room" placeholder="e.g. Room 4"></div>
+              <div class="form-actions-end" style="align-items:flex-end;"><button class="btn btn-primary" type="submit">Add Slot</button></div>
             </form>
           </div>
 
           <div class="card">
             <div class="card-header">
-              <div>
-                <h2 class="card-title">Master Weekly School Timetable</h2>
-                <div class="card-subtitle">Tabular weekly schedule grid organized by lesson time and weekday</div>
-              </div>
-              <div class="toolbar" style="margin:0;">
-                <select id="tt-filter-class">
-                  <option value="">All Classes</option>
-                </select>
-              </div>
+              <h2 class="card-title">Weekly Timetable</h2>
+              <select id="tt-filter-class" style="width:190px;"><option value="">All Classes</option></select>
             </div>
             <div id="tt-matrix-container"></div>
           </div>
         </section>
 
-        <!-- ==================== 6. ATTENDANCE OVERVIEW ==================== -->
-        <section id="sec-attendance" class="module-panel hidden">
-          <div class="card">
-            <div class="card-header">
-              <div>
-                <h2 class="card-title">Attendance Sessions Oversight</h2>
-                <div class="card-subtitle">Roll-call sessions submitted by teachers across classes</div>
-              </div>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>Date</th><th>Class</th><th>Subject</th><th>Recorded By</th><th class="num">Present</th><th class="num">Late</th><th class="num">Absent</th><th>Status</th></tr></thead>
-                <tbody id="att-overview-tbody"></tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- ==================== 7. EXAMS, GRADING & APPROVALS ==================== -->
-        <section id="sec-exams" class="module-panel hidden">
-          <div class="subnav-bar">
-            <div class="subnav-tabs" data-tab-group="exams">
-              <button type="button" class="subtab-btn active" data-subtab="ex-assessments">Assessments &amp; Publication</button>
-              <button type="button" class="subtab-btn" data-subtab="ex-approvals">Correction &amp; Profile Requests</button>
-              <button type="button" class="subtab-btn" data-subtab="ex-grading">Grading Scale</button>
-            </div>
-          </div>
-
-          <div id="subtab-ex-assessments" class="subtab-pane" data-tab-pane="exams">
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <h2 class="card-title">Assessments &amp; Result Publication</h2>
-                  <div class="card-subtitle">Publish verified teacher assessments to student portals and report cards</div>
-                </div>
-              </div>
-              <div class="table-wrap">
-                <table>
-                  <thead><tr><th>Title</th><th>Type</th><th>Class / Subject</th><th>Term</th><th class="num">Marks</th><th>Status</th><th>Action</th></tr></thead>
-                  <tbody id="exams-tbody"></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <div id="subtab-ex-approvals" class="subtab-pane hidden" data-tab-pane="exams">
-            <div class="grid-2">
-              <div class="card">
-                <div class="card-header"><h2 class="card-title">Teacher Mark Correction Requests</h2></div>
-                <div class="table-wrap">
-                  <table>
-                    <thead><tr><th>Student / Subject</th><th>Change</th><th>Reason</th><th>Status</th><th>Review</th></tr></thead>
-                    <tbody id="mark-corr-tbody"></tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div class="card">
-                <div class="card-header"><h2 class="card-title">Student Profile Correction Requests</h2></div>
-                <div class="table-wrap">
-                  <table>
-                    <thead><tr><th>Student</th><th>Field</th><th>Requested Value</th><th>Status</th><th>Review</th></tr></thead>
-                    <tbody id="prof-req-tbody"></tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div id="subtab-ex-grading" class="subtab-pane hidden" data-tab-pane="exams">
-            <div class="grid-2">
-              <div class="card">
-                <div class="card-header">
-                  <div>
-                    <h2 class="card-title">Add Grade Band</h2>
-                    <div class="card-subtitle">Define percentage ranges, grade letters and remarks</div>
-                  </div>
-                </div>
-                <form id="create-grade-form">
-                  <div class="form-grid">
-                    <div class="form-group"><label>Grade</label><input type="text" name="grade" placeholder="e.g. A1" required></div>
-                    <div class="form-group"><label>Min %</label><input type="number" step="0.01" min="0" max="100" name="minScore" placeholder="80" required></div>
-                    <div class="form-group"><label>Max %</label><input type="number" step="0.01" min="0" max="100" name="maxScore" placeholder="100" required></div>
-                    <div class="form-group"><label>Grade Point</label><input type="number" step="0.01" min="0" name="gradePoint" placeholder="4.0" value="4.0"></div>
-                  </div>
-                  <div class="form-group"><label>Remark</label><input type="text" name="remark" placeholder="e.g. Excellent"></div>
-                  <div class="form-actions-end"><button type="submit" class="btn btn-primary btn-sm">Add Grade Band</button></div>
-                </form>
-              </div>
-
-              <div class="card">
-                <div class="card-header"><h2 class="card-title">Configured Grading Scale</h2></div>
-                <div class="table-wrap">
-                  <table>
-                    <thead><tr><th>Grade</th><th class="num">Min %</th><th class="num">Max %</th><th class="num">Points</th><th>Remark</th><th>Action</th></tr></thead>
-                    <tbody id="grading-tbody"></tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- ==================== 8. FINANCIAL & PAYSTACK ==================== -->
+        <!-- 6. FINANCE & PAYSTACK -->
         <section id="sec-finance" class="module-panel hidden">
-          <div class="kpi-grid" id="adm-fin-kpis"></div>
+          <div class="kpi-grid" id="sa-fin-kpis"></div>
 
           <div class="subnav-bar">
             <div class="subnav-tabs" data-tab-group="finance">
-              <button type="button" class="subtab-btn active" data-subtab="fin-config">Targets &amp; Paystack</button>
-              <button type="button" class="subtab-btn" data-subtab="fin-categories">Fee Categories</button>
-              <button type="button" class="subtab-btn" data-subtab="fin-billing">Student Billing</button>
-              <button type="button" class="subtab-btn" data-subtab="fin-payments">Payments &amp; Reversals</button>
+              <button type="button" class="subtab-btn active" data-subtab="fin-billing">Fees &amp; Billing</button>
+              <button type="button" class="subtab-btn" data-subtab="fin-payments">Paystack Payments &amp; Reversals</button>
               <button type="button" class="subtab-btn" data-subtab="fin-transfers">Send Transfer</button>
             </div>
           </div>
 
-          <!-- Subtab: Targets & Paystack -->
-          <div id="subtab-fin-config" class="subtab-pane" data-tab-pane="finance">
+          <!-- Fees & Billing -->
+          <div id="subtab-fin-billing" class="subtab-pane" data-tab-pane="finance">
             <div class="grid-2">
               <div class="card">
-                <div class="card-header">
-                  <div>
-                    <h2 class="card-title">Financial Stats, Targets &amp; Paystack Gateway</h2>
-                    <div class="card-subtitle">Set revenue targets, treasury adjustments and allowed Paystack channels</div>
-                  </div>
-                  <button type="button" class="btn btn-secondary btn-sm" id="reset-fin-adj-btn">Reset Adjustments</button>
-                </div>
-                <form id="adm-fin-config-form">
-                  <div class="form-grid">
-                    <div class="form-group">
-                      <label>Term Revenue Target</label>
-                      <input type="number" step="0.01" min="0" name="termRevenueTarget" id="adm-fin-target" required>
-                    </div>
-                    <div class="form-group">
-                      <label>Opening Treasury Balance</label>
-                      <input type="number" step="0.01" name="openingBalanceAdjustment" id="adm-fin-opening" required>
-                    </div>
-                    <div class="form-group">
-                      <label>Billed Stat Adjustment (+/-)</label>
-                      <input type="number" step="0.01" name="billedStatAdjustment" id="adm-fin-billed-adj" required>
-                    </div>
-                    <div class="form-group">
-                      <label>Collected Stat Adjustment (+/-)</label>
-                      <input type="number" step="0.01" name="collectedStatAdjustment" id="adm-fin-coll-adj" required>
-                    </div>
-                  </div>
+                <div class="card-header"><h2 class="card-title">Create Fee Item</h2></div>
+                <form id="sa-fee-cat-form" class="form-grid">
+                  <div class="form-group"><label>Fee Code</label><input type="text" name="code" placeholder="e.g. TUITION" required></div>
+                  <div class="form-group"><label>Fee Name</label><input type="text" name="name" placeholder="e.g. Tuition Fee" required></div>
+                  <div class="form-group"><label>Amount</label><input type="number" step="0.01" min="0.01" name="defaultAmount" required></div>
                   <div class="form-group">
-                    <label>Allowed Paystack Channels (comma-separated)</label>
-                    <input type="text" name="paystackChannels" id="adm-psk-channels" value="card,mobile_money,bank_transfer,ussd">
+                    <label>Frequency</label>
+                    <select name="frequency"><option value="termly">Termly</option><option value="annual">Annual</option><option value="one_time">One-Time</option></select>
                   </div>
-                  <label class="policy-toggle-card" style="margin:12px 0 16px;">
-                    <input type="checkbox" id="adm-psk-enabled">
-                    <div>
-                      <strong>Enable Paystack Online Fee Payments Across Portals</strong>
-                      <span>Allows students and financial staff to initialize and verify Paystack payments</span>
-                    </div>
-                  </label>
-                  <div class="form-actions-end">
-                    <button type="submit" class="btn btn-primary">Save Financial &amp; Gateway Config</button>
-                  </div>
+                  <div class="form-actions-end" style="grid-column:1 / -1;"><button class="btn btn-primary btn-sm" type="submit">Save Fee Item</button></div>
                 </form>
+                <div class="table-wrap" style="margin-top:12px;">
+                  <table>
+                    <thead><tr><th>Code</th><th>Fee Name</th><th class="num">Amount</th></tr></thead>
+                    <tbody id="sa-fin-cats-tbody"></tbody>
+                  </table>
+                </div>
               </div>
 
               <div class="card">
-                <div class="card-header">
-                  <div>
-                    <h2 class="card-title">Process Paystack Payment</h2>
-                    <div class="card-subtitle">Initialize an online or sandbox Paystack checkout for an enrolled student</div>
-                  </div>
-                </div>
-                <form id="adm-psk-pay-form">
+                <div class="card-header"><h2 class="card-title">Bill Class or Student</h2></div>
+                <form id="sa-assign-fee-form" class="form-grid">
                   <div class="form-group">
-                    <label>Student Account</label>
-                    <select name="studentId" id="adm-pay-student" required></select>
+                    <label>Bill Target</label>
+                    <select name="targetType" id="sa-bill-target-type">
+                      <option value="class">Entire Class</option>
+                      <option value="student">Single Student</option>
+                    </select>
                   </div>
-                  <div class="form-grid">
-                    <div class="form-group">
-                      <label>Amount</label>
-                      <input type="number" step="0.01" min="0.01" name="amount" required>
-                    </div>
-                    <div class="form-group">
-                      <label>Paystack Channel</label>
-                      <select name="channel">
-                        <option value="mobile_money">Mobile Money</option>
-                        <option value="card">Debit / Credit Card</option>
-                        <option value="bank_transfer">Bank Transfer</option>
-                        <option value="ussd">USSD</option>
-                      </select>
-                    </div>
+                  <div class="form-group" id="sa-bill-class-wrap">
+                    <label>Class</label>
+                    <select name="classId" id="sa-fin-class-sel"></select>
                   </div>
-                  <div class="form-group">
-                    <label>Payer Email (Optional)</label>
-                    <input type="email" name="payerEmail" placeholder="guardian@example.com">
+                  <div class="form-group hidden" id="sa-bill-student-wrap">
+                    <label>Student</label>
+                    <select name="studentId" id="sa-fin-student-sel"></select>
                   </div>
-                  <div class="form-actions-end">
-                    <button type="submit" class="btn btn-paystack">Initialize Paystack Checkout</button>
-                  </div>
+                  <div class="form-group"><label>Fee Item</label><select name="feeCategoryId" id="sa-fin-cat-sel" required></select></div>
+                  <div class="form-group"><label>Custom Amount (Optional)</label><input type="number" step="0.01" min="0.01" name="amountDue" placeholder="Uses default if blank"></div>
+                  <div class="form-actions-end" style="grid-column:1 / -1;"><button class="btn btn-primary btn-sm" type="submit">Assign Fee</button></div>
                 </form>
               </div>
             </div>
           </div>
 
-          <!-- Subtab: Fee Categories -->
-          <div id="subtab-fin-categories" class="subtab-pane hidden" data-tab-pane="finance">
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <h2 class="card-title">Create Fee Category</h2>
-                  <div class="card-subtitle">Define tuition, examination, boarding or utility fee items</div>
-                </div>
-              </div>
-              <form id="adm-create-fee-cat-form">
-                <div class="form-grid">
-                  <div class="form-group"><label>Code</label><input type="text" name="code" placeholder="e.g. TUIT-T1" required></div>
-                  <div class="form-group"><label>Category Name</label><input type="text" name="name" placeholder="e.g. Tuition Fee" required></div>
-                  <div class="form-group"><label>Default Charge</label><input type="number" step="0.01" min="0.01" name="defaultAmount" placeholder="0.00" required></div>
-                  <div class="form-group">
-                    <label>Frequency</label>
-                    <select name="frequency">
-                      <option value="termly">Termly</option>
-                      <option value="annual">Annual</option>
-                      <option value="one_time">One-Time</option>
-                    </select>
-                  </div>
-                </div>
-                <div class="form-actions-end"><button type="submit" class="btn btn-primary btn-sm">Add Fee Category</button></div>
-              </form>
-            </div>
-
-            <div class="card">
-              <div class="card-header"><h2 class="card-title">Configured Fee Categories</h2></div>
-              <div class="table-wrap">
-                <table>
-                  <thead><tr><th>Code</th><th>Fee Category Name</th><th>Frequency</th><th class="num">Default Charge</th><th>Status</th><th>Update</th></tr></thead>
-                  <tbody id="adm-fee-cats-tbody"></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <!-- Subtab: Student Billing -->
-          <div id="subtab-fin-billing" class="subtab-pane hidden" data-tab-pane="finance">
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <h2 class="card-title">Assign Fee to Class or Student</h2>
-                  <div class="card-subtitle">Bill an entire class at once or bill a specific student</div>
-                </div>
-              </div>
-              <form id="adm-assign-fee-form">
-                <div class="form-grid">
-                  <div class="form-group"><label>Fee Category</label><select name="feeCategoryId" id="adm-bill-cat" required></select></div>
-                  <div class="form-group"><label>Target Class (Bulk)</label><select name="classId" id="adm-bill-class"><option value="">None (Select Individual Student)</option></select></div>
-                  <div class="form-group"><label>Or Individual Student</label><select name="studentId" id="adm-bill-student"><option value="">All Students in Selected Class</option></select></div>
-                  <div class="form-group"><label>Custom Amount (Optional)</label><input type="number" step="0.01" min="0.01" name="amountDue" placeholder="Uses category default if blank"></div>
-                  <div class="form-group"><label>Due Date (Optional)</label><input type="date" name="dueDate"></div>
-                </div>
-                <div class="form-actions-end"><button type="submit" class="btn btn-primary btn-sm">Assign Fee</button></div>
-              </form>
-            </div>
-
-            <div class="card">
-              <div class="card-header"><h2 class="card-title">Student Fee Assignments</h2></div>
-              <div class="table-wrap">
-                <table>
-                  <thead><tr><th>Student</th><th>Fee Item</th><th class="num">Amount Due</th><th class="num">Discount</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th><th>Actions</th></tr></thead>
-                  <tbody id="adm-fa-tbody"></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <!-- Subtab: Payments & Reversals -->
+          <!-- Paystack Payments & Reversals -->
           <div id="subtab-fin-payments" class="subtab-pane hidden" data-tab-pane="finance">
             <div class="card">
-              <div class="card-header"><h2 class="card-title">Payments, Paystack Transactions &amp; Reversals</h2></div>
+              <div class="card-header"><h2 class="card-title">Collect Fee via Paystack</h2></div>
+              <form id="sa-paystack-init-form" class="form-grid">
+                <div class="form-group"><label>Student</label><select name="studentId" id="sa-psk-student" required></select></div>
+                <div class="form-group"><label>Amount</label><input type="number" step="0.01" min="0.01" name="amount" required></div>
+                <div class="form-group">
+                  <label>Channel</label>
+                  <select name="channel">
+                    <option value="mobile_money">Mobile Money</option>
+                    <option value="card">Card</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="ussd">USSD</option>
+                  </select>
+                </div>
+                <div class="form-group"><label>Payer Email</label><input type="email" name="payerEmail" placeholder="Optional"></div>
+                <div class="form-actions-end" style="grid-column:1 / -1;"><button class="btn btn-paystack" type="submit">Launch Paystack Checkout</button></div>
+              </form>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><h2 class="card-title">Payments &amp; Reversals</h2></div>
               <div class="table-wrap">
                 <table>
-                  <thead><tr><th>Date</th><th>Student</th><th>Method / Ref</th><th>Receipt #</th><th class="num">Amount</th><th>Status</th><th>Admin Control</th></tr></thead>
-                  <tbody id="adm-payments-tbody"></tbody>
+                  <thead><tr><th>Date</th><th>Receipt #</th><th>Student</th><th>Method</th><th class="num">Amount</th><th>Status</th><th>Action</th></tr></thead>
+                  <tbody id="sa-fin-payments-tbody"></tbody>
                 </table>
               </div>
             </div>
           </div>
 
-          <!-- Subtab: Send Outbound Paystack Transfer -->
+          <!-- Send Transfer -->
           <div id="subtab-fin-transfers" class="subtab-pane hidden" data-tab-pane="finance">
             <div class="card">
-              <div class="card-header">
-                <div>
-                  <h2 class="card-title">Send Outbound Paystack Transfer</h2>
-                  <div class="card-subtitle">Disburse funds via Paystack using the API keys configured in School Settings</div>
-                </div>
-                <button type="button" class="btn btn-secondary btn-sm" id="adm-open-psk-keys-btn">Manage Paystack Keys in Settings</button>
-              </div>
-              <form id="adm-psk-transfer-form">
-                <div class="form-grid">
-                  <div class="form-group">
-                    <label>Recipient Full Name</label>
-                    <input type="text" name="recipientName" placeholder="e.g. Kwame Boateng / Supplier Ltd" required>
-                  </div>
-                  <div class="form-group">
-                    <label>Transfer Channel</label>
-                    <select name="channel">
-                      <option value="mobile_money">Mobile Money Wallet</option>
-                      <option value="bank_account">Bank Account</option>
-                    </select>
-                  </div>
-                  <div class="form-group">
-                    <label>Bank / Mobile Network Code</label>
-                    <input type="text" name="bankOrNetwork" placeholder="e.g. MTN, VOD, TGO, GCB, 044" required>
-                  </div>
-                  <div class="form-group">
-                    <label>Account or Mobile Wallet Number</label>
-                    <input type="text" name="recipientAccount" placeholder="e.g. 0240000000 or 0123456789" required>
-                  </div>
-                  <div class="form-group">
-                    <label>Amount to Send</label>
-                    <input type="number" step="0.01" min="0.01" name="amount" placeholder="0.00" required>
-                  </div>
-                  <div class="form-group">
-                    <label>Transfer Reason / Narration</label>
-                    <input type="text" name="reason" placeholder="e.g. Refund, Bursary Stipend, Vendor Payout">
-                  </div>
-                </div>
-                <div class="form-actions-end">
-                  <button type="submit" class="btn btn-paystack">Send Paystack Transfer</button>
-                </div>
-              </form>
-            </div>
-
-            <div class="card">
-              <div class="card-header"><h2 class="card-title">Sent Paystack Transfers Ledger</h2></div>
-              <div class="table-wrap">
-                <table>
-                  <thead><tr><th>Date</th><th>Reference</th><th>Recipient</th><th>Channel / Bank</th><th class="num">Amount</th><th>Mode</th><th>Status</th></tr></thead>
-                  <tbody id="adm-psk-transfers-tbody"></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- ==================== 9. USERS & ROLE ACCESS ==================== -->
-        <section id="sec-users" class="module-panel hidden">
-          <div class="subnav-bar">
-            <div class="subnav-tabs" data-tab-group="users">
-              <button type="button" class="subtab-btn active" data-subtab="usr-directory">User Directory</button>
-              <button type="button" class="subtab-btn" data-subtab="usr-provision">Provision Account</button>
-            </div>
-          </div>
-
-          <div id="subtab-usr-directory" class="subtab-pane" data-tab-pane="users">
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <h2 class="card-title">User Accounts &amp; Role Boundaries</h2>
-                  <div class="card-subtitle">Manage roles, suspend accounts or unlock sessions</div>
-                </div>
-                <div class="toolbar" style="margin:0;">
-                  <input type="text" id="users-search" placeholder="Search name or email...">
-                  <select id="users-role-filter">
-                    <option value="">All Roles</option>
-                    <option value="superadmin">Superadmin</option>
-                    <option value="teacher">Teacher</option>
-                    <option value="student">Student</option>
-                    <option value="financial">Financial</option>
+              <div class="card-header"><h2 class="card-title">Send Outbound Paystack Transfer</h2></div>
+              <form id="sa-paystack-transfer-form" class="form-grid">
+                <div class="form-group"><label>Recipient Name</label><input type="text" name="recipientName" required></div>
+                <div class="form-group">
+                  <label>Channel</label>
+                  <select name="channel">
+                    <option value="mobile_money">Mobile Money</option>
+                    <option value="bank">Bank Account</option>
                   </select>
-                  <button class="btn btn-secondary btn-sm" id="users-filter-btn" type="button">Filter</button>
-                  <button class="btn btn-primary btn-sm" type="button" data-open-subtab="users:usr-provision">+ Provision Account</button>
                 </div>
-              </div>
+                <div class="form-group"><label>Network / Bank</label><input type="text" name="bankOrNetwork" placeholder="e.g. MTN / GCB Bank" required></div>
+                <div class="form-group"><label>Account / Wallet Number</label><input type="text" name="recipientAccount" required></div>
+                <div class="form-group"><label>Amount</label><input type="number" step="0.01" min="0.01" name="amount" required></div>
+                <div class="form-group"><label>Reason</label><input type="text" name="reason" required></div>
+                <div class="form-actions-end" style="grid-column:1 / -1;"><button class="btn btn-paystack" type="submit">Send Transfer</button></div>
+              </form>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><h2 class="card-title">Recent Transfers</h2></div>
               <div class="table-wrap">
                 <table>
-                  <thead><tr><th>Name</th><th>Email / Username</th><th>Role</th><th>Auth</th><th>Status</th><th>Actions</th></tr></thead>
-                  <tbody id="users-tbody"></tbody>
+                  <thead><tr><th>Date</th><th>Reference</th><th>Recipient</th><th class="num">Amount</th><th>Status</th></tr></thead>
+                  <tbody id="sa-fin-transfers-tbody"></tbody>
                 </table>
               </div>
             </div>
           </div>
-
-          <div id="subtab-usr-provision" class="subtab-pane hidden" data-tab-pane="users">
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <h2 class="card-title">Provision Staff &amp; Portal Account</h2>
-                  <div class="card-subtitle">Teacher and Financial Officer logins are created solely by the Superadmin and issued directly to staff</div>
-                </div>
-              </div>
-              <div id="issued-user-creds-box" class="alert alert-info hidden"></div>
-              <form id="create-user-form">
-                <div class="form-grid">
-                  <div class="form-group"><label>Full Name</label><input type="text" name="fullName" required></div>
-                  <div class="form-group"><label>Username</label><input type="text" name="username" required></div>
-                  <div class="form-group"><label>Email</label><input type="email" name="email" required></div>
-                  <div class="form-group"><label>Phone</label><input type="text" name="phone"></div>
-                  <div class="form-group">
-                    <label>Approved Role</label>
-                    <select name="role" id="usr-provision-role" required>
-                      <option value="financial">Financial Officer (Admin-Issued Login)</option>
-                      <option value="teacher">Teacher (Admin-Issued Login)</option>
-                      <option value="superadmin">Superadmin</option>
-                    </select>
-                  </div>
-                  <div class="form-group">
-                    <label>Initial Password (Optional)</label>
-                    <input type="password" name="password" minlength="8" placeholder="Auto-generated if blank" autocomplete="new-password">
-                  </div>
-                </div>
-
-                <div id="usr-teacher-extra-fields" class="hidden" style="margin-top:12px;">
-                  <div class="form-section-divider" style="margin-top:4px;">Teacher Staff Details &amp; Multiple Subjects Taught</div>
-                  <div class="form-grid" style="margin-bottom:12px;">
-                    <div class="form-group"><label>Staff Number (Optional)</label><input type="text" name="staffNumber" placeholder="Auto-generated if blank"></div>
-                    <div class="form-group"><label>Department (Optional)</label><input type="text" name="department" placeholder="e.g. Sciences"></div>
-                    <div class="form-group"><label>Qualification (Optional)</label><input type="text" name="qualification" placeholder="e.g. B.Ed, M.Sc"></div>
-                  </div>
-                  <div class="multi-subject-box">
-                    <div class="multi-subject-head">
-                      <div>
-                        <div class="multi-subject-title">Subjects Taught (1 or More Subjects)</div>
-                        <div class="multi-subject-hint">Check catalogue subjects or enter Subject 1, Subject 2, Subject 3... for multi-subject teachers.</div>
-                      </div>
-                      <span class="badge badge-info" id="usr-tch-subjects-count">0 subjects selected</span>
-                    </div>
-                    <div id="usr-tch-subject-checkboxes" class="multi-check-grid"></div>
-                    <div id="usr-tch-subject-rows" class="subject-rows-stack">
-                      <div class="subject-row-item" data-subject-row>
-                        <span class="subject-row-label">Subject 1</span>
-                        <input type="text" class="usr-tch-subject-row-input" list="subject-suggestions-list" placeholder="e.g. Mathematics">
-                      </div>
-                      <div class="subject-row-item" data-subject-row>
-                        <span class="subject-row-label">Subject 2</span>
-                        <input type="text" class="usr-tch-subject-row-input" list="subject-suggestions-list" placeholder="e.g. Physics (optional)">
-                        <button type="button" class="btn btn-secondary btn-sm" data-remove-usr-subject-row>Remove</button>
-                      </div>
-                    </div>
-                    <div class="subject-add-row-bar">
-                      <button type="button" class="btn btn-secondary btn-sm" id="btn-add-usr-subject-row">+ Add Another Subject</button>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="form-actions-end"><button class="btn btn-primary" type="submit">Create &amp; Issue Login</button></div>
-              </form>
-            </div>
-          </div>
         </section>
 
-        <!-- ==================== 10. REPORTS ==================== -->
-        <section id="sec-reports" class="module-panel hidden">
+        <!-- 7. STAFF ACCOUNTS -->
+        <section id="sec-users" class="module-panel hidden">
           <div class="card">
             <div class="card-header">
               <div>
-                <h2 class="card-title">Executive Summary Reports by Class</h2>
-                <div class="card-subtitle">Consolidated academic performance, attendance and fee collection</div>
+                <h2 class="card-title">Create Staff Account</h2>
+                <div class="card-subtitle">Provision login credentials for Teachers and Financial Officers</div>
               </div>
-              <button class="btn btn-secondary btn-sm" id="export-school-report-btn" type="button">Export CSV</button>
             </div>
+            <form id="create-user-form">
+              <div class="form-grid">
+                <div class="form-group"><label>Full Name</label><input type="text" name="fullName" required></div>
+                <div class="form-group"><label>Username</label><input type="text" name="username" required></div>
+                <div class="form-group"><label>Email</label><input type="email" name="email" required></div>
+                <div class="form-group">
+                  <label>Role</label>
+                  <select name="role" id="usr-role-select" required>
+                    <option value="teacher">Teacher</option>
+                    <option value="financial">Financial Officer</option>
+                    <option value="superadmin">Superadmin</option>
+                  </select>
+                </div>
+                <div class="form-group"><label>Initial Password (Optional)</label><input type="password" name="password" placeholder="Auto-generated if blank" autocomplete="new-password"></div>
+              </div>
+
+              <div id="usr-teacher-extra-fields" style="margin-top:12px;">
+                <div class="multi-subject-box">
+                  <div class="multi-subject-head">
+                    <div class="multi-subject-title">Teacher Subjects (Optional)</div>
+                    <span class="badge badge-info" id="usr-tch-subjects-count">0 subjects selected</span>
+                  </div>
+                  <div id="usr-tch-subject-checkboxes" class="multi-check-grid"></div>
+                  <div id="usr-tch-subject-rows" class="subject-rows-stack">
+                    <div class="subject-row-item" data-subject-row>
+                      <span class="subject-row-label">Subject 1</span>
+                      <input type="text" class="tch-subject-row-input" list="subject-suggestions-list" placeholder="e.g. Mathematics">
+                    </div>
+                  </div>
+                  <div class="subject-add-row-bar">
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-add-usr-subject-row">+ Add Another Subject</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-actions-end" style="margin-top:12px;"><button class="btn btn-primary" type="submit">Create Account</button></div>
+            </form>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><h2 class="card-title">Portal Accounts</h2></div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>Class</th><th class="num">Students Assessed</th><th class="num">Avg Published Score %</th><th class="num">Attendance Rate</th><th class="num">Net Fees Billed</th><th class="num">Fees Collected</th></tr></thead>
-                <tbody id="school-reports-tbody"></tbody>
+                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody id="users-tbody"></tbody>
               </table>
             </div>
           </div>
         </section>
 
-        <!-- ==================== 11. ANNOUNCEMENTS ==================== -->
+        <!-- 8. ANNOUNCEMENTS -->
         <section id="sec-announcements" class="module-panel hidden">
           <div class="grid-2">
             <div class="card">
-              <div class="card-header">
-                <div>
-                  <h2 class="card-title">Publish School Notice</h2>
-                  <div class="card-subtitle">Broadcast announcements to all portals or a specific audience</div>
-                </div>
-              </div>
+              <div class="card-header"><h2 class="card-title">Post School Announcement</h2></div>
               <form id="create-ann-form">
+                <div class="form-group"><label>Title</label><input type="text" name="title" required></div>
                 <div class="form-grid">
-                  <div class="form-group"><label>Title</label><input type="text" name="title" required></div>
                   <div class="form-group">
-                    <label>Target Audience</label>
+                    <label>Audience</label>
                     <select name="audience">
-                      <option value="all">All Dashboards</option>
-                      <option value="teachers">Teachers Only</option>
-                      <option value="students">Students Only</option>
+                      <option value="all">Everyone</option>
+                      <option value="teacher">Teachers Only</option>
+                      <option value="student">Students Only</option>
                       <option value="financial">Financial Staff Only</option>
                     </select>
                   </div>
                   <div class="form-group">
                     <label>Priority</label>
-                    <select name="priority"><option value="normal">Normal</option><option value="important">Important</option><option value="urgent">Urgent</option></select>
+                    <select name="priority">
+                      <option value="normal">Normal</option>
+                      <option value="important">Important</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
                   </div>
                 </div>
                 <div class="form-group"><label>Message</label><textarea name="body" rows="4" required></textarea></div>
-                <div class="form-actions-end"><button class="btn btn-primary" type="submit">Publish Notice</button></div>
+                <div class="form-actions-end"><button class="btn btn-primary" type="submit">Publish Announcement</button></div>
               </form>
             </div>
 
             <div class="card">
               <div class="card-header"><h2 class="card-title">Published Announcements</h2></div>
-              <div id="all-announcements-list"></div>
+              <div id="ann-list"></div>
             </div>
           </div>
         </section>
 
-        <!-- ==================== 12. SETTINGS & CURRENCY ==================== -->
+        <!-- 9. SETTINGS -->
         <section id="sec-settings" class="module-panel hidden">
           <div class="card">
-            <div class="card-header">
-              <div>
-                <h2 class="card-title">School Profile, Currency &amp; Access Policies</h2>
-                <div class="card-subtitle">Configure institutional identity, active currency and authentication policies</div>
-              </div>
-            </div>
+            <div class="card-header"><h2 class="card-title">School Settings, Google Sign-In &amp; Paystack Keys</h2></div>
             <form id="settings-form">
-              <div class="form-section-divider" style="margin-top:0;">Institution Profile &amp; Active Currency</div>
+              <div class="form-section-divider" style="margin-top:0;">School Profile &amp; Currency</div>
               <div class="form-grid">
-                <div class="form-group"><label>School Name</label><input type="text" name="schoolName" id="set-name" required></div>
-                <div class="form-group"><label>School Code</label><input type="text" name="schoolCode" id="set-code" required></div>
-                <div class="form-group"><label>Motto</label><input type="text" name="motto" id="set-motto" placeholder="Optional school motto"></div>
-                <div class="form-group"><label>Official Email</label><input type="email" name="email" id="set-email" placeholder="Optional contact email"></div>
-                <div class="form-group"><label>Phone</label><input type="text" name="phone" id="set-phone" placeholder="Optional contact phone"></div>
-                <div class="form-group"><label>Timezone</label><input type="text" name="timezone" id="set-tz" value="Africa/Accra"></div>
+                <div class="form-group"><label>School Name</label><input type="text" name="schoolName" id="set-school-name" required></div>
+                <div class="form-group"><label>Phone</label><input type="text" name="phone" id="set-phone"></div>
+                <div class="form-group"><label>Email</label><input type="email" name="email" id="set-email"></div>
+                <div class="form-group"><label>Address</label><input type="text" name="address" id="set-address"></div>
+                <div class="form-group"><label>Currency</label><select name="currencyCode" id="set-currency-code"></select></div>
+                <div class="form-group"><label>Currency Symbol</label><input type="text" name="currencySymbol" id="set-currency-symbol" placeholder="e.g. GH₵, $, £"></div>
                 <div class="form-group">
-                  <label>Currency Preset</label>
-                  <select name="currencyCode" id="set-currency-code"></select>
-                </div>
-                <div class="form-group">
-                  <label>Currency Symbol (Custom Override Optional)</label>
-                  <input type="text" name="currencySymbol" id="set-currency-symbol" placeholder="e.g. GH₵, $, €, £, ₦">
-                </div>
-                <div class="form-group"><label>Attendance Cutoff Time</label><input type="time" name="attendanceCutoffTime" id="set-cutoff"></div>
-              </div>
-              <div class="form-group"><label>Address</label><input type="text" name="address" id="set-address" placeholder="Optional school address"></div>
-
-              <div class="form-section-divider" style="display:flex;justify-content:space-between;align-items:center;">
-                <span>Paystack Payment Gateway Keys (Sending, Receiving &amp; Reversing Transactions)</span>
-                <span class="badge badge-primary" id="set-paystack-mode-badge">Sandbox Mode</span>
-              </div>
-              <div class="form-grid">
-                <div class="form-group">
-                  <label>Paystack Public Key (Receiving Checkout)</label>
-                  <input type="text" name="paystackPublicKey" id="set-paystack-public-key" placeholder="pk_live_... or pk_test_..." autocomplete="off">
-                </div>
-                <div class="form-group">
-                  <label>Paystack Secret Key (Receiving, Sending &amp; Reversing)</label>
-                  <input type="password" name="paystackSecretKey" id="set-paystack-secret-key" placeholder="sk_live_... or sk_test_... (leave blank to keep saved key)" autocomplete="new-password">
-                </div>
-                <div class="form-group">
-                  <label>Paystack Webhook Secret (Optional)</label>
-                  <input type="password" name="paystackWebhookSecret" id="set-paystack-webhook-secret" placeholder="Defaults to Secret Key when blank" autocomplete="new-password">
-                </div>
-              </div>
-              <div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-                <span class="text-muted" id="set-paystack-secret-hint" style="font-size:12px;">Enter your Paystack live or test keys above to activate live payment collection, transfers, and reversals.</span>
-                <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);cursor:pointer;">
-                  <input type="checkbox" id="set-clear-paystack-secret" style="width:auto;">
-                  Clear saved Paystack secret keys (revert to Sandbox)
-                </label>
-              </div>
-
-              <div class="form-section-divider" style="display:flex;justify-content:space-between;align-items:center;">
-                <span>Google OAuth 2.0 Authentication</span>
-                <span class="badge badge-primary" id="set-google-mode-badge">Google OAuth Active</span>
-              </div>
-              <div class="form-grid">
-                <div class="form-group">
-                  <label>Google OAuth Client ID (Optional for Sandbox)</label>
-                  <input type="text" name="googleClientId" id="set-google-client-id" placeholder="xxxx.apps.googleusercontent.com" autocomplete="off">
-                </div>
-                <div class="form-group">
-                  <label>Google OAuth Client Secret</label>
-                  <input type="password" name="googleClientSecret" id="set-google-client-secret" placeholder="Leave blank to keep existing secret" autocomplete="new-password">
+                  <label style="display:flex;align-items:center;gap:8px;margin-top:24px;">
+                    <input type="checkbox" name="studentFeePortalEnabled" id="set-fee-portal" style="width:auto;">
+                    Show Fees &amp; Paystack on Students Dashboard
+                  </label>
                 </div>
               </div>
 
-              <div class="form-section-divider">Paystack Transaction &amp; Portal Access Policies</div>
-              <div class="policy-toggle-list">
-                <label class="policy-toggle-card">
-                  <input type="checkbox" id="set-psk-receive-enabled" checked>
-                  <div>
-                    <strong>Paystack: Receive Payments</strong>
-                    <span>Accept incoming fee payments via Card, Mobile Money, Bank Transfer &amp; USSD</span>
-                  </div>
-                </label>
-                <label class="policy-toggle-card">
-                  <input type="checkbox" id="set-psk-send-enabled" checked>
-                  <div>
-                    <strong>Paystack: Send Outbound Transfers</strong>
-                    <span>Allow authorized admins and financial officers to send Paystack payouts &amp; transfers</span>
-                  </div>
-                </label>
-                <label class="policy-toggle-card">
-                  <input type="checkbox" id="set-psk-reverse-enabled" checked>
-                  <div>
-                    <strong>Paystack: Reverse &amp; Refund Transactions</strong>
-                    <span>Automatically issue Paystack gateway refunds when reversing verified transactions</span>
-                  </div>
-                </label>
-                <label class="policy-toggle-card">
-                  <input type="checkbox" id="set-google-enabled" checked>
-                  <div>
-                    <strong>Google Authentication</strong>
-                    <span>Allow Google Sign-In on login and account linking across dashboards</span>
-                  </div>
-                </label>
-                <label class="policy-toggle-card">
-                  <input type="checkbox" id="set-fee-portal">
-                  <div>
-                    <strong>Student Fee Portal &amp; Paystack</strong>
-                    <span>Show fee statements, receipts and Paystack checkout on Student Dashboard</span>
-                  </div>
-                </label>
-                <label class="policy-toggle-card">
-                  <input type="checkbox" id="set-direct-mark-edit">
-                  <div>
-                    <strong>Post-Publication Mark Edits</strong>
-                    <span>Allow teachers to edit marks directly after results are published</span>
-                  </div>
-                </label>
+              <div class="form-section-divider">Google Sign-In</div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label style="display:flex;align-items:center;gap:8px;">
+                    <input type="checkbox" name="googleOauthEnabled" id="set-google-enabled" style="width:auto;">
+                    Enable Google Sign-In
+                  </label>
+                </div>
+                <div class="form-group"><label>Google Client ID</label><input type="text" name="googleClientId" id="set-google-client-id" placeholder="123456-abc.apps.googleusercontent.com" autocomplete="off"></div>
+                <div class="form-group"><label>Google Client Secret</label><input type="password" name="googleClientSecret" id="set-google-client-secret" placeholder="Leave blank to keep existing secret" autocomplete="new-password"></div>
               </div>
-              <div class="form-actions-end">
-                <button class="btn btn-primary" type="submit">Save School Settings</button>
+
+              <div class="form-section-divider">Paystack Keys (Receiving, Sending &amp; Reversing Transactions)</div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="set-psk-receive-enabled" style="width:auto;" checked> Enable Receiving Payments</label>
+                </div>
+                <div class="form-group">
+                  <label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="set-psk-send-enabled" style="width:auto;" checked> Enable Sending Transfers</label>
+                </div>
+                <div class="form-group">
+                  <label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="set-psk-reverse-enabled" style="width:auto;" checked> Enable Reversals / Refunds</label>
+                </div>
+                <div class="form-group"><label>Paystack Public Key</label><input type="text" name="paystackPublicKey" id="set-paystack-public-key" placeholder="pk_live_... or pk_test_..." autocomplete="off"></div>
+                <div class="form-group"><label>Paystack Secret Key</label><input type="password" name="paystackSecretKey" id="set-paystack-secret-key" placeholder="sk_live_... or sk_test_... (leave blank to keep)" autocomplete="new-password"></div>
+                <div class="form-group">
+                  <label style="display:flex;align-items:center;gap:8px;margin-top:24px;">
+                    <input type="checkbox" name="clearPaystackSecret" id="set-clear-paystack-secret" style="width:auto;">
+                    Clear Stored Paystack Secret Key
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-actions-end" style="margin-top:14px;">
+                <button class="btn btn-primary" type="submit">Save Settings</button>
               </div>
             </form>
-          </div>
-        </section>
-
-        <!-- ==================== 13. AUDIT LOGS ==================== -->
-        <section id="sec-audit" class="module-panel hidden">
-          <div class="card">
-            <div class="card-header">
-              <div>
-                <h2 class="card-title">System Audit Logs</h2>
-                <div class="card-subtitle">Chronological trail of logins, provisioning and record updates</div>
-              </div>
-              <div class="toolbar" style="margin:0;">
-                <input type="text" id="audit-search" placeholder="Filter action or actor...">
-                <select id="audit-role-filter">
-                  <option value="">All Roles</option>
-                  <option value="superadmin">Superadmin</option>
-                  <option value="teacher">Teacher</option>
-                  <option value="student">Student</option>
-                  <option value="financial">Financial</option>
-                </select>
-                <button class="btn btn-secondary btn-sm" id="audit-filter-btn" type="button">Filter</button>
-              </div>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>Timestamp</th><th>Actor</th><th>Role</th><th>Action</th><th>Target</th><th>Metadata</th></tr></thead>
-                <tbody id="audit-tbody"></tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- ==================== 14. BACKUPS ==================== -->
-        <section id="sec-backups" class="module-panel hidden">
-          <div class="card">
-            <div class="card-header">
-              <div>
-                <h2 class="card-title">Database Health &amp; Backup Snapshots</h2>
-                <div class="card-subtitle">Generate and download verified database snapshots</div>
-              </div>
-              <button class="btn btn-primary btn-sm" id="trigger-backup-btn" type="button">Create Verified Snapshot</button>
-            </div>
-            <div id="backup-health-banner" class="alert alert-info"></div>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>Created At</th><th>Snapshot File</th><th class="num">Tables</th><th class="num">Total Rows</th><th class="num">Size</th><th>Status</th><th>Download</th></tr></thead>
-                <tbody id="backups-tbody"></tbody>
-              </table>
-            </div>
           </div>
         </section>
       </main>
     </div>
   </div>
 
-  <script src="/js/common.js?v=2.7"></script>
-  <script src="/js/superadmin.js?v=2.7"></script>
+  <script src="/js/common.js?v=3.0"></script>
+  <script src="/js/superadmin.js?v=3.0"></script>
 </body>
 </html>

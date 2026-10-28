@@ -4,30 +4,24 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Students Dashboard - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=2.7">
+  <link rel="stylesheet" href="/css/styles.css?v=3.0">
 </head>
 <body>
   <div class="app-layout">
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="sidebar-title" id="sb-school-name">School Management System</div>
-        <span class="sidebar-role-tag">3 - Students</span>
+        <span class="sidebar-role-tag">Student</span>
       </div>
       <nav class="sidebar-nav">
-        <div class="nav-section-label">My Learning</div>
+        <div class="nav-section-label">My Portal</div>
         <button class="nav-btn active" data-section="overview">Overview</button>
         <button class="nav-btn" data-section="coursework">Classwork, Homework, Tests &amp; Exams</button>
-        <button class="nav-btn" data-section="subjects">Enrolled Subjects</button>
-        <button class="nav-btn" data-section="timetable">My Timetable</button>
-        <button class="nav-btn" data-section="attendance">My Attendance</button>
-        <button class="nav-btn" data-section="results">Grades &amp; Results</button>
-        <button class="nav-btn" data-section="reportcard">Report Card</button>
-        <button class="nav-btn" data-section="profile">My Profile</button>
-
-        <div class="nav-section-label">Student Services</div>
-        <button class="nav-btn" data-section="fees" id="nav-fees-btn">Fee Statement &amp; Paystack</button>
+        <button class="nav-btn" data-section="results">My Scores</button>
+        <button class="nav-btn" data-section="timetable">Timetable</button>
+        <button class="nav-btn" data-section="fees" id="nav-fees-btn">Fees &amp; Paystack</button>
         <button class="nav-btn" data-section="announcements">Announcements</button>
-        <button class="nav-btn" data-section="account">Account Settings</button>
+        <button class="nav-btn" data-section="profile">Profile</button>
       </nav>
       <div class="sidebar-footer" id="sb-user-info">Signed in as Student</div>
     </aside>
@@ -37,7 +31,6 @@
         <div class="topbar-left">
           <button class="mobile-menu-btn" id="mobile-menu-btn">Menu</button>
           <h1 class="topbar-title" id="topbar-title">Overview</h1>
-          <span class="badge badge-primary" id="active-period-badge">Term</span>
         </div>
         <div class="topbar-right">
           <a href="/auth/google?mode=link" class="btn btn-secondary btn-sm hidden" id="google-link-btn">Link Google</a>
@@ -46,35 +39,42 @@
       </header>
 
       <main class="content-body">
-        <!-- OVERVIEW -->
+        <!-- 1. OVERVIEW -->
         <section id="sec-overview" class="module-panel">
           <div class="kpi-grid" id="st-kpis"></div>
+
           <div class="grid-2">
             <div class="card">
               <div class="card-header">
-                <h2 class="card-title">My Academic Snapshot</h2>
+                <h2 class="card-title">My Subjects</h2>
                 <button type="button" class="btn btn-primary btn-sm" id="st-open-coursework-btn">Open Classwork &amp; Exams</button>
               </div>
-              <div id="st-snapshot-box"></div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Code</th><th>Subject</th><th>Teacher</th></tr></thead>
+                  <tbody id="st-subjects-tbody"></tbody>
+                </table>
+              </div>
             </div>
+
             <div class="card">
-              <div class="card-header"><h2 class="card-title">Class &amp; School Announcements</h2></div>
+              <div class="card-header"><h2 class="card-title">Latest Announcements</h2></div>
               <div id="st-ov-announcements"></div>
             </div>
           </div>
         </section>
 
-        <!-- CLASSWORK, HOMEWORK, TESTS & EXAMS -->
+        <!-- 2. CLASSWORK, HOMEWORK, TESTS & EXAMS -->
         <section id="sec-coursework" class="module-panel hidden">
           <div class="card">
             <div class="card-header">
               <div>
                 <h2 class="card-title">Classwork, Homework, Tests &amp; Exams</h2>
-                <div class="card-subtitle">View teacher instructions, study uploaded PDFs/images/videos, write your answers, and upload images, documents, or videos</div>
+                <div class="card-subtitle">Read questions, view uploaded PDFs/images/videos, write your answers, and upload images, documents, or videos</div>
               </div>
-              <div class="filter-bar">
-                <select id="st-cw-filter-type" style="width:170px;">
-                  <option value="">All Work Types</option>
+              <div class="toolbar" style="margin:0;">
+                <select id="st-cw-filter-type" style="width:165px;">
+                  <option value="">All Types</option>
                   <option value="classwork">Classwork</option>
                   <option value="homework">Homework</option>
                   <option value="test">Tests</option>
@@ -87,119 +87,46 @@
           </div>
         </section>
 
-        <!-- MY PROFILE -->
-        <section id="sec-profile" class="module-panel hidden">
-          <div class="grid-2">
-            <div class="card">
-              <div class="card-header"><h2 class="card-title">Official Student Record</h2></div>
-              <div id="st-profile-details"></div>
-            </div>
-
-            <div class="card">
-              <div class="card-header"><h2 class="card-title">Request Official Profile Correction</h2></div>
-              <div class="alert alert-info">Sensitive identity fields (Name, Date of Birth, Guardian Name) require School Administration approval.</div>
-              <form id="profile-req-form">
-                <div class="form-group">
-                  <label>Field to Correct</label>
-                  <select name="fieldName" required>
-                    <option value="first_name">First Name</option>
-                    <option value="last_name">Last Name</option>
-                    <option value="date_of_birth">Date of Birth</option>
-                    <option value="guardian_name">Guardian Name</option>
-                    <option value="guardian_phone">Guardian Phone</option>
-                    <option value="address">Home Address</option>
-                  </select>
-                </div>
-                <div class="form-group"><label>Requested New Value</label><input type="text" name="requestedValue" required></div>
-                <div class="form-group"><label>Supporting Reason</label><input type="text" name="reason" placeholder="Spelling correction on birth certificate"></div>
-                <button class="btn btn-primary" type="submit">Submit Request for Approval</button>
-              </form>
-              <div style="margin-top:16px;" id="st-prof-requests-list"></div>
-            </div>
-          </div>
-        </section>
-
-        <!-- ENROLLED SUBJECTS -->
-        <section id="sec-subjects" class="module-panel hidden">
-          <div class="card">
-            <div class="card-header"><h2 class="card-title">My Enrolled Subjects &amp; Subject Teachers</h2></div>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>Code</th><th>Subject</th><th>Subject Teacher</th><th class="num">Pass Mark</th></tr></thead>
-                <tbody id="st-subjects-tbody"></tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- TIMETABLE -->
-        <section id="sec-timetable" class="module-panel hidden">
-          <div class="card">
-            <div class="card-header">
-              <div>
-                <h2 class="card-title">My Weekly Class Timetable</h2>
-                <div class="card-subtitle">Tabular weekly class schedule organized by lesson time and weekday</div>
-              </div>
-            </div>
-            <div id="st-tt-matrix"></div>
-          </div>
-        </section>
-
-        <!-- ATTENDANCE -->
-        <section id="sec-attendance" class="module-panel hidden">
-          <div class="kpi-grid" id="st-att-kpis"></div>
-          <div class="card">
-            <div class="card-header"><h2 class="card-title">My Attendance History</h2></div>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>Date</th><th>Subject / Session</th><th>Status</th><th>Remark</th></tr></thead>
-                <tbody id="st-att-tbody"></tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- PUBLISHED RESULTS -->
+        <!-- 3. MY SCORES -->
         <section id="sec-results" class="module-panel hidden">
           <div class="card">
-            <div class="card-header"><h2 class="card-title">Published Assessment Marks &amp; Teacher Feedback</h2></div>
-            <div class="alert alert-info">Only marks officially published by School Administration appear here.</div>
+            <div class="card-header no-print">
+              <h2 class="card-title">My Graded Scores &amp; Feedback</h2>
+              <button class="btn btn-secondary btn-sm" id="print-results-btn">Print</button>
+            </div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>Term</th><th>Subject</th><th>Assessment</th><th>Type</th><th class="num">Score</th><th class="num">%</th><th>Feedback</th></tr></thead>
+                <thead><tr><th>Type</th><th>Subject</th><th>Title</th><th class="num">Score</th><th>Teacher Feedback</th></tr></thead>
                 <tbody id="st-results-tbody"></tbody>
               </table>
             </div>
           </div>
         </section>
 
-        <!-- REPORT CARD -->
-        <section id="sec-reportcard" class="module-panel hidden">
+        <!-- 4. TIMETABLE -->
+        <section id="sec-timetable" class="module-panel hidden">
           <div class="card">
-            <div class="card-header no-print">
-              <h2 class="card-title">Official Term Report Card</h2>
-              <button class="btn btn-primary btn-sm" id="print-report-card-btn">Print Report Card</button>
-            </div>
-            <div class="receipt-sheet" id="st-report-card-sheet"></div>
+            <div class="card-header"><h2 class="card-title">My Weekly Timetable</h2></div>
+            <div id="st-tt-matrix"></div>
           </div>
         </section>
 
-        <!-- FEE STATEMENT & PAYSTACK CHECKOUT -->
+        <!-- 5. FEES & PAYSTACK -->
         <section id="sec-fees" class="module-panel hidden">
           <div class="kpi-grid" id="st-fee-kpis"></div>
 
           <div class="card hidden" id="st-paystack-card">
-            <div class="card-header"><h2 class="card-title">Pay My School Fees Online with Paystack</h2></div>
+            <div class="card-header"><h2 class="card-title">Pay Fees Online with Paystack</h2></div>
             <form id="st-paystack-form" class="form-grid">
               <div class="form-group">
                 <label>Amount to Pay</label>
                 <input type="number" step="0.01" min="0.01" name="amount" id="st-pay-amount" required>
               </div>
               <div class="form-group">
-                <label>Paystack Payment Channel</label>
+                <label>Payment Channel</label>
                 <select name="channel" required>
-                  <option value="mobile_money">Mobile Money (MTN / Telecel / AT)</option>
-                  <option value="card">Debit / Credit Card</option>
+                  <option value="mobile_money">Mobile Money</option>
+                  <option value="card">Card</option>
                   <option value="bank_transfer">Bank Transfer</option>
                   <option value="ussd">USSD</option>
                 </select>
@@ -208,27 +135,27 @@
                 <label>Receipt Email</label>
                 <input type="email" name="payerEmail" id="st-pay-email">
               </div>
-              <div class="form-group" style="justify-content:flex-end;">
-                <button class="btn btn-paystack" type="submit">Pay Now with Paystack</button>
+              <div class="form-actions-end" style="align-items:flex-end;">
+                <button class="btn btn-paystack" type="submit">Pay with Paystack</button>
               </div>
             </form>
           </div>
 
           <div class="grid-2">
             <div class="card">
-              <div class="card-header"><h2 class="card-title">Assigned Fee Items</h2></div>
+              <div class="card-header"><h2 class="card-title">Billed Fees</h2></div>
               <div class="table-wrap">
                 <table>
-                  <thead><tr><th>Fee Item</th><th>Term</th><th class="num">Billed</th><th class="num">Discount</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th></tr></thead>
+                  <thead><tr><th>Fee Item</th><th class="num">Amount</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th></tr></thead>
                   <tbody id="st-fee-items-tbody"></tbody>
                 </table>
               </div>
             </div>
             <div class="card">
-              <div class="card-header"><h2 class="card-title">Payments &amp; Official Receipts</h2></div>
+              <div class="card-header"><h2 class="card-title">Payments &amp; Receipts</h2></div>
               <div class="table-wrap">
                 <table>
-                  <thead><tr><th>Date</th><th>Receipt #</th><th>Method</th><th class="num">Amount</th><th>Action</th></tr></thead>
+                  <thead><tr><th>Date</th><th>Receipt #</th><th class="num">Amount</th><th>Receipt</th></tr></thead>
                   <tbody id="st-fee-payments-tbody"></tbody>
                 </table>
               </div>
@@ -236,7 +163,7 @@
           </div>
         </section>
 
-        <!-- ANNOUNCEMENTS -->
+        <!-- 6. ANNOUNCEMENTS -->
         <section id="sec-announcements" class="module-panel hidden">
           <div class="card">
             <div class="card-header"><h2 class="card-title">Class &amp; School Announcements</h2></div>
@@ -244,27 +171,23 @@
           </div>
         </section>
 
-        <!-- ACCOUNT SETTINGS -->
-        <section id="sec-account" class="module-panel hidden">
+        <!-- 7. PROFILE -->
+        <section id="sec-profile" class="module-panel hidden">
           <div class="grid-2">
             <div class="card">
-              <div class="card-header"><h2 class="card-title">Contact Phone &amp; Google Sign-In</h2></div>
+              <div class="card-header"><h2 class="card-title">My Student Details</h2></div>
+              <div id="st-profile-details" style="margin-bottom:16px;"></div>
               <form id="st-contact-form">
-                <div class="form-group"><label>Personal / Guardian Contact Phone</label><input type="text" name="phone" id="st-phone-input"></div>
-                <button class="btn btn-primary" type="submit">Save Contact Number</button>
+                <div class="form-group"><label>Contact Phone</label><input type="text" name="phone" id="st-phone-input"></div>
+                <button class="btn btn-primary btn-sm" type="submit">Save Phone</button>
               </form>
-              <hr style="border:none;border-top:1px solid var(--border);margin:14px 0;">
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-                <span style="font-size:13px;color:var(--text-muted);" id="st-google-status-text">Google Sign-In Account Link</span>
-                <a href="/auth/google?mode=link" class="btn btn-secondary btn-sm hidden" id="st-account-google-btn">Link Google Account</a>
-              </div>
             </div>
             <div class="card">
-              <div class="card-header"><h2 class="card-title">Change Portal Password</h2></div>
+              <div class="card-header"><h2 class="card-title">Change Password</h2></div>
               <form id="st-pw-form">
                 <div class="form-group"><label>Current Password</label><input type="password" name="currentPassword" required></div>
                 <div class="form-group"><label>New Password (min 8 chars)</label><input type="password" name="newPassword" minlength="8" required></div>
-                <button class="btn btn-primary" type="submit">Update Password</button>
+                <button class="btn btn-primary btn-sm" type="submit">Update Password</button>
               </form>
             </div>
           </div>
@@ -273,18 +196,18 @@
     </div>
   </div>
 
-  <!-- Printable Student Receipt Modal -->
+  <!-- Printable Receipt Modal -->
   <div class="modal-backdrop" id="st-receipt-modal">
     <div class="modal-box">
       <div class="receipt-sheet" id="st-receipt-printable"></div>
       <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;" class="no-print">
         <button class="btn btn-secondary" id="close-st-rcp-modal">Close</button>
-        <button class="btn btn-primary" id="print-st-rcp-btn">Print Official Receipt</button>
+        <button class="btn btn-primary" id="print-st-rcp-btn">Print Receipt</button>
       </div>
     </div>
   </div>
 
-  <script src="/js/common.js?v=2.7"></script>
-  <script src="/js/student.js?v=2.7"></script>
+  <script src="/js/common.js?v=3.0"></script>
+  <script src="/js/student.js?v=3.0"></script>
 </body>
 </html>

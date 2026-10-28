@@ -628,8 +628,20 @@ async function createTeacher({
   actor,
   ipAddress,
 }) {
-  const existingStaff = await db.get('SELECT id FROM teachers WHERE staff_number = ?', [staffNumber]);
-  if (existingStaff) throw new AppError(409, 'Staff number already exists.');
+  let resolvedStaffNo = staffNumber ? String(staffNumber).trim() : '';
+  if (resolvedStaffNo) {
+    const existingStaff = await db.get('SELECT id FROM teachers WHERE staff_number = ?', [resolvedStaffNo]);
+    if (existingStaff) throw new AppError(409, 'Staff number already exists.');
+  } else {
+    const yr = new Date().getFullYear();
+    const countRow = await db.get('SELECT COUNT(*) AS cnt FROM teachers');
+    let seq = Number(countRow?.cnt || 0) + 1;
+    resolvedStaffNo = `STF-${yr}-${String(seq).padStart(3, '0')}`;
+    while (await db.get('SELECT id FROM teachers WHERE staff_number = ?', [resolvedStaffNo])) {
+      seq += 1;
+      resolvedStaffNo = `STF-${yr}-${String(seq).padStart(3, '0')}`;
+    }
+  }
   const existingEmail = await db.get('SELECT id FROM users WHERE LOWER(email) = ?', [email.toLowerCase()]);
   if (existingEmail) throw new AppError(409, 'Email address is already in use.');
 
@@ -662,7 +674,7 @@ async function createTeacher({
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
       [
         uRes.insertId,
-        staffNumber,
+        resolvedStaffNo,
         firstName,
         lastName,
         qualification || '',
@@ -682,22 +694,19 @@ async function createTeacher({
     // Optional class auto-assignment during registration if classes were selected and an active year exists
     const parsedClassIds = parseSubjectIdList(classIds);
     if (parsedClassIds.length > 0 && resolvedSubjects.length > 0) {
-      const activeYr = await tx.get('SELECT id FROM academic_years WHERE is_active = 1 ORDER BY id DESC LIMIT 1');
-      if (activeYr) {
-        const activeTr = await tx.get('SELECT id FROM terms WHERE is_active = 1 ORDER BY id DESC LIMIT 1');
-        for (const cid of parsedClassIds) {
-          const clsRow = await tx.get('SELECT id FROM classes WHERE id = ?', [cid]);
-          if (!clsRow) continue;
-          for (const sub of resolvedSubjects) {
-            const key = `${tRes.insertId}:${cid}:0:${sub.id}:${activeYr.id}`;
-            const exists = await tx.get('SELECT id FROM teacher_assignments WHERE assignment_key = ?', [key]);
-            if (!exists) {
-              await tx.run(
-                `INSERT INTO teacher_assignments (teacher_id, class_id, subject_id, academic_year_id, term_id, assignment_key)
-                 VALUES (?, ?, ?, ?, ?, ?)`,
-                [tRes.insertId, cid, sub.id, activeYr.id, activeTr ? activeTr.id : null, key]
-              );
-            }
+      const ensured = await systemModel.ensureActiveAcademicPeriod(tx);
+      for (const cid of parsedClassIds) {
+        const clsRow = await tx.get('SELECT id FROM classes WHERE id = ?', [cid]);
+        if (!clsRow) continue;
+        for (const sub of resolvedSubjects) {
+          const key = `${tRes.insertId}:${cid}:0:${sub.id}:${ensured.yearId}`;
+          const exists = await tx.get('SELECT id FROM teacher_assignments WHERE assignment_key = ?', [key]);
+          if (!exists) {
+            await tx.run(
+              `INSERT INTO teacher_assignments (teacher_id, class_id, subject_id, academic_year_id, term_id, assignment_key)
+               VALUES (?, ?, ?, ?, ?, ?)`,
+              [tRes.insertId, cid, sub.id, ensured.yearId, ensured.termId || null, key]
+            );
           }
         }
       }
@@ -712,7 +721,7 @@ async function createTeacher({
         targetId: String(tRes.insertId),
         ipAddress,
         metadata: {
-          staffNumber,
+          staffNumber: resolvedStaffNo,
           email: email.toLowerCase(),
           subjects: resolvedSubjects.map((s) => s.name),
         },
@@ -795,16 +804,10 @@ async function assignTeacher({
 }) {
   let resolvedYearId = academicYearId;
   let resolvedTermId = termId;
-  if (!resolvedYearId) {
-    const activeYr = await db.get('SELECT id FROM academic_years WHERE is_active = 1 ORDER BY id DESC LIMIT 1');
-    if (!activeYr) {
-      throw new AppError(400, 'Please add an Academic Year first under Academic Setup.');
-    }
-    resolvedYearId = activeYr.id;
-  }
-  if (!resolvedTermId) {
-    const activeTr = await db.get('SELECT id FROM terms WHERE is_active = 1 ORDER BY id DESC LIMIT 1');
-    resolvedTermId = activeTr ? activeTr.id : null;
+  if (!resolvedYearId || !resolvedTermId) {
+    const ensured = await systemModel.ensureActiveAcademicPeriod();
+    resolvedYearId = resolvedYearId || ensured.yearId;
+    resolvedTermId = resolvedTermId || ensured.termId;
   }
 
   let targetClassIds = [];
@@ -966,14 +969,26 @@ async function enrolStudent({
   actor,
   ipAddress,
 }) {
-  const existingAdm = await db.get('SELECT id FROM students WHERE admission_number = ?', [admissionNumber]);
-  if (existingAdm) throw new AppError(409, 'Admission number is already assigned to another student.');
+  let resolvedAdmNo = admissionNumber ? String(admissionNumber).trim() : '';
+  if (resolvedAdmNo) {
+    const existingAdm = await db.get('SELECT id FROM students WHERE admission_number = ?', [resolvedAdmNo]);
+    if (existingAdm) throw new AppError(409, 'Admission number is already assigned to another student.');
+  } else {
+    const yr = new Date().getFullYear();
+    const countRow = await db.get('SELECT COUNT(*) AS cnt FROM students');
+    let seq = Number(countRow?.cnt || 0) + 1;
+    resolvedAdmNo = `ADM-${yr}-${String(seq).padStart(3, '0')}`;
+    while (await db.get('SELECT id FROM students WHERE admission_number = ?', [resolvedAdmNo])) {
+      seq += 1;
+      resolvedAdmNo = `ADM-${yr}-${String(seq).padStart(3, '0')}`;
+    }
+  }
   const existingEmail = await db.get('SELECT id FROM users WHERE LOWER(email) = ?', [email.toLowerCase()]);
   if (existingEmail) throw new AppError(409, 'Email address is already in use.');
 
   const role = await db.get("SELECT id FROM roles WHERE slug = 'student'");
   const hash = await bcrypt.hash(password || 'Student@2026!', 10);
-  const username = admissionNumber.toLowerCase().replace(/[^a-z0-9.-]/g, '');
+  const username = resolvedAdmNo.toLowerCase().replace(/[^a-z0-9.-]/g, '');
 
   return db.withTransaction(async (tx) => {
     const uRes = await tx.run(
@@ -991,7 +1006,7 @@ async function enrolStudent({
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
       [
         uRes.insertId,
-        admissionNumber,
+        resolvedAdmNo,
         firstName,
         lastName,
         gender || '',
@@ -1006,13 +1021,10 @@ async function enrolStudent({
 
     let resolvedYearId = academicYearId;
     let resolvedTermId = termId;
-    if (classId && !resolvedYearId) {
-      const activeYr = await tx.get('SELECT id FROM academic_years WHERE is_active = 1 ORDER BY id DESC LIMIT 1');
-      resolvedYearId = activeYr ? activeYr.id : null;
-    }
-    if (classId && !resolvedTermId) {
-      const activeTr = await tx.get('SELECT id FROM terms WHERE is_active = 1 ORDER BY id DESC LIMIT 1');
-      resolvedTermId = activeTr ? activeTr.id : null;
+    if (classId && (!resolvedYearId || !resolvedTermId)) {
+      const ensured = await systemModel.ensureActiveAcademicPeriod(tx);
+      resolvedYearId = resolvedYearId || ensured.yearId;
+      resolvedTermId = resolvedTermId || ensured.termId;
     }
 
     if (classId && resolvedYearId) {
@@ -1031,7 +1043,7 @@ async function enrolStudent({
         targetType: 'student',
         targetId: String(sRes.insertId),
         ipAddress,
-        metadata: { admissionNumber, classId },
+        metadata: { admissionNumber: resolvedAdmNo, classId },
       },
       tx
     );
@@ -1084,16 +1096,10 @@ async function createTimetableSlot({
 }) {
   let resolvedYearId = academicYearId;
   let resolvedTermId = termId;
-  if (!resolvedYearId) {
-    const activeYr = await db.get('SELECT id FROM academic_years WHERE is_active = 1 ORDER BY id DESC LIMIT 1');
-    if (!activeYr) {
-      throw new AppError(400, 'Please add an Academic Year first under Academic Setup.');
-    }
-    resolvedYearId = activeYr.id;
-  }
-  if (!resolvedTermId) {
-    const activeTr = await db.get('SELECT id FROM terms WHERE is_active = 1 ORDER BY id DESC LIMIT 1');
-    resolvedTermId = activeTr ? activeTr.id : null;
+  if (!resolvedYearId || !resolvedTermId) {
+    const ensured = await systemModel.ensureActiveAcademicPeriod();
+    resolvedYearId = resolvedYearId || ensured.yearId;
+    resolvedTermId = resolvedTermId || ensured.termId;
   }
 
   if (startTime >= endTime) {
@@ -1794,19 +1800,12 @@ async function reviewStudentRegistrationRequest({
 
     const targetClassId = classId || reqRow.requested_class_id || null;
     if (targetClassId) {
-      const activeYear = await tx.get(
-        'SELECT id FROM academic_years WHERE is_active = 1 ORDER BY id DESC LIMIT 1'
+      const ensured = await systemModel.ensureActiveAcademicPeriod(tx);
+      await tx.run(
+        `INSERT INTO student_enrolments (student_id, class_id, academic_year_id, term_id, status)
+         VALUES (?, ?, ?, ?, 'enrolled')`,
+        [sRes.insertId, targetClassId, ensured.yearId, ensured.termId || null]
       );
-      const activeTerm = await tx.get(
-        'SELECT id FROM terms WHERE is_active = 1 ORDER BY id DESC LIMIT 1'
-      );
-      if (activeYear) {
-        await tx.run(
-          `INSERT INTO student_enrolments (student_id, class_id, academic_year_id, term_id, status)
-           VALUES (?, ?, ?, ?, 'enrolled')`,
-          [sRes.insertId, targetClassId, activeYear.id, activeTerm?.id || null]
-        );
-      }
     }
 
     await tx.run(

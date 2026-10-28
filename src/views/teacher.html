@@ -4,31 +4,23 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Teachers Dashboard - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=2.7">
+  <link rel="stylesheet" href="/css/styles.css?v=3.0">
 </head>
 <body>
   <div class="app-layout">
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="sidebar-title" id="sb-school-name">School Management System</div>
-        <span class="sidebar-role-tag" style="background:rgba(16,185,129,0.22);color:#6ee7b7;">2 · Teachers</span>
+        <span class="sidebar-role-tag" style="background:rgba(16,185,129,0.22);color:#6ee7b7;">Teacher</span>
       </div>
       <nav class="sidebar-nav">
-        <div class="nav-section-label">Teaching Workspace</div>
+        <div class="nav-section-label">Teaching</div>
         <button class="nav-btn active" data-section="overview">Overview</button>
         <button class="nav-btn" data-section="coursework">Classwork, Homework, Tests &amp; Exams</button>
-        <button class="nav-btn" data-section="classes">My Classes &amp; Subjects</button>
-        <button class="nav-btn" data-section="classlists">Class Lists</button>
-        <button class="nav-btn" data-section="timetable">My Timetable</button>
-
-        <div class="nav-section-label">Classroom Records</div>
-        <button class="nav-btn" data-section="attendance">Record Attendance</button>
-        <button class="nav-btn" data-section="marks">Official Marksheets</button>
-        <button class="nav-btn" data-section="reports">Results &amp; Class Reports</button>
-
-        <div class="nav-section-label">Notices &amp; Account</div>
-        <button class="nav-btn" data-section="announcements">Class &amp; School Announcements</button>
-        <button class="nav-btn" data-section="profile">My Profile &amp; Security</button>
+        <button class="nav-btn" data-section="classes">My Classes &amp; Students</button>
+        <button class="nav-btn" data-section="timetable">Timetable</button>
+        <button class="nav-btn" data-section="announcements">Announcements</button>
+        <button class="nav-btn" data-section="profile">Profile</button>
       </nav>
       <div class="sidebar-footer" id="sb-user-info">Signed in as Teacher</div>
     </aside>
@@ -38,7 +30,6 @@
         <div class="topbar-left">
           <button class="mobile-menu-btn" id="mobile-menu-btn">Menu</button>
           <h1 class="topbar-title" id="topbar-title">Overview</h1>
-          <span class="badge badge-primary" id="active-period-badge">Academic Period</span>
         </div>
         <div class="topbar-right">
           <a href="/auth/google?mode=link" class="btn btn-secondary btn-sm hidden" id="google-link-btn">Link Google</a>
@@ -47,57 +38,48 @@
       </header>
 
       <main class="content-body">
-        <!-- OVERVIEW -->
+        <!-- 1. OVERVIEW -->
         <section id="sec-overview" class="module-panel">
           <div class="kpi-grid" id="tc-kpis"></div>
+
           <div class="card">
             <div class="card-header">
               <div>
                 <h2 class="card-title">Subjects I Teach</h2>
-                <div class="card-subtitle">Registered teaching subjects linked to your staff profile</div>
+                <div class="card-subtitle">Teaching subjects linked to your account</div>
               </div>
               <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <button type="button" class="btn btn-primary btn-sm" id="ov-quick-coursework-btn">+ Give Classwork / Homework / Exam</button>
-                <button type="button" class="btn btn-secondary btn-sm" id="ov-quick-announce-btn">+ Post Class Announcement</button>
+                <button type="button" class="btn btn-primary btn-sm" id="ov-quick-coursework-btn">+ Give Work / Exam</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="ov-quick-announce-btn">+ Class Announcement</button>
               </div>
             </div>
             <div id="tc-ov-subjects-wrap"></div>
           </div>
-          <div class="grid-2">
-            <div class="card">
-              <div class="card-header"><h2 class="card-title">My Assigned Teaching Responsibilities</h2></div>
-              <div class="table-wrap">
-                <table>
-                  <thead><tr><th>Class</th><th>Subject</th></tr></thead>
-                  <tbody id="tc-ov-assignments"></tbody>
-                </table>
-              </div>
-            </div>
-            <div class="card">
-              <div class="card-header"><h2 class="card-title">Recent Attendance Roll Calls</h2></div>
-              <div class="table-wrap">
-                <table>
-                  <thead><tr><th>Date</th><th>Class</th><th>Subject</th><th class="num">Present</th><th class="num">Absent</th></tr></thead>
-                  <tbody id="tc-ov-sessions"></tbody>
-                </table>
-              </div>
+
+          <div class="card">
+            <div class="card-header"><h2 class="card-title">My Assigned Classes &amp; Subjects</h2></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Class</th><th>Subject</th></tr></thead>
+                <tbody id="tc-ov-assignments"></tbody>
+              </table>
             </div>
           </div>
         </section>
 
-        <!-- CLASSWORK, HOMEWORK, TESTS & EXAMS -->
+        <!-- 2. CLASSWORK, HOMEWORK, TESTS & EXAMS -->
         <section id="sec-coursework" class="module-panel hidden">
           <div class="card">
             <div class="card-header">
               <div>
                 <h2 class="card-title">Give Classwork, Homework, Test or Exam</h2>
-                <div class="card-subtitle">Send work to any selected assigned class or all your assigned classes — attach PDFs, pictures, videos, and documents</div>
+                <div class="card-subtitle">Choose one, several, or all of your assigned classes — attach PDFs, pictures, videos, or documents</div>
               </div>
             </div>
             <form id="create-coursework-form">
               <div class="form-grid">
                 <div class="form-group">
-                  <label>Work Category</label>
+                  <label>Type</label>
                   <select name="workType" id="cw-work-type" required>
                     <option value="classwork">Classwork</option>
                     <option value="homework">Homework</option>
@@ -111,14 +93,14 @@
                 </div>
                 <div class="form-group">
                   <label>Title</label>
-                  <input type="text" name="title" placeholder="e.g. Week 4 Quadratic Equations Practice" required>
+                  <input type="text" name="title" placeholder="e.g. Chapter 3 Questions" required>
                 </div>
                 <div class="form-group">
-                  <label>Maximum Score</label>
+                  <label>Max Score</label>
                   <input type="number" name="maxScore" value="100" min="1" max="1000" required>
                 </div>
                 <div class="form-group">
-                  <label>Due Date &amp; Time (Optional)</label>
+                  <label>Due Date (Optional)</label>
                   <input type="datetime-local" name="dueAt">
                 </div>
               </div>
@@ -126,8 +108,8 @@
               <div class="multi-subject-box" style="margin-top:12px;">
                 <div class="multi-subject-head">
                   <div>
-                    <div class="multi-subject-title">Target Assigned Classes</div>
-                    <div class="multi-subject-hint">Choose specific assigned classes or select All Assigned Classes to send at once.</div>
+                    <div class="multi-subject-title">Assigned Classes</div>
+                    <div class="multi-subject-hint">Select any of your assigned classes or check All My Assigned Classes.</div>
                   </div>
                   <label class="subject-check-pill" style="margin:0;">
                     <input type="checkbox" id="cw-all-classes-chk" name="applyToAllClasses" value="1">
@@ -138,19 +120,19 @@
               </div>
 
               <div class="form-group" style="margin-top:12px;">
-                <label>Questions / Instructions for Students</label>
-                <textarea name="instructions" rows="4" placeholder="Write the classwork, homework, test, or exam questions and instructions clearly..." required></textarea>
+                <label>Questions / Instructions</label>
+                <textarea name="instructions" rows="4" placeholder="Write questions and instructions for your students..." required></textarea>
               </div>
 
               <div class="upload-dropzone-box">
-                <label style="font-weight:700;font-size:13px;display:block;margin-bottom:4px;">Attach PDF, Pictures, Videos or Documents (Optional)</label>
-                <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Supported formats: PDF, JPG, PNG, WEBP, GIF, MP4, WEBM, MOV, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT (up to 10 files).</div>
+                <label style="font-weight:700;font-size:13px;display:block;margin-bottom:4px;">Upload PDF, Pictures, Videos or Documents (Optional)</label>
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Attach PDFs, photos/images, videos, or Word/Excel/PowerPoint files.</div>
                 <input type="file" id="cw-files-input" name="attachments" multiple accept=".pdf,image/*,video/*,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv">
                 <div id="cw-selected-files-list" class="subject-badges-wrap" style="margin-top:8px;"></div>
               </div>
 
               <div class="form-actions-end" style="margin-top:14px;">
-                <button type="submit" class="btn btn-primary" id="cw-submit-btn">Publish to Selected Class(es)</button>
+                <button type="submit" class="btn btn-primary" id="cw-submit-btn">Send to Selected Class(es)</button>
               </div>
             </form>
           </div>
@@ -159,8 +141,8 @@
           <div class="card hidden" id="cw-submissions-panel">
             <div class="card-header">
               <div>
-                <h2 class="card-title" id="cw-submissions-title">Student Answers &amp; Uploaded Submissions</h2>
-                <div class="card-subtitle" id="cw-submissions-subtitle">Review written answers, view uploaded images/documents/videos, and record grades</div>
+                <h2 class="card-title" id="cw-submissions-title">Student Answers &amp; Uploads</h2>
+                <div class="card-subtitle" id="cw-submissions-subtitle">Review written answers, view uploaded files, and enter scores</div>
               </div>
               <button type="button" class="btn btn-secondary btn-sm" id="close-cw-submissions-btn">Close</button>
             </div>
@@ -169,16 +151,11 @@
 
           <div class="card">
             <div class="card-header">
-              <div>
-                <h2 class="card-title">Published Classwork, Homework, Tests &amp; Exams</h2>
-                <div class="card-subtitle">Manage published work and review student responses</div>
-              </div>
+              <h2 class="card-title">Published Works &amp; Exams</h2>
               <div class="toolbar" style="margin:0;">
-                <select id="cw-filter-class">
-                  <option value="">All My Classes</option>
-                </select>
+                <select id="cw-filter-class"><option value="">All My Classes</option></select>
                 <select id="cw-filter-type">
-                  <option value="">All Categories</option>
+                  <option value="">All Types</option>
                   <option value="classwork">Classwork</option>
                   <option value="homework">Homework</option>
                   <option value="test">Test</option>
@@ -191,181 +168,47 @@
           </div>
         </section>
 
-        <!-- MY CLASSES & SUBJECTS -->
+        <!-- 3. MY CLASSES & STUDENTS -->
         <section id="sec-classes" class="module-panel hidden">
           <div class="card">
             <div class="card-header">
-              <div>
-                <h2 class="card-title">My Registered Teaching Subjects</h2>
-                <div class="card-subtitle">All subjects assigned to your teaching profile at registration or by the Superadmin</div>
-              </div>
-            </div>
-            <div id="tc-registered-subjects-wrap"></div>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <div>
-                <h2 class="card-title">Assigned Classes &amp; Subjects</h2>
-                <div class="card-subtitle">Active classroom teaching groups where you publish coursework, record attendance, and enter marks</div>
-              </div>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>Class</th><th>Subject Code</th><th>Subject Name</th><th class="num">Pass Mark</th></tr></thead>
-                <tbody id="tc-assignments-tbody"></tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- CLASS LISTS -->
-        <section id="sec-classlists" class="module-panel hidden">
-          <div class="card">
-            <div class="card-header">
-              <h2 class="card-title">Class Learner Roster (Assigned Classes Only)</h2>
+              <h2 class="card-title">Students in My Class</h2>
               <div class="toolbar" style="margin:0;">
-                <select id="roster-assignment-select"></select>
-                <button class="btn btn-primary btn-sm" id="load-roster-btn">Load Class List</button>
+                <select id="roster-class-select"></select>
+                <button class="btn btn-primary btn-sm" type="button" id="load-roster-btn">Load Students</button>
               </div>
             </div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>Roll #</th><th>Admission #</th><th>Learner Name</th><th>Gender</th><th>Date of Birth</th><th>Guardian Contact</th></tr></thead>
+                <thead><tr><th>Admission #</th><th>Student Name</th><th>Gender</th><th>Guardian</th></tr></thead>
                 <tbody id="roster-tbody"></tbody>
               </table>
             </div>
           </div>
         </section>
 
-        <!-- TIMETABLE -->
+        <!-- 4. TIMETABLE -->
         <section id="sec-timetable" class="module-panel hidden">
           <div class="card">
-            <div class="card-header">
-              <div>
-                <h2 class="card-title">Personal Weekly Teaching Timetable</h2>
-                <div class="card-subtitle">Tabular schedule grid organized by lesson time and weekday</div>
-              </div>
-            </div>
+            <div class="card-header"><h2 class="card-title">My Weekly Timetable</h2></div>
             <div id="tc-tt-matrix"></div>
           </div>
         </section>
 
-        <!-- RECORD ATTENDANCE -->
-        <section id="sec-attendance" class="module-panel hidden">
-          <div class="card">
-            <div class="card-header"><h2 class="card-title">Record Class / Subject Attendance</h2></div>
-            <div class="toolbar">
-              <select id="att-assignment-select"></select>
-              <input type="date" id="att-date-input">
-              <button class="btn btn-secondary btn-sm" id="load-att-btn">Load Roll Call</button>
-            </div>
-            <form id="submit-att-form">
-              <div class="form-group">
-                <label>Session Notes (Optional)</label>
-                <input type="text" id="att-notes" placeholder="e.g. Morning roll call / Lab attendance">
-              </div>
-              <div class="table-wrap">
-                <table>
-                  <thead><tr><th>Admission #</th><th>Learner Name</th><th>Status</th><th>Remarks</th></tr></thead>
-                  <tbody id="att-roster-tbody"></tbody>
-                </table>
-              </div>
-              <div style="margin-top:14px;">
-                <button class="btn btn-primary" type="submit">Submit Attendance Session</button>
-              </div>
-            </form>
-          </div>
-        </section>
-
-        <!-- ASSESSMENTS & ENTER MARKS -->
-        <section id="sec-marks" class="module-panel hidden">
-          <div class="grid-2">
-            <div class="card">
-              <div class="card-header"><h2 class="card-title">Create Official Term Marksheet</h2></div>
-              <form id="create-assess-form" class="form-grid">
-                <div class="form-group"><label>Assigned Class &amp; Subject</label><select id="new-assess-assignment" required></select></div>
-                <div class="form-group"><label>Assessment Title</label><input type="text" name="title" placeholder="Term 1 Midterm" required></div>
-                <div class="form-group">
-                  <label>Type</label>
-                  <select name="assessmentType">
-                    <option value="class_test">Class Test</option>
-                    <option value="midterm">Midterm</option>
-                    <option value="project">Project / Practical</option>
-                    <option value="final_exam">Final Exam</option>
-                  </select>
-                </div>
-                <div class="form-group"><label>Max Score</label><input type="number" name="maxScore" value="100" min="1" required></div>
-                <div class="form-group"><label>Weight %</label><input type="number" name="weightPercent" value="30" min="1" max="100" required></div>
-                <div class="form-group"><label>Date</label><input type="date" name="scheduledDate"></div>
-                <div class="form-group" style="justify-content:flex-end;"><button class="btn btn-primary" type="submit">Create Marksheet</button></div>
-              </form>
-            </div>
-
-            <div class="card">
-              <div class="card-header"><h2 class="card-title">My Mark Correction Requests</h2></div>
-              <div class="table-wrap">
-                <table>
-                  <thead><tr><th>Student</th><th>Assessment</th><th>Score Change</th><th>Status</th></tr></thead>
-                  <tbody id="tc-corr-tbody"></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <h2 class="card-title">Enter / Review Student Marks</h2>
-              <div class="toolbar" style="margin:0;">
-                <select id="select-assessment"></select>
-                <button class="btn btn-secondary btn-sm" id="load-marksheet-btn">Open Marksheet</button>
-              </div>
-            </div>
-            <div id="marksheet-lock-banner" class="alert alert-info hidden"></div>
-            <form id="submit-marks-form">
-              <div class="table-wrap">
-                <table>
-                  <thead><tr><th>Admission #</th><th>Learner Name</th><th class="num">Score</th><th class="num">%</th><th>Grade</th><th>Remark / Correction</th></tr></thead>
-                  <tbody id="marksheet-tbody"></tbody>
-                </table>
-              </div>
-              <div style="margin-top:14px;">
-                <button class="btn btn-primary" type="submit" id="save-marks-btn">Save Validated Marks</button>
-              </div>
-            </form>
-          </div>
-        </section>
-
-        <!-- REPORTS -->
-        <section id="sec-reports" class="module-panel hidden">
-          <div class="card">
-            <div class="card-header">
-              <h2 class="card-title">Subject Performance &amp; Class Progress Summary</h2>
-              <button class="btn btn-secondary btn-sm" id="export-tc-report-btn">Export CSV</button>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>Class</th><th>Subject</th><th class="num">Entries</th><th class="num">Average %</th><th class="num">Highest %</th><th class="num">Lowest %</th><th class="num">Passed</th></tr></thead>
-                <tbody id="tc-reports-tbody"></tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- ANNOUNCEMENTS -->
+        <!-- 5. ANNOUNCEMENTS -->
         <section id="sec-announcements" class="module-panel hidden">
           <div class="card">
             <div class="card-header">
               <div>
-                <h2 class="card-title">Send Announcement to My Assigned Class(es)</h2>
-                <div class="card-subtitle">Post an announcement to any selected assigned class or all of your assigned classes</div>
+                <h2 class="card-title">Send Class Announcement</h2>
+                <div class="card-subtitle">Choose one, several, or all of your assigned classes</div>
               </div>
             </div>
             <form id="tc-create-announcement-form">
               <div class="form-grid">
                 <div class="form-group">
-                  <label>Announcement Title</label>
-                  <input type="text" name="title" placeholder="e.g. Bring Lab Notebook Tomorrow" required>
+                  <label>Title</label>
+                  <input type="text" name="title" placeholder="e.g. Test Reminder for Friday" required>
                 </div>
                 <div class="form-group">
                   <label>Priority</label>
@@ -379,10 +222,7 @@
 
               <div class="multi-subject-box" style="margin-top:10px;">
                 <div class="multi-subject-head">
-                  <div>
-                    <div class="multi-subject-title">Target Assigned Classes</div>
-                    <div class="multi-subject-hint">Select one or multiple assigned classes, or check All My Assigned Classes.</div>
-                  </div>
+                  <div class="multi-subject-title">Assigned Classes</div>
                   <label class="subject-check-pill" style="margin:0;">
                     <input type="checkbox" id="tc-ann-all-classes" name="applyToAllClasses" value="1">
                     <span><strong>All My Assigned Classes</strong></span>
@@ -392,36 +232,31 @@
               </div>
 
               <div class="form-group" style="margin-top:12px;">
-                <label>Announcement Message</label>
-                <textarea name="body" rows="3" placeholder="Write the announcement message for your students..." required></textarea>
+                <label>Message</label>
+                <textarea name="body" rows="3" placeholder="Write your announcement..." required></textarea>
               </div>
               <div class="form-actions-end">
-                <button type="submit" class="btn btn-primary">Send Class Announcement</button>
+                <button type="submit" class="btn btn-primary">Send Announcement</button>
               </div>
             </form>
           </div>
 
           <div class="card">
-            <div class="card-header"><h2 class="card-title">Class, Staff &amp; School Announcements</h2></div>
+            <div class="card-header"><h2 class="card-title">Announcements</h2></div>
             <div id="tc-announcements"></div>
           </div>
         </section>
 
-        <!-- PROFILE -->
+        <!-- 6. PROFILE -->
         <section id="sec-profile" class="module-panel hidden">
           <div class="grid-2">
             <div class="card">
-              <div class="card-header"><h2 class="card-title">My Staff Profile</h2></div>
+              <div class="card-header"><h2 class="card-title">My Profile</h2></div>
               <form id="tc-profile-form">
                 <div class="form-group"><label>Staff Number</label><input type="text" id="prof-staff-no" disabled></div>
-                <div class="form-group">
-                  <label>Subjects Taught (Managed by Superadmin)</label>
-                  <div id="prof-subjects-badges" class="multi-subject-box" style="padding:10px 12px;"></div>
-                </div>
                 <div class="form-group"><label>Phone</label><input type="text" name="phone" id="prof-phone"></div>
                 <div class="form-group"><label>Qualification</label><input type="text" name="qualification" id="prof-qual"></div>
-                <div class="form-group"><label>Specialization Notes</label><input type="text" name="specialization" id="prof-spec"></div>
-                <button class="btn btn-primary" type="submit">Update Profile</button>
+                <button class="btn btn-primary" type="submit">Save Profile</button>
               </form>
             </div>
             <div class="card">
@@ -438,7 +273,7 @@
     </div>
   </div>
 
-  <script src="/js/common.js?v=2.7"></script>
-  <script src="/js/teacher.js?v=2.7"></script>
+  <script src="/js/common.js?v=3.0"></script>
+  <script src="/js/teacher.js?v=3.0"></script>
 </body>
 </html>

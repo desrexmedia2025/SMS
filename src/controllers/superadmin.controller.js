@@ -178,7 +178,7 @@ async function createTeacher(req, res) {
   const firstName = requireString(req.body.firstName, 'First name', { min: 2, max: 80 });
   const lastName = requireString(req.body.lastName, 'Last name', { min: 2, max: 80 });
   const created = await superadminService.createTeacher({
-    staffNumber: requireString(req.body.staffNumber, 'Staff number', { min: 3, max: 40 }),
+    staffNumber: optionalString(req.body.staffNumber, 40),
     firstName,
     lastName,
     email: requireEmail(req.body.email),
@@ -256,7 +256,7 @@ async function enrolStudent(req, res) {
   const firstName = requireString(req.body.firstName, 'First name', { min: 2, max: 80 });
   const lastName = requireString(req.body.lastName, 'Last name', { min: 2, max: 80 });
   const created = await superadminService.enrolStudent({
-    admissionNumber: requireString(req.body.admissionNumber, 'Admission number', { min: 3, max: 40 }),
+    admissionNumber: optionalString(req.body.admissionNumber, 40),
     firstName,
     lastName,
     email: requireEmail(req.body.email),
