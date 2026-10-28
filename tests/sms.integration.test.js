@@ -11,6 +11,8 @@ process.env.DB_DRIVER = 'sqlite';
 process.env.SQLITE_PATH = TEST_DB_PATH;
 process.env.AUTO_SEED_DEMO = 'true';
 process.env.PAYSTACK_WEBHOOK_SECRET = 'psk_test_webhook_secret_key_2026';
+process.env.GOOGLE_CLIENT_ID = '';
+process.env.GOOGLE_CLIENT_SECRET = '';
 
 const db = require('../src/config/database');
 const { seedDemoData } = require('../database/seeds/seed');

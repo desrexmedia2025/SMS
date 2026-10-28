@@ -11,10 +11,27 @@ function deriveCallbackUrl(req) {
   if (envCb && envCb.startsWith('http') && !envCb.includes('localhost')) {
     return envCb;
   }
-  if (req && typeof req.get === 'function' && req.get('host')) {
-    const proto =
-      req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : req.protocol || 'http';
-    return `${proto}://${req.get('host')}/auth/google/callback`;
+  if (req && typeof req.get === 'function') {
+    const forwardedHost = String(req.headers?.['x-forwarded-host'] || '')
+      .split(',')[0]
+      .trim();
+    const rawHost = forwardedHost || req.get('host') || '';
+    if (rawHost && !rawHost.startsWith('127.0.0.1') && !rawHost.startsWith('localhost')) {
+      const proto =
+        req.secure ||
+        String(req.headers?.['x-forwarded-proto'] || '').includes('https') ||
+        rawHost.endsWith('.e2b.app')
+          ? 'https'
+          : req.protocol || 'http';
+      return `${proto}://${rawHost}/auth/google/callback`;
+    }
+    if (rawHost) {
+      const proto =
+        req.secure || String(req.headers?.['x-forwarded-proto'] || '').includes('https')
+          ? 'https'
+          : req.protocol || 'http';
+      return `${proto}://${rawHost}/auth/google/callback`;
+    }
   }
   if (envCb && envCb.startsWith('http')) {
     return envCb;
