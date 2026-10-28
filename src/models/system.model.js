@@ -16,7 +16,6 @@ const BACKUP_TABLES = [
   'teachers',
   'teacher_subjects',
   'classes',
-  'streams',
   'subjects',
   'students',
   'student_enrolments',
@@ -28,6 +27,10 @@ const BACKUP_TABLES = [
   'assessments',
   'marks',
   'mark_correction_requests',
+  'coursework_items',
+  'coursework_classes',
+  'coursework_submissions',
+  'media_attachments',
   'fee_categories',
   'fee_assignments',
   'fee_adjustments',
@@ -38,6 +41,7 @@ const BACKUP_TABLES = [
   'receipts',
   'reconciliations',
   'announcements',
+  'announcement_classes',
   'profile_change_requests',
   'student_registration_requests',
   'audit_logs',
@@ -207,17 +211,111 @@ async function updateCurrency({ currencyCode, currencySymbol }) {
   return resolved;
 }
 
+async function enrichAnnouncementsWithClasses(rows = []) {
+  if (!rows.length) return [];
+  const ids = rows.map((r) => Number(r.id)).filter(Boolean);
+  if (!ids.length) return rows;
+  const placeholders = ids.map(() => '?').join(', ');
+  const classLinks = await db.query(
+    `SELECT ac.announcement_id, c.id AS class_id, c.name AS class_name
+     FROM announcement_classes ac
+     INNER JOIN classes c ON c.id = ac.class_id
+     WHERE ac.announcement_id IN (${placeholders})
+     ORDER BY c.level_order ASC, c.name ASC`,
+    ids
+  );
+  const byAnn = new Map();
+  for (const row of classLinks) {
+    const aid = Number(row.announcement_id);
+    if (!byAnn.has(aid)) byAnn.set(aid, []);
+    byAnn.get(aid).push({ id: Number(row.class_id), name: row.class_name });
+  }
+  return rows.map((r) => ({
+    ...r,
+    target_classes: byAnn.get(Number(r.id)) || [],
+  }));
+}
+
 async function listAnnouncementsForAudience(audiences = ['all']) {
   const placeholders = audiences.map(() => '?').join(', ');
-  return db.query(
+  const rows = await db.query(
     `SELECT a.*, u.full_name AS author_name
      FROM announcements a
      LEFT JOIN users u ON u.id = a.author_user_id
      WHERE a.status = 'published' AND a.audience IN (${placeholders})
      ORDER BY a.id DESC
-     LIMIT 30`,
+     LIMIT 40`,
     audiences
   );
+  return enrichAnnouncementsWithClasses(rows);
+}
+
+async function listAnnouncementsForStudent(classId = null) {
+  if (classId) {
+    const rows = await db.query(
+      `SELECT a.*, u.full_name AS author_name
+       FROM announcements a
+       LEFT JOIN users u ON u.id = a.author_user_id
+       WHERE a.status = 'published'
+         AND (
+           a.audience IN ('all', 'students')
+           OR (
+             a.audience = 'class'
+             AND EXISTS (
+               SELECT 1 FROM announcement_classes ac
+               WHERE ac.announcement_id = a.id AND ac.class_id = ?
+             )
+           )
+         )
+       ORDER BY a.id DESC
+       LIMIT 40`,
+      [classId]
+    );
+    return enrichAnnouncementsWithClasses(rows);
+  }
+  return listAnnouncementsForAudience(['all', 'students']);
+}
+
+async function listAnnouncementsForTeacher(teacherUserId, assignedClassIds = []) {
+  const cleanClassIds = Array.from(
+    new Set((assignedClassIds || []).map((v) => Number(v)).filter((n) => Number.isInteger(n) && n > 0))
+  );
+  let rows;
+  if (cleanClassIds.length) {
+    const ph = cleanClassIds.map(() => '?').join(', ');
+    rows = await db.query(
+      `SELECT a.*, u.full_name AS author_name
+       FROM announcements a
+       LEFT JOIN users u ON u.id = a.author_user_id
+       WHERE a.status = 'published'
+         AND (
+           a.audience IN ('all', 'teachers')
+           OR a.author_user_id = ?
+           OR (
+             a.audience = 'class'
+             AND EXISTS (
+               SELECT 1 FROM announcement_classes ac
+               WHERE ac.announcement_id = a.id AND ac.class_id IN (${ph})
+             )
+           )
+         )
+       ORDER BY a.id DESC
+       LIMIT 50`,
+      [teacherUserId, ...cleanClassIds]
+    );
+  } else {
+    rows = await db.query(
+      `SELECT a.*, u.full_name AS author_name
+       FROM announcements a
+       LEFT JOIN users u ON u.id = a.author_user_id
+       WHERE a.status = 'published'
+         AND (a.audience IN ('all', 'teachers') OR a.author_user_id = ?)
+       ORDER BY a.id DESC
+       LIMIT 50`,
+      [teacherUserId]
+    );
+  }
+  return enrichAnnouncementsWithClasses(rows);
 }
 
 async function createVerifiedBackup(actorUserId) {
@@ -299,6 +397,9 @@ module.exports = {
   getPublicSchoolContext,
   getPaystackRuntimeSecrets,
   updateCurrency,
+  enrichAnnouncementsWithClasses,
   listAnnouncementsForAudience,
+  listAnnouncementsForStudent,
+  listAnnouncementsForTeacher,
   createVerifiedBackup,
 };

@@ -557,7 +557,6 @@ async function listStudentAccounts(query = {}) {
        s.guardian_email,
        u.email AS student_email,
        c.name AS class_name,
-       st.name AS stream_name,
        COALESCE(SUM(fa.amount_due), 0) AS billed,
        COALESCE(SUM(fa.discount_amount), 0) AS discount,
        COALESCE(SUM(fa.amount_paid), 0) AS paid
@@ -565,10 +564,9 @@ async function listStudentAccounts(query = {}) {
      LEFT JOIN users u ON u.id = s.user_id
      LEFT JOIN student_enrolments se ON se.student_id = s.id
      LEFT JOIN classes c ON c.id = se.class_id
-     LEFT JOIN streams st ON st.id = se.stream_id
      LEFT JOIN fee_assignments fa ON fa.student_id = s.id
      ${where}
-     GROUP BY s.id, s.admission_number, s.first_name, s.last_name, s.guardian_name, s.guardian_phone, s.guardian_email, u.email, c.name, st.name
+     GROUP BY s.id, s.admission_number, s.first_name, s.last_name, s.guardian_name, s.guardian_phone, s.guardian_email, u.email, c.name
      ORDER BY s.id ASC`,
     params
   );
@@ -599,12 +597,11 @@ async function listStudentAccounts(query = {}) {
 
 async function getSingleStudentAccount(studentId) {
   const student = await db.get(
-    `SELECT s.*, u.email AS portal_email, c.name AS class_name, st.name AS stream_name
+    `SELECT s.*, u.email AS portal_email, c.name AS class_name
      FROM students s
      LEFT JOIN users u ON u.id = s.user_id
      LEFT JOIN student_enrolments se ON se.student_id = s.id
      LEFT JOIN classes c ON c.id = se.class_id
-     LEFT JOIN streams st ON st.id = se.stream_id
      WHERE s.id = ? LIMIT 1`,
     [studentId]
   );
@@ -646,11 +643,10 @@ async function recordPayment({
   }
 
   const student = await db.get(
-    `SELECT s.*, c.name AS class_name, st.name AS stream_name
+    `SELECT s.*, c.name AS class_name
      FROM students s
      LEFT JOIN student_enrolments se ON se.student_id = s.id
      LEFT JOIN classes c ON c.id = se.class_id
-     LEFT JOIN streams st ON st.id = se.stream_id
      WHERE s.id = ? LIMIT 1`,
     [studentId]
   );
@@ -750,7 +746,7 @@ async function recordPayment({
       schoolPhone: context.settings?.phone || '',
       studentName: `${student.first_name} ${student.last_name}`,
       admissionNumber: student.admission_number,
-      className: [student.class_name, student.stream_name].filter(Boolean).join(' - '),
+      className: student.class_name || '',
       paymentMethod,
       referenceNumber: referenceNumber || '',
       paymentDate: payDateStr,

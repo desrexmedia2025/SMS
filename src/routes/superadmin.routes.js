@@ -19,7 +19,6 @@ router.post('/academic/years', verifyCsrfToken, ctrl.createAcademicYear);
 router.post('/academic/terms', verifyCsrfToken, ctrl.createTerm);
 router.post('/academic/activate', verifyCsrfToken, ctrl.activatePeriod);
 router.post('/academic/classes', verifyCsrfToken, ctrl.createClass);
-router.post('/academic/streams', verifyCsrfToken, ctrl.createStream);
 router.post('/academic/subjects', verifyCsrfToken, ctrl.createSubject);
 
 router.get('/teachers', ctrl.listTeachers);

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Superadmin Dashboard - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=2.5">
+  <link rel="stylesheet" href="/css/styles.css?v=2.6">
 </head>
 <body>
   <div class="app-layout sa-layout">
@@ -32,7 +32,7 @@
             <span class="nav-item-label">Overview</span>
           </span>
         </button>
-        <button class="nav-btn" data-section="academic" data-title="Academic Setup" data-subtitle="Manage academic years, terms, classes, streams and subjects">
+        <button class="nav-btn" data-section="academic" data-title="Academic Setup" data-subtitle="Manage academic years, terms, classes and subjects">
           <span class="nav-item-main">
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
             <span class="nav-item-label">Academic Setup</span>
@@ -193,7 +193,7 @@
           <div class="subnav-bar">
             <div class="subnav-tabs" data-tab-group="academic">
               <button type="button" class="subtab-btn active" data-subtab="acad-calendar">Years &amp; Terms</button>
-              <button type="button" class="subtab-btn" data-subtab="acad-classes">Classes &amp; Streams</button>
+              <button type="button" class="subtab-btn" data-subtab="acad-classes">Classes</button>
               <button type="button" class="subtab-btn" data-subtab="acad-subjects">Subjects Catalogue</button>
             </div>
           </div>
@@ -258,60 +258,31 @@
             </div>
           </div>
 
-          <!-- Subtab: Classes & Streams -->
+          <!-- Subtab: Classes -->
           <div id="subtab-acad-classes" class="subtab-pane hidden" data-tab-pane="academic">
             <div class="grid-2">
-              <div>
-                <div class="card">
-                  <div class="card-header">
-                    <div>
-                      <h2 class="card-title">Create Class</h2>
-                      <div class="card-subtitle">Add grade levels or forms for student enrolment</div>
-                    </div>
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h2 class="card-title">Create Class</h2>
+                    <div class="card-subtitle">Add grade levels or forms for student enrolment</div>
                   </div>
-                  <form id="create-class-form" class="form-grid">
-                    <div class="form-group"><label>Class Name</label><input type="text" name="name" placeholder="e.g. Grade 10" required></div>
-                    <div class="form-group"><label>Level Order</label><input type="number" name="levelOrder" value="1" min="1"></div>
-                    <div class="form-group"><label>Capacity</label><input type="number" name="capacity" value="40" min="1"></div>
-                    <div class="form-actions-end" style="grid-column:1 / -1;"><button class="btn btn-primary btn-sm" type="submit">Add Class</button></div>
-                  </form>
                 </div>
-
-                <div class="card">
-                  <div class="card-header">
-                    <div>
-                      <h2 class="card-title">Create Class Stream (Optional)</h2>
-                      <div class="card-subtitle">Sub-divide a class into streams or sections</div>
-                    </div>
-                  </div>
-                  <form id="create-stream-form" class="form-grid">
-                    <div class="form-group"><label>Class</label><select name="classId" id="str-class-select" required></select></div>
-                    <div class="form-group"><label>Stream Name</label><input type="text" name="name" placeholder="e.g. Science A" required></div>
-                    <div class="form-group"><label>Room Number</label><input type="text" name="roomNumber" placeholder="e.g. B-104"></div>
-                    <div class="form-actions-end" style="grid-column:1 / -1;"><button class="btn btn-secondary btn-sm" type="submit">Add Stream</button></div>
-                  </form>
-                </div>
+                <form id="create-class-form" class="form-grid">
+                  <div class="form-group"><label>Class Name</label><input type="text" name="name" placeholder="e.g. Grade 10" required></div>
+                  <div class="form-group"><label>Level Order</label><input type="number" name="levelOrder" value="1" min="1"></div>
+                  <div class="form-group"><label>Capacity</label><input type="number" name="capacity" value="40" min="1"></div>
+                  <div class="form-actions-end" style="grid-column:1 / -1;"><button class="btn btn-primary btn-sm" type="submit">Add Class</button></div>
+                </form>
               </div>
 
-              <div>
-                <div class="card">
-                  <div class="card-header"><h2 class="card-title">Classes Directory</h2></div>
-                  <div class="table-wrap">
-                    <table>
-                      <thead><tr><th>Class</th><th class="num">Order</th><th class="num">Capacity</th><th>Status</th></tr></thead>
-                      <tbody id="classes-tbody"></tbody>
-                    </table>
-                  </div>
-                </div>
-
-                <div class="card">
-                  <div class="card-header"><h2 class="card-title">Class Streams</h2></div>
-                  <div class="table-wrap">
-                    <table>
-                      <thead><tr><th>Class</th><th>Stream</th><th>Room</th><th>Class Teacher</th></tr></thead>
-                      <tbody id="streams-tbody"></tbody>
-                    </table>
-                  </div>
+              <div class="card">
+                <div class="card-header"><h2 class="card-title">Classes Directory</h2></div>
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>Class</th><th class="num">Order</th><th class="num">Capacity</th><th>Status</th></tr></thead>
+                    <tbody id="classes-tbody"></tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -377,7 +348,7 @@
               </div>
               <div class="table-wrap">
                 <table>
-                  <thead><tr><th>Admission #</th><th>Full Name</th><th>Gender</th><th>Class / Stream</th><th>Guardian</th><th>Portal Email</th><th>Status</th></tr></thead>
+                  <thead><tr><th>Admission #</th><th>Full Name</th><th>Gender</th><th>Class</th><th>Guardian</th><th>Portal Email</th><th>Status</th></tr></thead>
                   <tbody id="students-tbody"></tbody>
                 </table>
               </div>
@@ -403,7 +374,6 @@
                   <div class="form-group"><label>Gender</label><select name="gender"><option value="">Select Gender</option><option value="Female">Female</option><option value="Male">Male</option></select></div>
                   <div class="form-group"><label>Date of Birth</label><input type="date" name="dateOfBirth"></div>
                   <div class="form-group"><label>Class</label><select name="classId" id="st-class-select"><option value="">Unassigned</option></select></div>
-                  <div class="form-group"><label>Stream (Optional)</label><select name="streamId" id="st-stream-select"><option value="">None / General</option></select></div>
                 </div>
 
                 <div class="form-section-divider">Guardian &amp; Portal Login</div>
@@ -617,7 +587,6 @@
                 <div class="form-grid">
                   <div class="form-group"><label>Teacher</label><select name="teacherId" id="asg-teacher" required></select></div>
                   <div class="form-group"><label>Class</label><select name="classId" id="asg-class" required></select></div>
-                  <div class="form-group"><label>Stream (Optional)</label><select name="streamId" id="asg-stream"><option value="">All Streams</option></select></div>
                 </div>
                 <div class="multi-subject-box" style="margin-top:12px;">
                   <div class="multi-subject-head">
@@ -637,7 +606,7 @@
               <div class="card-header"><h2 class="card-title">Active Class &amp; Subject Assignments</h2></div>
               <div class="table-wrap">
                 <table>
-                  <thead><tr><th>Staff #</th><th>Teacher</th><th>Class / Stream</th><th>Subject</th><th>Academic Year</th></tr></thead>
+                  <thead><tr><th>Staff #</th><th>Teacher</th><th>Class</th><th>Subject</th><th>Academic Year</th></tr></thead>
                   <tbody id="teacher-assignments-tbody"></tbody>
                 </table>
               </div>
@@ -657,7 +626,6 @@
             <form id="create-tt-form">
               <div class="form-grid">
                 <div class="form-group"><label>Class</label><select name="classId" id="tt-class" required></select></div>
-                <div class="form-group"><label>Stream (Optional)</label><select name="streamId" id="tt-stream"><option value="">All</option></select></div>
                 <div class="form-group"><label>Subject</label><select name="subjectId" id="tt-subject" required></select></div>
                 <div class="form-group"><label>Teacher</label><select name="teacherId" id="tt-teacher" required></select></div>
                 <div class="form-group">
@@ -701,7 +669,7 @@
             </div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>Date</th><th>Class / Stream</th><th>Subject</th><th>Recorded By</th><th class="num">Present</th><th class="num">Late</th><th class="num">Absent</th><th>Status</th></tr></thead>
+                <thead><tr><th>Date</th><th>Class</th><th>Subject</th><th>Recorded By</th><th class="num">Present</th><th class="num">Late</th><th class="num">Absent</th><th>Status</th></tr></thead>
                 <tbody id="att-overview-tbody"></tbody>
               </table>
             </div>
@@ -1373,7 +1341,7 @@
     </div>
   </div>
 
-  <script src="/js/common.js?v=2.5"></script>
-  <script src="/js/superadmin.js?v=2.5"></script>
+  <script src="/js/common.js?v=2.6"></script>
+  <script src="/js/superadmin.js?v=2.6"></script>
 </body>
 </html>

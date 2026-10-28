@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Students Dashboard - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=2.5">
+  <link rel="stylesheet" href="/css/styles.css?v=2.6">
 </head>
 <body>
   <div class="app-layout">
@@ -16,12 +16,13 @@
       <nav class="sidebar-nav">
         <div class="nav-section-label">My Learning</div>
         <button class="nav-btn active" data-section="overview">Overview</button>
-        <button class="nav-btn" data-section="profile">My Profile</button>
+        <button class="nav-btn" data-section="coursework">Classwork, Tests &amp; Exams</button>
         <button class="nav-btn" data-section="subjects">Enrolled Subjects</button>
         <button class="nav-btn" data-section="timetable">My Timetable</button>
         <button class="nav-btn" data-section="attendance">My Attendance</button>
         <button class="nav-btn" data-section="results">Grades &amp; Results</button>
         <button class="nav-btn" data-section="reportcard">Report Card</button>
+        <button class="nav-btn" data-section="profile">My Profile</button>
 
         <div class="nav-section-label">Student Services</div>
         <button class="nav-btn" data-section="fees" id="nav-fees-btn">Fee Statement &amp; Paystack</button>
@@ -50,13 +51,39 @@
           <div class="kpi-grid" id="st-kpis"></div>
           <div class="grid-2">
             <div class="card">
-              <div class="card-header"><h2 class="card-title">My Academic Snapshot</h2></div>
+              <div class="card-header">
+                <h2 class="card-title">My Academic Snapshot</h2>
+                <button type="button" class="btn btn-primary btn-sm" id="st-open-coursework-btn">Open Classwork &amp; Exams</button>
+              </div>
               <div id="st-snapshot-box"></div>
             </div>
             <div class="card">
-              <div class="card-header"><h2 class="card-title">Latest School Notices</h2></div>
+              <div class="card-header"><h2 class="card-title">Class &amp; School Announcements</h2></div>
               <div id="st-ov-announcements"></div>
             </div>
+          </div>
+        </section>
+
+        <!-- CLASSWORK, HOMEWORK, TESTS & EXAMS -->
+        <section id="sec-coursework" class="module-panel hidden">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Classwork, Homework, Tests &amp; Exams</h2>
+                <div class="card-subtitle">View teacher instructions, study uploaded PDFs/images/videos, write your answers, and upload images, documents, or videos</div>
+              </div>
+              <div class="filter-bar">
+                <select id="st-cw-filter-type" style="width:170px;">
+                  <option value="">All Work Types</option>
+                  <option value="classwork">Classwork</option>
+                  <option value="homework">Homework</option>
+                  <option value="test">Tests</option>
+                  <option value="exam">Exams</option>
+                </select>
+                <button type="button" class="btn btn-secondary btn-sm" id="st-cw-refresh-btn">Refresh</button>
+              </div>
+            </div>
+            <div id="st-coursework-list" class="coursework-list"></div>
           </div>
         </section>
 
@@ -212,7 +239,7 @@
         <!-- ANNOUNCEMENTS -->
         <section id="sec-announcements" class="module-panel hidden">
           <div class="card">
-            <div class="card-header"><h2 class="card-title">School &amp; Student Announcements</h2></div>
+            <div class="card-header"><h2 class="card-title">Class &amp; School Announcements</h2></div>
             <div id="st-all-announcements"></div>
           </div>
         </section>
@@ -257,7 +284,7 @@
     </div>
   </div>
 
-  <script src="/js/common.js?v=2.5"></script>
-  <script src="/js/student.js?v=2.5"></script>
+  <script src="/js/common.js?v=2.6"></script>
+  <script src="/js/student.js?v=2.6"></script>
 </body>
 </html>

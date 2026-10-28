@@ -1,4 +1,5 @@
 const teacherService = require('../services/teacher.service');
+const courseworkService = require('../services/coursework.service');
 const {
   requireString,
   optionalString,
@@ -14,19 +15,16 @@ async function getOverview(req, res) {
 
 async function getClassList(req, res) {
   const classId = requirePositiveInt(req.query.classId, 'Class');
-  const streamId = optionalPositiveInt(req.query.streamId);
-  const data = await teacherService.getClassList(req.user, { classId, streamId });
+  const data = await teacherService.getClassList(req.user, { classId });
   return res.json({ ok: true, ...data });
 }
 
 async function getAttendanceSession(req, res) {
   const classId = requirePositiveInt(req.query.classId, 'Class');
-  const streamId = optionalPositiveInt(req.query.streamId);
   const subjectId = optionalPositiveInt(req.query.subjectId);
   const sessionDate = requireString(req.query.sessionDate, 'Session date', { min: 8, max: 20 });
   const data = await teacherService.getAttendanceSessionDetails(req.user, {
     classId,
-    streamId,
     subjectId,
     sessionDate,
   });
@@ -36,7 +34,6 @@ async function getAttendanceSession(req, res) {
 async function submitAttendance(req, res) {
   const result = await teacherService.submitAttendance(req.user, {
     classId: requirePositiveInt(req.body.classId, 'Class'),
-    streamId: optionalPositiveInt(req.body.streamId),
     subjectId: optionalPositiveInt(req.body.subjectId),
     sessionDate: requireString(req.body.sessionDate, 'Session date', { min: 8, max: 20 }),
     notes: optionalString(req.body.notes, 255),
@@ -44,6 +41,71 @@ async function submitAttendance(req, res) {
     ipAddress: req.ip,
   });
   return res.json({ ok: true, ...result });
+}
+
+// ---------------- COURSEWORK (CLASSWORK, HOMEWORK, TEST, EXAM) ----------------
+async function listCoursework(req, res) {
+  const data = await courseworkService.listTeacherCoursework(req.user, req.query);
+  return res.json({ ok: true, ...data });
+}
+
+async function createCoursework(req, res) {
+  const created = await courseworkService.createCoursework(req.user, {
+    workType: req.body.workType,
+    subjectId: req.body.subjectId,
+    classIds: req.body.classIds,
+    applyToAllClasses: req.body.applyToAllClasses,
+    title: req.body.title,
+    instructions: req.body.instructions,
+    maxScore: req.body.maxScore,
+    dueAt: req.body.dueAt,
+    files: req.files || [],
+    ipAddress: req.ip,
+  });
+  return res.status(201).json({ ok: true, coursework: created });
+}
+
+async function getCourseworkSubmissions(req, res) {
+  const courseworkId = requirePositiveInt(req.params.id, 'Coursework ID');
+  const data = await courseworkService.getCourseworkSubmissions(req.user, courseworkId);
+  return res.json({ ok: true, ...data });
+}
+
+async function gradeCourseworkSubmission(req, res) {
+  const submissionId = requirePositiveInt(req.params.submissionId, 'Submission ID');
+  const updated = await courseworkService.gradeSubmission(req.user, {
+    submissionId,
+    score: req.body.score,
+    feedback: req.body.feedback,
+    ipAddress: req.ip,
+  });
+  return res.json({ ok: true, submission: updated });
+}
+
+async function deleteCoursework(req, res) {
+  const courseworkId = requirePositiveInt(req.params.id, 'Coursework ID');
+  await courseworkService.deleteCoursework(req.user, {
+    courseworkId,
+    ipAddress: req.ip,
+  });
+  return res.json({ ok: true, message: 'Coursework deleted.' });
+}
+
+// ---------------- TEACHER CLASS ANNOUNCEMENTS ----------------
+async function createClassAnnouncement(req, res) {
+  const created = await courseworkService.createTeacherClassAnnouncement(req.user, {
+    title: req.body.title,
+    body: req.body.body,
+    priority: req.body.priority,
+    classIds: req.body.classIds,
+    applyToAllClasses: req.body.applyToAllClasses,
+    ipAddress: req.ip,
+  });
+  return res.status(201).json({
+    ok: true,
+    ...created,
+    message: 'Announcement sent to selected class(es).',
+  });
 }
 
 async function createAssessment(req, res) {
@@ -57,7 +119,6 @@ async function createAssessment(req, res) {
         'Assessment type'
       ),
       classId: requirePositiveInt(req.body.classId, 'Class'),
-      streamId: optionalPositiveInt(req.body.streamId),
       subjectId: requirePositiveInt(req.body.subjectId, 'Subject'),
       maxScore: Number(req.body.maxScore || 100),
       weightPercent: Number(req.body.weightPercent || 100),
@@ -114,6 +175,12 @@ module.exports = {
   getClassList,
   getAttendanceSession,
   submitAttendance,
+  listCoursework,
+  createCoursework,
+  getCourseworkSubmissions,
+  gradeCourseworkSubmission,
+  deleteCoursework,
+  createClassAnnouncement,
   createAssessment,
   getMarksheet,
   submitMarks,

@@ -25,8 +25,6 @@ async function getTeacherAssignments(teacherId, academicYearId = null) {
     `SELECT
        ta.*,
        c.name AS class_name,
-       st.name AS stream_name,
-       st.room_number,
        sub.code AS subject_code,
        sub.name AS subject_name,
        sub.pass_mark,
@@ -35,7 +33,6 @@ async function getTeacherAssignments(teacherId, academicYearId = null) {
        tr.name AS term_name
      FROM teacher_assignments ta
      INNER JOIN classes c ON c.id = ta.class_id
-     LEFT JOIN streams st ON st.id = ta.stream_id
      INNER JOIN subjects sub ON sub.id = ta.subject_id
      INNER JOIN academic_years ay ON ay.id = ta.academic_year_id
      LEFT JOIN terms tr ON tr.id = ta.term_id
@@ -45,16 +42,12 @@ async function getTeacherAssignments(teacherId, academicYearId = null) {
   );
 }
 
-async function isTeacherAssignedTo({ teacherId, classId, streamId = null, subjectId = null }) {
+async function isTeacherAssignedTo({ teacherId, classId, subjectId = null }) {
   const params = [teacherId, classId];
   let extra = '';
   if (subjectId) {
     extra += ' AND ta.subject_id = ?';
     params.push(subjectId);
-  }
-  if (streamId) {
-    extra += ' AND (ta.stream_id IS NULL OR ta.stream_id = ?)';
-    params.push(streamId);
   }
   const row = await db.get(
     `SELECT ta.id
@@ -63,26 +56,12 @@ async function isTeacherAssignedTo({ teacherId, classId, streamId = null, subjec
      LIMIT 1`,
     params
   );
-  if (row) return true;
-
-  // Also check if teacher is the homeroom class_teacher_id for that stream (for homeroom attendance)
-  if (!subjectId) {
-    const homeroom = await db.get(
-      `SELECT id FROM streams WHERE class_id = ? AND class_teacher_id = ? LIMIT 1`,
-      [classId, teacherId]
-    );
-    return Boolean(homeroom);
-  }
-  return false;
+  return Boolean(row);
 }
 
-async function getStudentsInClassStream({ classId, streamId = null, academicYearId = null }) {
+async function getStudentsInClass({ classId, academicYearId = null }) {
   const params = [classId];
   let filters = '';
-  if (streamId) {
-    filters += ' AND se.stream_id = ?';
-    params.push(streamId);
-  }
   if (academicYearId) {
     filters += ' AND se.academic_year_id = ?';
     params.push(academicYearId);
@@ -100,14 +79,11 @@ async function getStudentsInClassStream({ classId, streamId = null, academicYear
        s.status AS student_status,
        se.roll_number,
        se.class_id,
-       se.stream_id,
-       c.name AS class_name,
-       st.name AS stream_name
+       c.name AS class_name
      FROM student_enrolments se
      INNER JOIN students s ON s.id = se.student_id
      INNER JOIN classes c ON c.id = se.class_id
-     LEFT JOIN streams st ON st.id = se.stream_id
-     WHERE se.class_id = ? AND se.status = 'enrolled' AND s.status = 'active' ${filters}
+     WHERE se.class_id = ? AND se.status IN ('enrolled', 'active') AND s.status = 'active' ${filters}
      ORDER BY s.last_name ASC, s.first_name ASC`,
     params
   );
@@ -117,5 +93,6 @@ module.exports = {
   resolveGradeForPercentage,
   getTeacherAssignments,
   isTeacherAssignedTo,
-  getStudentsInClassStream,
+  getStudentsInClass,
+  getStudentsInClassStream: getStudentsInClass,
 };

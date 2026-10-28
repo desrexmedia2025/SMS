@@ -1,9 +1,16 @@
 const studentService = require('../services/student.service');
+const courseworkService = require('../services/coursework.service');
 const paystackService = require('../services/paystack.service');
 const financialService = require('../services/financial.service');
 const db = require('../config/database');
 const { AppError } = require('../middleware/errorHandler');
-const { requireString, optionalString, requireMoney, requireEnum } = require('../validators/schemas');
+const {
+  requireString,
+  optionalString,
+  requirePositiveInt,
+  requireMoney,
+  requireEnum,
+} = require('../validators/schemas');
 
 async function getOverview(req, res) {
   const data = await studentService.getPortalData(req.user, req.query, req.ip);
@@ -87,11 +94,34 @@ async function getOwnReceipt(req, res) {
   return res.json({ ok: true, ...data });
 }
 
+async function listCoursework(req, res) {
+  const data = await courseworkService.listStudentCoursework(req.user, req.query);
+  return res.json({ ok: true, ...data });
+}
+
+async function submitCoursework(req, res) {
+  const courseworkId = requirePositiveInt(req.params.id, 'Coursework ID');
+  const saved = await courseworkService.submitStudentCoursework(req.user, {
+    courseworkId,
+    answerText: optionalString(req.body.answerText, 20000),
+    files: req.files || [],
+    ipAddress: req.ip,
+  });
+  return res.status(201).json({
+    ok: true,
+    submission: saved,
+    ...saved,
+    message: 'Your work has been submitted successfully.',
+  });
+}
+
 module.exports = {
   getOverview,
   getSpecificStudentGuard,
   updateContact,
   requestProfileCorrection,
+  listCoursework,
+  submitCoursework,
   initializeOwnPaystackPayment,
   verifyOwnPaystackPayment,
   getOwnReceipt,

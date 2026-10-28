@@ -44,7 +44,7 @@ async function getOverview() {
        LEFT JOIN users u ON u.id = al.actor_user_id
        ORDER BY al.id DESC LIMIT 10`
     ),
-    systemModel.listAnnouncementsForAudience(['all', 'superadmin', 'teachers', 'students', 'financial']),
+    systemModel.listAnnouncementsForAudience(['all', 'superadmin', 'teachers', 'students', 'financial', 'class']),
   ]);
 
   const totalAtt = Number(attSummary?.total_records || 0);
@@ -309,7 +309,7 @@ async function updateUserRoleOrStatus({ targetUserId, roleSlug, status, newPassw
 
 // ---------------- ACADEMIC STRUCTURE ----------------
 async function getAcademicSetup() {
-  const [years, terms, classes, streams, subjects, gradingScales] = await Promise.all([
+  const [years, terms, classes, subjects, gradingScales] = await Promise.all([
     db.query('SELECT * FROM academic_years ORDER BY id DESC'),
     db.query(
       `SELECT tr.*, ay.name AS academic_year_name
@@ -318,18 +318,10 @@ async function getAcademicSetup() {
        ORDER BY tr.id ASC`
     ),
     db.query('SELECT * FROM classes ORDER BY level_order ASC, name ASC'),
-    db.query(
-      `SELECT st.*, c.name AS class_name, u.full_name AS class_teacher_name
-       FROM streams st
-       INNER JOIN classes c ON c.id = st.class_id
-       LEFT JOIN teachers t ON t.id = st.class_teacher_id
-       LEFT JOIN users u ON u.id = t.user_id
-       ORDER BY c.level_order ASC, st.name ASC`
-    ),
     db.query('SELECT * FROM subjects ORDER BY code ASC'),
     db.query('SELECT * FROM grading_scales ORDER BY min_score DESC'),
   ]);
-  return { years, terms, classes, streams, subjects, gradingScales };
+  return { years, terms, classes, subjects, gradingScales };
 }
 
 async function createAcademicYear({ name, startDate, endDate, isActive, actor, ipAddress }) {
@@ -423,23 +415,6 @@ async function createClass({ name, levelOrder, capacity, actor, ipAddress }) {
     targetId: String(ins.insertId),
     ipAddress,
     metadata: { name },
-  });
-  return { id: ins.insertId };
-}
-
-async function createStream({ classId, name, roomNumber, classTeacherId, actor, ipAddress }) {
-  const ins = await db.run(
-    'INSERT INTO streams (class_id, name, room_number, class_teacher_id) VALUES (?, ?, ?, ?)',
-    [classId, name, roomNumber || '', classTeacherId || null]
-  );
-  await recordAudit({
-    actorUserId: actor.id,
-    actorRole: actor.role,
-    action: 'STREAM_CREATED',
-    targetType: 'stream',
-    targetId: String(ins.insertId),
-    ipAddress,
-    metadata: { classId, name },
   });
   return { id: ins.insertId };
 }
@@ -587,13 +562,11 @@ async function listTeachers() {
          ta.*,
          t.first_name, t.last_name, t.staff_number,
          c.name AS class_name,
-         st.name AS stream_name,
          sub.code AS subject_code, sub.name AS subject_name,
          ay.name AS academic_year_name
        FROM teacher_assignments ta
        INNER JOIN teachers t ON t.id = ta.teacher_id
        INNER JOIN classes c ON c.id = ta.class_id
-       LEFT JOIN streams st ON st.id = ta.stream_id
        INNER JOIN subjects sub ON sub.id = ta.subject_id
        INNER JOIN academic_years ay ON ay.id = ta.academic_year_id
        ORDER BY ta.id DESC`
@@ -808,7 +781,7 @@ async function updateTeacherSubjects({ teacherId, subjectIds, customSubjects, sp
   });
 }
 
-async function assignTeacher({ teacherId, classId, streamId, subjectId, subjectIds, academicYearId, termId, actor, ipAddress }) {
+async function assignTeacher({ teacherId, classId, subjectId, subjectIds, academicYearId, termId, actor, ipAddress }) {
   let resolvedYearId = academicYearId;
   let resolvedTermId = termId;
   if (!resolvedYearId) {
@@ -849,7 +822,7 @@ async function assignTeacher({ teacherId, classId, streamId, subjectId, subjectI
         ]);
       }
 
-      const key = `${teacherId}:${classId}:${streamId || 0}:${sid}:${resolvedYearId}`;
+      const key = `${teacherId}:${classId}:0:${sid}:${resolvedYearId}`;
       const existing = await tx.get('SELECT id FROM teacher_assignments WHERE assignment_key = ?', [key]);
       if (existing) {
         skippedCount += 1;
@@ -858,8 +831,8 @@ async function assignTeacher({ teacherId, classId, streamId, subjectId, subjectI
 
       const ins = await tx.run(
         `INSERT INTO teacher_assignments (teacher_id, class_id, stream_id, subject_id, academic_year_id, term_id, assignment_key)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [teacherId, classId, streamId || null, sid, resolvedYearId, resolvedTermId || null, key]
+         VALUES (?, ?, NULL, ?, ?, ?, ?)`,
+        [teacherId, classId, sid, resolvedYearId, resolvedTermId || null, key]
       );
       createdIds.push(ins.insertId);
     }
@@ -868,8 +841,8 @@ async function assignTeacher({ teacherId, classId, streamId, subjectId, subjectI
       throw new AppError(
         409,
         targetSubjectIds.length === 1
-          ? 'This teacher is already assigned to that class/stream/subject.'
-          : 'This teacher is already assigned to all selected subjects for that class/stream.'
+          ? 'This teacher is already assigned to that class and subject.'
+          : 'This teacher is already assigned to all selected subjects for that class.'
       );
     }
 
@@ -881,7 +854,7 @@ async function assignTeacher({ teacherId, classId, streamId, subjectId, subjectI
         targetType: 'teacher_assignment',
         targetId: String(createdIds[0]),
         ipAddress,
-        metadata: { teacherId, classId, streamId, subjectIds: targetSubjectIds, createdIds },
+        metadata: { teacherId, classId, subjectIds: targetSubjectIds, createdIds },
       },
       tx
     );
@@ -929,14 +902,12 @@ async function listStudents(query = {}) {
     `SELECT
        s.*,
        u.email, u.username, u.status AS user_status,
-       se.class_id, se.stream_id, se.roll_number, se.academic_year_id,
-       c.name AS class_name,
-       st.name AS stream_name
+       se.class_id, se.roll_number, se.academic_year_id,
+       c.name AS class_name
      FROM students s
      INNER JOIN users u ON u.id = s.user_id
      LEFT JOIN student_enrolments se ON se.student_id = s.id
      LEFT JOIN classes c ON c.id = se.class_id
-     LEFT JOIN streams st ON st.id = se.stream_id
      ${where}
      ORDER BY s.id DESC
      LIMIT ? OFFSET ?`,
@@ -959,7 +930,6 @@ async function enrolStudent({
   guardianEmail,
   address,
   classId,
-  streamId,
   academicYearId,
   termId,
   rollNumber,
@@ -1018,8 +988,8 @@ async function enrolStudent({
     if (classId && resolvedYearId) {
       await tx.run(
         `INSERT INTO student_enrolments (student_id, class_id, stream_id, academic_year_id, term_id, roll_number, status)
-         VALUES (?, ?, ?, ?, ?, ?, 'enrolled')`,
-        [sRes.insertId, classId, streamId || null, resolvedYearId, resolvedTermId || null, rollNumber || '']
+         VALUES (?, ?, NULL, ?, ?, ?, 'enrolled')`,
+        [sRes.insertId, classId, resolvedYearId, resolvedTermId || null, rollNumber || '']
       );
     }
 
@@ -1031,7 +1001,7 @@ async function enrolStudent({
         targetType: 'student',
         targetId: String(sRes.insertId),
         ipAddress,
-        metadata: { admissionNumber, classId, streamId },
+        metadata: { admissionNumber, classId },
       },
       tx
     );
@@ -1056,12 +1026,10 @@ async function listTimetables(query = {}) {
     `SELECT
        tt.*,
        c.name AS class_name,
-       st.name AS stream_name,
        sub.code AS subject_code, sub.name AS subject_name,
        u.full_name AS teacher_name
      FROM timetables tt
      INNER JOIN classes c ON c.id = tt.class_id
-     LEFT JOIN streams st ON st.id = tt.stream_id
      INNER JOIN subjects sub ON sub.id = tt.subject_id
      INNER JOIN teachers t ON t.id = tt.teacher_id
      INNER JOIN users u ON u.id = t.user_id
@@ -1075,7 +1043,6 @@ async function createTimetableSlot({
   academicYearId,
   termId,
   classId,
-  streamId,
   subjectId,
   teacherId,
   dayOfWeek,
@@ -1115,23 +1082,22 @@ async function createTimetableSlot({
     throw new AppError(409, 'Schedule conflict: that teacher already has an overlapping class on that day.');
   }
 
-  // Conflict check: class/stream cannot have overlapping lessons
+  // Conflict check: class cannot have overlapping lessons
   const classConflict = await db.get(
     `SELECT id FROM timetables
      WHERE academic_year_id = ? AND day_of_week = ? AND class_id = ?
-       AND (stream_id IS NULL OR stream_id = ?)
        AND start_time < ? AND end_time > ?
      LIMIT 1`,
-    [resolvedYearId, dayOfWeek, classId, streamId || 0, endTime, startTime]
+    [resolvedYearId, dayOfWeek, classId, endTime, startTime]
   );
   if (classConflict) {
-    throw new AppError(409, 'Schedule conflict: that class/stream already has an overlapping timetable entry.');
+    throw new AppError(409, 'Schedule conflict: that class already has an overlapping timetable entry.');
   }
 
   const ins = await db.run(
     `INSERT INTO timetables (academic_year_id, term_id, class_id, stream_id, subject_id, teacher_id, day_of_week, start_time, end_time, room)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [resolvedYearId, resolvedTermId || null, classId, streamId || null, subjectId, teacherId, dayOfWeek, startTime, endTime, room || '']
+     VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?)`,
+    [resolvedYearId, resolvedTermId || null, classId, subjectId, teacherId, dayOfWeek, startTime, endTime, room || '']
   );
 
   await recordAudit({
@@ -1151,7 +1117,6 @@ async function getAttendanceOverview() {
     `SELECT
        s.*,
        c.name AS class_name,
-       st.name AS stream_name,
        sub.name AS subject_name,
        u.full_name AS taken_by_name,
        COUNT(ar.id) AS total_marked,
@@ -1160,7 +1125,6 @@ async function getAttendanceOverview() {
        SUM(CASE WHEN ar.status = 'late' THEN 1 ELSE 0 END) AS late_count
      FROM attendance_sessions s
      INNER JOIN classes c ON c.id = s.class_id
-     LEFT JOIN streams st ON st.id = s.stream_id
      LEFT JOIN subjects sub ON sub.id = s.subject_id
      LEFT JOIN users u ON u.id = s.taken_by_user_id
      LEFT JOIN attendance_records ar ON ar.session_id = s.id
@@ -1177,14 +1141,12 @@ async function getExamsGovernance() {
       `SELECT
          a.*,
          c.name AS class_name,
-         st.name AS stream_name,
          sub.name AS subject_name,
          tr.name AS term_name,
          u.full_name AS creator_name,
          (SELECT COUNT(*) FROM marks m WHERE m.assessment_id = a.id) AS marks_count
        FROM assessments a
        INNER JOIN classes c ON c.id = a.class_id
-       LEFT JOIN streams st ON st.id = a.stream_id
        INNER JOIN subjects sub ON sub.id = a.subject_id
        INNER JOIN terms tr ON tr.id = a.term_id
        LEFT JOIN users u ON u.id = a.created_by_user_id
@@ -1680,7 +1642,6 @@ async function reviewStudentRegistrationRequest({
   decision,
   admissionNumber,
   classId,
-  streamId,
   reviewNote,
   actor,
   ipAddress,
@@ -1812,8 +1773,8 @@ async function reviewStudentRegistrationRequest({
       if (activeYear) {
         await tx.run(
           `INSERT INTO student_enrolments (student_id, class_id, stream_id, academic_year_id, term_id, status)
-           VALUES (?, ?, ?, ?, ?, 'enrolled')`,
-          [sRes.insertId, targetClassId, streamId || null, activeYear.id, activeTerm?.id || null]
+           VALUES (?, ?, NULL, ?, ?, 'enrolled')`,
+          [sRes.insertId, targetClassId, activeYear.id, activeTerm?.id || null]
         );
       }
     }
@@ -1871,7 +1832,6 @@ module.exports = {
   createTerm,
   activatePeriod,
   createClass,
-  createStream,
   createSubject,
   listTeachers,
   createTeacher,

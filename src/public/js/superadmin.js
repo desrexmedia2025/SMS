@@ -129,7 +129,7 @@
       {
         num: 'Step 2',
         title: 'Classes & Subjects',
-        desc: 'Add classes, optional streams and your subject catalogue.',
+        desc: 'Add school classes and your subject catalogue.',
         done: hasClasses,
         sec: 'academic',
         sub: 'academic:acad-classes',
@@ -781,12 +781,6 @@
       '<option value="">Unassigned</option>' +
       acad.classes.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
 
-    const streamOpts =
-      '<option value="">All / General</option>' +
-      acad.streams
-        .map((s) => `<option value="${s.id}">${esc(s.class_name)} - ${esc(s.name)}</option>`)
-        .join('');
-
     const subOpts = acad.subjects.length
       ? acad.subjects
           .map((s) => `<option value="${s.id}">${esc(s.code)} - ${esc(s.name)}</option>`)
@@ -823,7 +817,7 @@
     const stClassEl = document.getElementById('st-class-select');
     if (stClassEl) stClassEl.innerHTML = optionalClassOpts;
 
-    ['asg-class', 'str-class-select', 'tt-class'].forEach((id) => {
+    ['asg-class', 'tt-class'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = classOpts;
     });
@@ -835,10 +829,6 @@
         acad.classes.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
       if (prevVal) ttFilterEl.value = prevVal;
     }
-    ['st-stream-select', 'asg-stream', 'tt-stream'].forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) el.innerHTML = streamOpts;
-    });
     ['tt-subject'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = subOpts;
@@ -941,15 +931,6 @@
           .join('') || '<tr><td colspan="4" class="empty-state">No classes created yet.</td></tr>';
     }
 
-    // Streams table
-    document.getElementById('streams-tbody').innerHTML =
-      acad.streams
-        .map(
-          (s) =>
-            `<tr><td><strong>${esc(s.class_name)}</strong></td><td>${esc(s.name)}</td><td>${esc(s.room_number || '-')}</td><td>${esc(s.class_teacher_name || 'Unassigned')}</td></tr>`
-        )
-        .join('') || '<tr><td colspan="4" class="empty-state">No class streams added yet.</td></tr>';
-
     // Subjects table
     document.getElementById('subjects-tbody').innerHTML =
       acad.subjects
@@ -998,7 +979,7 @@
           (a) => `<tr>
             <td><code>${esc(a.staff_number)}</code></td>
             <td>${esc(a.first_name)} ${esc(a.last_name)}</td>
-            <td>${esc(a.class_name)}${a.stream_name ? ' - ' + esc(a.stream_name) : ''}</td>
+            <td>${esc(a.class_name)}</td>
             <td>${esc(a.subject_code)} - ${esc(a.subject_name)}</td>
             <td>${esc(a.academic_year_name)}</td>
           </tr>`
@@ -1109,7 +1090,7 @@
             <td><code>${esc(s.admission_number)}</code></td>
             <td><strong>${esc(s.first_name)} ${esc(s.last_name)}</strong></td>
             <td>${esc(s.gender || '-')}</td>
-            <td>${esc(s.class_name || 'Unassigned')}${s.stream_name ? ' - ' + esc(s.stream_name) : ''}</td>
+            <td>${esc(s.class_name || 'Unassigned')}</td>
             <td>${esc(s.guardian_name || '-')}<br><small style="color:var(--text-light);">${esc(s.guardian_phone || '')}</small></td>
             <td>${esc(s.email)}</td>
             <td>${statusBadge(s.status)}</td>
@@ -1138,7 +1119,7 @@
         .map(
           (s) => `<tr>
             <td class="tabular">${esc(s.session_date)}</td>
-            <td>${esc(s.class_name)}${s.stream_name ? ' - ' + esc(s.stream_name) : ''}</td>
+            <td>${esc(s.class_name)}</td>
             <td>${esc(s.subject_name || 'Homeroom')}</td>
             <td>${esc(s.taken_by_name || '-')}</td>
             <td class="num">${s.present_count || 0}</td>
@@ -1959,19 +1940,6 @@
       toast('Class created.', 'success');
       await loadAcademicAndSelectors();
       await loadOverview();
-    } catch (err) {
-      toast(err.message, 'error');
-    }
-  });
-
-  document.getElementById('create-stream-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fd = Object.fromEntries(new FormData(e.target).entries());
-    try {
-      await api('/api/superadmin/academic/streams', { method: 'POST', body: fd });
-      e.target.reset();
-      toast('Stream added.', 'success');
-      await loadAcademicAndSelectors();
     } catch (err) {
       toast(err.message, 'error');
     }

@@ -1836,6 +1836,180 @@ table.timetable-matrix tbody tr:last-child td {
   margin-top: 10px;
 }
 
+/* Coursework Cards, Answer Space & Multimedia Attachments */
+.coursework-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.coursework-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.coursework-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.cw-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cw-type-classwork {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.cw-type-homework {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.cw-type-test {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.cw-type-exam {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.coursework-instructions {
+  background: #f8fafc;
+  border-left: 3px solid #2563eb;
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-size: 13.5px;
+  color: #1e293b;
+  white-space: pre-wrap;
+  line-height: 1.55;
+  margin: 10px 0 12px;
+}
+
+.media-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 12px;
+  margin: 10px 0;
+}
+
+.media-item-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #ffffff;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.media-item-video {
+  grid-column: span 1;
+}
+
+.media-thumb-img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  display: block;
+  background: #f1f5f9;
+}
+
+.media-video-player {
+  width: 100%;
+  max-height: 210px;
+  background: #0f172a;
+  display: block;
+}
+
+.media-item-doc {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.media-doc-badge {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.media-item-meta {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.media-item-doc .media-item-meta {
+  padding: 0;
+}
+
+.media-item-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-item-sub {
+  font-size: 11.5px;
+  color: #64748b;
+}
+
+.media-item-sub a {
+  color: #2563eb;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.media-item-sub a:hover {
+  text-decoration: underline;
+}
+
+.student-answer-workspace {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed #cbd5e1;
+}
+
+.upload-dropzone-box {
+  border: 1.5px dashed #93c5fd;
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-top: 8px;
+}
+
 @media print {
   .sidebar, .topbar, .no-print, .toast-container {
     display: none !important;

@@ -1,5 +1,15 @@
 (async function initStudentDashboard() {
-  const { esc, money, api, toast, statusBadge, openPaystackCheckout } = window.SMS;
+  const {
+    esc,
+    money,
+    api,
+    toast,
+    statusBadge,
+    openPaystackCheckout,
+    activateSection,
+    renderMediaAttachments,
+    formatBytes,
+  } = window.SMS;
 
   await SMS.initSession();
   SMS.configureGoogleLinkButton('google-link-btn');
@@ -14,11 +24,128 @@
   document.getElementById('logout-btn').addEventListener('click', SMS.logout);
   document.getElementById('print-report-card-btn').addEventListener('click', () => window.print());
   document.getElementById('print-st-rcp-btn').addEventListener('click', () => window.print());
-  SMS.initNavigation();
 
   const user = SMS.getUser();
   if (user) {
     document.getElementById('sb-user-info').textContent = `${user.fullName} | ${user.email}`;
+  }
+
+  function formatWorkTypeLabel(type) {
+    const map = {
+      classwork: 'Classwork',
+      homework: 'Homework',
+      test: 'Test',
+      exam: 'Exam',
+    };
+    return map[String(type || '').toLowerCase()] || String(type || 'Work');
+  }
+
+  function renderStudentCoursework(items = []) {
+    const wrap = document.getElementById('st-coursework-list');
+    if (!wrap) return;
+    if (!items.length) {
+      wrap.innerHTML =
+        '<div class="empty-state">No classwork, homework, tests, or exams assigned to your class yet.</div>';
+      return;
+    }
+
+    wrap.innerHTML = items
+      .map((item) => {
+        const wType = String(item.work_type || 'homework').toLowerCase();
+        const sub = item.submission;
+        const isGraded = sub?.status === 'graded';
+        const statusMarkup = isGraded
+          ? `<span class="badge badge-success">Graded: ${sub.score} / ${item.max_score}</span>`
+          : sub
+            ? '<span class="badge badge-info">Submitted</span>'
+            : '<span class="badge badge-warning">Pending Your Answer</span>';
+
+        const dueText = item.due_at
+          ? `Due: <strong>${esc(String(item.due_at).replace('T', ' '))}</strong>`
+          : 'No fixed deadline';
+
+        const teacherAttachmentsHtml = item.attachments?.length
+          ? `<div style="margin-top:8px;">
+              <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:4px;">Teacher Uploaded Materials (${item.attachments.length})</div>
+              ${renderMediaAttachments(item.attachments)}
+            </div>`
+          : '';
+
+        const gradedBanner = isGraded
+          ? `<div class="alert alert-success" style="margin-top:10px;margin-bottom:0;">
+              <strong>Teacher Score: ${sub.score} / ${item.max_score}</strong>
+              ${sub.feedback ? `<div style="margin-top:4px;">Feedback: ${esc(sub.feedback)}</div>` : ''}
+            </div>`
+          : '';
+
+        const existingStudentFiles = sub?.attachments?.length
+          ? `<div style="margin-bottom:10px;">
+              <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:4px;">Your Uploaded Files (${sub.attachments.length})</div>
+              ${renderMediaAttachments(sub.attachments)}
+            </div>`
+          : '';
+
+        return `<div class="coursework-card">
+          <div class="coursework-card-head">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+                <span class="cw-type-badge cw-type-${esc(wType)}">${esc(formatWorkTypeLabel(wType))}</span>
+                <span class="badge badge-neutral">${esc(item.subject_code)} - ${esc(item.subject_name)}</span>
+                <span style="font-size:12px;color:var(--text-muted);">Teacher: <strong>${esc(item.teacher_name || 'Subject Teacher')}</strong> &middot; Max Score: <strong>${item.max_score}</strong> &middot; ${dueText}</span>
+              </div>
+              <h3 style="margin:4px 0;font-size:16px;color:var(--text);">${esc(item.title)}</h3>
+            </div>
+            <div>${statusMarkup}</div>
+          </div>
+
+          <div class="coursework-instructions">${esc(item.instructions)}</div>
+          ${teacherAttachmentsHtml}
+          ${gradedBanner}
+
+          <div class="student-answer-workspace">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+              <strong style="font-size:13.5px;color:#0f172a;">Your Answer &amp; File Upload Workspace</strong>
+              ${
+                sub?.submittedAt
+                  ? `<span style="font-size:12px;color:var(--text-muted);">Last submitted: ${esc(sub.submittedAt)}</span>`
+                  : '<span style="font-size:12px;color:var(--text-muted);">Write your response and/or attach images, documents, or videos</span>'
+              }
+            </div>
+
+            ${existingStudentFiles}
+
+            <form class="student-submit-work-form" data-coursework-id="${item.id}">
+              <div class="form-group">
+                <label>Written Answer / Solution</label>
+                <textarea name="answerText" rows="4" placeholder="Type your answers, workings, or essay response here..." ${isGraded ? 'disabled' : ''}>${esc(sub?.answerText || '')}</textarea>
+              </div>
+              ${
+                isGraded
+                  ? '<div style="font-size:12.5px;color:var(--text-muted);">This submission has been graded by your teacher and is locked.</div>'
+                  : `<div class="form-group">
+                      <label>Upload Images, Documents (PDF / Word / Slides / Sheets), or Videos</label>
+                      <div class="upload-dropzone-box">
+                        <input type="file" name="attachments" class="st-cw-file-input" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.mp4,.webm,.ogg,.mov,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv">
+                        <div class="upload-hint">Attach photos of handwritten work, PDFs, Word documents, spreadsheets, or video demonstrations (up to 8 files, max 60 MB per file).</div>
+                        <div class="st-selected-files subject-badges-wrap" style="margin-top:6px;"></div>
+                      </div>
+                    </div>
+                    <div style="display:flex;justify-content:flex-end;">
+                      <button type="submit" class="btn btn-primary">${sub ? 'Update My Answer & Uploads' : 'Submit Answer & Uploads'}</button>
+                    </div>`
+              }
+            </form>
+          </div>
+        </div>`;
+      })
+      .join('');
+  }
+
+  async function loadStudentCoursework() {
+    const filterType = document.getElementById('st-cw-filter-type')?.value || '';
+    const qs = filterType ? `?workType=${encodeURIComponent(filterType)}` : '';
+    const data = await api(`/api/student/coursework${qs}`);
+    renderStudentCoursework(data.items || []);
   }
 
   async function openOwnReceipt(identifier) {
@@ -61,12 +188,14 @@
     const data = await api('/api/student/overview');
     SMS.setCurrency(data.school.currency_code, data.school.currency_symbol);
     document.getElementById('sb-school-name').textContent = data.school.school_name;
-    document.getElementById('active-period-badge').textContent =
-      `${data.activeYear?.name || ''} - ${data.activeTerm?.name || ''}`;
+    const periodLabel = [data.activeYear?.name, data.activeTerm?.name].filter(Boolean).join(' - ');
+    document.getElementById('active-period-badge').textContent = periodLabel || 'Term';
 
     const s = data.student;
     const att = data.attendanceSummary;
     const fee = data.feeStatement;
+    const courseworkItems = data.coursework || [];
+    const pendingCoursework = courseworkItems.filter((cw) => !cw.submission).length;
 
     if (!fee) {
       document.getElementById('nav-fees-btn').classList.add('hidden');
@@ -74,30 +203,46 @@
 
     const rcItems = Array.isArray(data.reportCard) ? data.reportCard : data.reportCard?.rows || [];
     document.getElementById('st-kpis').innerHTML = `
-      <div class="kpi-card"><div class="kpi-label">Admission Number</div><div class="kpi-value" style="font-size:19px;">${esc(s.admission_number)}</div><div class="kpi-sub">${esc(s.class_name || '')} ${esc(s.stream_name || '')}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Admission Number</div><div class="kpi-value" style="font-size:19px;">${esc(s.admission_number)}</div><div class="kpi-sub">${esc(s.class_name || 'Unassigned Class')}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Classwork &amp; Exams</div><div class="kpi-value">${courseworkItems.length}</div><div class="kpi-sub">${pendingCoursework} pending your submission</div></div>
       <div class="kpi-card"><div class="kpi-label">Attendance Rate</div><div class="kpi-value">${att.rate !== null ? att.rate + '%' : 'N/A'}</div><div class="kpi-sub">${att.present + att.late} attended of ${att.totalSessions}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Published Subjects</div><div class="kpi-value">${rcItems.length}</div><div class="kpi-sub">${data.subjects.length} enrolled subjects</div></div>
       ${
         fee
           ? `<div class="kpi-card"><div class="kpi-label">Fee Balance</div><div class="kpi-value">${money(fee.summary.balance)}</div><div class="kpi-sub">Paid: ${money(fee.summary.totalPaid)}</div></div>`
-          : ''
+          : `<div class="kpi-card"><div class="kpi-label">Published Subjects</div><div class="kpi-value">${rcItems.length}</div><div class="kpi-sub">${data.subjects.length} enrolled subjects</div></div>`
       }
     `;
 
     document.getElementById('st-snapshot-box').innerHTML = `
       <p><strong>Student Name:</strong> ${esc(s.first_name)} ${esc(s.last_name)}</p>
-      <p><strong>Class &amp; Stream:</strong> ${esc(s.class_name || '-')} - ${esc(s.stream_name || 'General')} (${esc(s.room_number || 'Main')})</p>
+      <p><strong>Assigned Class:</strong> ${esc(s.class_name || '-')} ${s.room_number ? '(' + esc(s.room_number) + ')' : ''}</p>
+      <p><strong>Enrolled Subjects:</strong> ${data.subjects.length} &middot; <strong>Assigned Works/Exams:</strong> ${courseworkItems.length}</p>
       <p><strong>Guardian:</strong> ${esc(s.guardian_name || '-')} (${esc(s.guardian_phone || '-')})</p>
     `;
 
+    renderStudentCoursework(courseworkItems);
+
     const annHtml =
       (data.announcements || [])
-        .map(
-          (a) => `<div style="padding:10px 0;border-bottom:1px solid var(--border);">
-            <div style="display:flex;justify-content:space-between;"><strong>${esc(a.title)}</strong>${statusBadge(a.priority)}</div>
-            <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">${esc(a.body)}</div>
-          </div>`
-        )
+        .map((a) => {
+          const classBadges =
+            Array.isArray(a.target_classes) && a.target_classes.length
+              ? `<div class="subject-badges-wrap" style="margin-top:4px;">${a.target_classes
+                  .map((c) => `<span class="subject-badge-tag">Class: ${esc(c.name)}</span>`)
+                  .join('')}</div>`
+              : '';
+          return `<div style="padding:12px 0;border-bottom:1px solid var(--border);">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+              <div>
+                <strong>${esc(a.title)}</strong>
+                ${a.author_name ? `<small style="color:var(--text-light);margin-left:6px;">by ${esc(a.author_name)}</small>` : ''}
+              </div>
+              ${statusBadge(a.priority)}
+            </div>
+            ${classBadges}
+            <div style="font-size:13px;color:var(--text-muted);margin-top:6px;white-space:pre-wrap;">${esc(a.body)}</div>
+          </div>`;
+        })
         .join('') || '<div class="empty-state">No announcements posted.</div>';
     document.getElementById('st-ov-announcements').innerHTML = annHtml;
     document.getElementById('st-all-announcements').innerHTML = annHtml;
@@ -106,6 +251,7 @@
       <div style="display:grid;gap:8px;font-size:13.5px;">
         <div><strong>Full Name:</strong> ${esc(s.first_name)} ${esc(s.last_name)}</div>
         <div><strong>Admission #:</strong> <code>${esc(s.admission_number)}</code></div>
+        <div><strong>Assigned Class:</strong> ${esc(s.class_name || '-')}</div>
         <div><strong>Gender:</strong> ${esc(s.gender || '-')}</div>
         <div><strong>Date of Birth:</strong> ${esc(s.date_of_birth || '-')}</div>
         <div><strong>Email:</strong> ${esc(s.email)}</div>
@@ -190,7 +336,7 @@
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;font-size:13px;">
         <div><strong>Student:</strong> ${esc(s.first_name)} ${esc(s.last_name)} (${esc(s.admission_number)})</div>
-        <div><strong>Class:</strong> ${esc(s.class_name || '')} - ${esc(s.stream_name || '')}</div>
+        <div><strong>Class:</strong> ${esc(s.class_name || '-')}</div>
         <div><strong>Attendance Rate:</strong> ${att.rate !== null ? att.rate + '%' : 'N/A'}</div>
       </div>
       <table>
@@ -245,6 +391,72 @@
           .join('') || '<tr><td colspan="5" class="empty-state">No payments recorded yet.</td></tr>';
     }
   }
+
+  SMS.initNavigation(async (sec) => {
+    try {
+      if (sec === 'overview') await loadPortal();
+      if (sec === 'coursework') await loadStudentCoursework();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+
+  document.getElementById('st-open-coursework-btn')?.addEventListener('click', () => {
+    activateSection('coursework');
+    loadStudentCoursework().catch((err) => toast(err.message, 'error'));
+  });
+
+  document.getElementById('st-cw-filter-type')?.addEventListener('change', () => {
+    loadStudentCoursework().catch((err) => toast(err.message, 'error'));
+  });
+  document.getElementById('st-cw-refresh-btn')?.addEventListener('click', () => {
+    loadStudentCoursework().catch((err) => toast(err.message, 'error'));
+  });
+
+  // Preview file names when student picks files to upload
+  document.getElementById('st-coursework-list')?.addEventListener('change', (e) => {
+    const fileInput = e.target.closest('.st-cw-file-input');
+    if (!fileInput) return;
+    const badgeWrap = fileInput.closest('.upload-dropzone-box')?.querySelector('.st-selected-files');
+    if (!badgeWrap) return;
+    const files = Array.from(fileInput.files || []);
+    badgeWrap.innerHTML = files
+      .map((f) => `<span class="subject-badge-tag">${esc(f.name)} (${esc(formatBytes(f.size))})</span>`)
+      .join('');
+  });
+
+  // Submit student text answer + uploaded images/documents/videos
+  document.getElementById('st-coursework-list')?.addEventListener('submit', async (e) => {
+    const form = e.target.closest('.student-submit-work-form');
+    if (!form) return;
+    e.preventDefault();
+    const courseworkId = Number(form.dataset.courseworkId);
+    const answerText = form.elements.answerText?.value || '';
+    const fileInput = form.querySelector('.st-cw-file-input');
+    const files = Array.from(fileInput?.files || []);
+
+    const fd = new FormData();
+    fd.set('answerText', answerText);
+    for (const file of files) {
+      fd.append('attachments', file);
+    }
+
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
+    try {
+      await api(`/api/student/coursework/${courseworkId}/submit`, {
+        method: 'POST',
+        body: fd,
+      });
+      toast('Your answer and uploaded files have been submitted!', 'success');
+      await loadPortal();
+      await loadStudentCoursework();
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
+    }
+  });
 
   document.getElementById('st-paystack-form').addEventListener('submit', async (e) => {
     e.preventDefault();

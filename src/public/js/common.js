@@ -544,9 +544,7 @@ window.SMS = (() => {
               .map((m) => {
                 const metaLines = [];
                 if (showClass && m.class_name) {
-                  metaLines.push(
-                    `<strong>${esc(m.class_name)}${m.stream_name ? ' - ' + esc(m.stream_name) : ''}</strong>`
-                  );
+                  metaLines.push(`<strong>${esc(m.class_name)}</strong>`);
                 }
                 if (showTeacher && m.teacher_name) {
                   metaLines.push(`Teacher: ${esc(m.teacher_name)}`);
@@ -808,6 +806,79 @@ window.SMS = (() => {
     modal.classList.add('open');
   }
 
+  function formatBytes(bytes) {
+    const num = Number(bytes || 0);
+    if (num < 1024) return `${num} B`;
+    if (num < 1024 * 1024) return `${(num / 1024).toFixed(1)} KB`;
+    return `${(num / (1024 * 1024)).toFixed(2)} MB`;
+  }
+
+  function renderMediaAttachments(attachments = [], options = {}) {
+    if (!Array.isArray(attachments) || !attachments.length) return '';
+    const compact = Boolean(options.compact);
+
+    if (compact) {
+      return `<div class="subject-badges-wrap">${attachments
+        .map((att) => {
+          const viewUrl = esc(withNavSession(att.url));
+          const dlUrl = esc(withNavSession(att.downloadUrl || `${att.url}?download=1`));
+          const kindLabel = String(att.mediaKind || 'file').toUpperCase();
+          const targetHref = att.mediaKind === 'document' ? dlUrl : viewUrl;
+          return `<a href="${targetHref}" target="_blank" rel="noopener" class="subject-badge-tag" style="text-decoration:none;"><strong>${esc(kindLabel)}</strong> &middot; ${esc(att.originalName)}</a>`;
+        })
+        .join('')}</div>`;
+    }
+
+    return `<div class="media-gallery">${attachments
+      .map((att) => {
+        const viewUrl = esc(withNavSession(att.url));
+        const dlUrl = esc(withNavSession(att.downloadUrl || `${att.url}?download=1`));
+        const sizeLabel = esc(formatBytes(att.sizeBytes));
+        const kind = String(att.mediaKind || 'document').toLowerCase();
+
+        if (kind === 'image') {
+          return `<div class="media-item-card">
+            <a href="${viewUrl}" target="_blank" rel="noopener">
+              <img src="${viewUrl}" alt="${esc(att.originalName)}" class="media-thumb-img" loading="lazy">
+            </a>
+            <div class="media-item-meta">
+              <span class="media-item-name" title="${esc(att.originalName)}">${esc(att.originalName)}</span>
+              <span class="media-item-sub">Image &middot; ${sizeLabel} &middot; <a href="${dlUrl}">Download</a></span>
+            </div>
+          </div>`;
+        }
+
+        if (kind === 'video') {
+          return `<div class="media-item-card media-item-video">
+            <video controls preload="metadata" src="${viewUrl}" class="media-video-player"></video>
+            <div class="media-item-meta">
+              <span class="media-item-name" title="${esc(att.originalName)}">${esc(att.originalName)}</span>
+              <span class="media-item-sub">Video &middot; ${sizeLabel} &middot; <a href="${dlUrl}">Download</a></span>
+            </div>
+          </div>`;
+        }
+
+        if (kind === 'pdf') {
+          return `<div class="media-item-card media-item-doc">
+            <div class="media-doc-badge">PDF</div>
+            <div class="media-item-meta">
+              <span class="media-item-name" title="${esc(att.originalName)}">${esc(att.originalName)}</span>
+              <span class="media-item-sub">${sizeLabel} &middot; <a href="${viewUrl}" target="_blank" rel="noopener">Open PDF</a> &middot; <a href="${dlUrl}">Download</a></span>
+            </div>
+          </div>`;
+        }
+
+        return `<div class="media-item-card media-item-doc">
+          <div class="media-doc-badge">DOC</div>
+          <div class="media-item-meta">
+            <span class="media-item-name" title="${esc(att.originalName)}">${esc(att.originalName)}</span>
+            <span class="media-item-sub">${sizeLabel} &middot; <a href="${dlUrl}">Download File</a></span>
+          </div>
+        </div>`;
+      })
+      .join('')}</div>`;
+  }
+
   return {
     esc,
     money,
@@ -825,6 +896,8 @@ window.SMS = (() => {
     activateSection,
     initNavigation,
     renderTimetableMatrix,
+    formatBytes,
+    renderMediaAttachments,
     statusBadge,
     exportCsv,
     bindCurrencySelect,

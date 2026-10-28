@@ -212,7 +212,7 @@
             (a) => `<tr>
               <td><code>${esc(a.admission_number)}</code></td>
               <td><strong>${esc(a.first_name)} ${esc(a.last_name)}</strong></td>
-              <td>${esc(a.class_name || '-')}${a.stream_name ? ' - ' + esc(a.stream_name) : ''}</td>
+              <td>${esc(a.class_name || '-')}</td>
               <td class="num">${money(a.total_billed)}</td>
               <td class="num">${money(a.total_discount)}</td>
               <td class="num">${money(a.total_paid)}</td>

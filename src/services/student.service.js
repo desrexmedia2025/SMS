@@ -2,6 +2,7 @@ const db = require('../config/database');
 const systemModel = require('../models/system.model');
 const academicModel = require('../models/academic.model');
 const financeModel = require('../models/finance.model');
+const courseworkService = require('./coursework.service');
 const { recordAudit } = require('./audit.service');
 const { AppError } = require('../middleware/errorHandler');
 
@@ -10,15 +11,13 @@ async function requireOwnStudentRecord(user, requestedStudentId = null, ipAddres
     `SELECT
        s.*,
        u.email, u.username, u.phone, u.google_subject_id,
-       se.class_id, se.stream_id, se.roll_number, se.academic_year_id, se.term_id,
+       se.class_id, se.roll_number, se.academic_year_id, se.term_id,
        c.name AS class_name,
-       st.name AS stream_name, st.room_number,
        ay.name AS academic_year_name
      FROM students s
      INNER JOIN users u ON u.id = s.user_id
      LEFT JOIN student_enrolments se ON se.student_id = s.id
      LEFT JOIN classes c ON c.id = se.class_id
-     LEFT JOIN streams st ON st.id = se.stream_id
      LEFT JOIN academic_years ay ON ay.id = se.academic_year_id
      WHERE s.user_id = ?
      ORDER BY se.id DESC
@@ -62,6 +61,7 @@ async function getPortalData(user, query = {}, ipAddress = '') {
     upcomingAssessments,
     announcements,
     profileRequests,
+    courseworkResult,
   ] = await Promise.all([
     student.class_id
       ? db.query(
@@ -72,9 +72,9 @@ async function getPortalData(user, query = {}, ipAddress = '') {
            INNER JOIN subjects sub ON sub.id = ta.subject_id
            INNER JOIN teachers t ON t.id = ta.teacher_id
            INNER JOIN users u ON u.id = t.user_id
-           WHERE ta.class_id = ? AND (ta.stream_id IS NULL OR ta.stream_id = ?)
+           WHERE ta.class_id = ?
            ORDER BY sub.code ASC`,
-          [student.class_id, student.stream_id || 0]
+          [student.class_id]
         )
       : Promise.resolve([]),
 
@@ -88,9 +88,9 @@ async function getPortalData(user, query = {}, ipAddress = '') {
            INNER JOIN subjects sub ON sub.id = tt.subject_id
            INNER JOIN teachers t ON t.id = tt.teacher_id
            INNER JOIN users u ON u.id = t.user_id
-           WHERE tt.class_id = ? AND (tt.stream_id IS NULL OR tt.stream_id = ?)
+           WHERE tt.class_id = ?
            ORDER BY tt.day_of_week ASC, tt.start_time ASC`,
-          [student.class_id, student.stream_id || 0]
+          [student.class_id]
         )
       : Promise.resolve([]),
 
@@ -133,16 +133,17 @@ async function getPortalData(user, query = {}, ipAddress = '') {
            FROM assessments a
            INNER JOIN subjects sub ON sub.id = a.subject_id
            WHERE a.class_id = ?
-             AND (a.stream_id IS NULL OR a.stream_id = ?)
              AND a.is_published = 1
            ORDER BY a.scheduled_date DESC`,
-          [student.class_id, student.stream_id || 0]
+          [student.class_id]
         )
       : Promise.resolve([]),
 
-    systemModel.listAnnouncementsForAudience(['all', 'students']),
+    systemModel.listAnnouncementsForStudent(student.class_id),
 
     db.query(`SELECT * FROM profile_change_requests WHERE user_id = ? ORDER BY id DESC`, [user.id]),
+
+    courseworkService.listStudentCoursework(user),
   ]);
 
   // Build Report Card Aggregation per Subject
@@ -267,6 +268,7 @@ async function getPortalData(user, query = {}, ipAddress = '') {
     feeStatement,
     announcements,
     profileRequests,
+    coursework: courseworkResult?.items || [],
   };
 }
 

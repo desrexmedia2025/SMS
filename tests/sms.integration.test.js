@@ -5,10 +5,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 
-// Point tests at an isolated temporary database so live dev data is never touched
+// Point tests at an isolated temporary database & uploads folder so live dev data is never touched
 const TEST_DB_PATH = path.join('/tmp', `sms_integration_${process.pid}.sqlite`);
+const TEST_UPLOADS_DIR = path.join('/tmp', `sms_uploads_${process.pid}`);
 process.env.DB_DRIVER = 'sqlite';
 process.env.SQLITE_PATH = TEST_DB_PATH;
+process.env.SMS_UPLOADS_DIR = TEST_UPLOADS_DIR;
 process.env.AUTO_SEED_DEMO = 'true';
 process.env.PAYSTACK_WEBHOOK_SECRET = 'psk_test_webhook_secret_key_2026';
 process.env.GOOGLE_CLIENT_ID = '';
@@ -30,14 +32,19 @@ class SessionClient {
     this.csrfToken = '';
   }
 
-  async request(urlPath, { method = 'GET', body = null, redirect = 'manual', sendCsrf = true } = {}) {
-    const headers = { Accept: 'application/json' };
+  async request(
+    urlPath,
+    { method = 'GET', body = null, redirect = 'manual', sendCsrf = true, extraHeaders = {} } = {}
+  ) {
+    const headers = { Accept: 'application/json', ...extraHeaders };
     if (this.cookie) headers.Cookie = this.cookie;
     if (sendCsrf && !['GET', 'HEAD', 'OPTIONS'].includes(method) && this.csrfToken) {
       headers['X-CSRF-Token'] = this.csrfToken;
     }
     let payload;
-    if (body !== null) {
+    if (body instanceof FormData) {
+      payload = body;
+    } else if (body !== null) {
       headers['Content-Type'] = 'application/json';
       payload = JSON.stringify(body);
     }
@@ -54,15 +61,16 @@ class SessionClient {
       this.cookie = setCookies.map((c) => c.split(';')[0]).join('; ');
     }
 
-    const text = await res.text();
+    const buf = Buffer.from(await res.arrayBuffer());
+    const text = buf.toString('utf8');
     let json = null;
     try {
       json = JSON.parse(text);
       if (json && json.csrfToken) this.csrfToken = json.csrfToken;
     } catch (_) {
-      // HTML response
+      // HTML or binary response
     }
-    return { status: res.status, headers: res.headers, json, text };
+    return { status: res.status, headers: res.headers, json, text, buffer: buf };
   }
 
   async login(identifier, password) {
@@ -94,6 +102,9 @@ test.after(async () => {
     if (fs.existsSync(TEST_DB_PATH + suffix)) {
       fs.unlinkSync(TEST_DB_PATH + suffix);
     }
+  }
+  if (fs.existsSync(TEST_UPLOADS_DIR)) {
+    fs.rmSync(TEST_UPLOADS_DIR, { recursive: true, force: true });
   }
 });
 
@@ -195,7 +206,6 @@ test('5. Academic workflows: duplicate attendance prevention, draft publication 
   // Submit attendance twice for the exact same class/date/student -> no duplicate rows created
   const attPayload = {
     classId: firstAsg.class_id,
-    streamId: firstAsg.stream_id,
     subjectId: firstAsg.subject_id,
     sessionDate: '2026-10-28',
     notes: 'Integration test roll call',
@@ -1484,6 +1494,253 @@ test('18. Multi-Subject Teacher Registration, Subject Updates, Bulk Class Assign
   assert.match(saHtmlAfter, /id="tch-subject-rows-list"/);
   assert.match(saHtmlAfter, /id="btn-add-tch-subject-row"/);
   assert.match(saHtmlAfter, /id="usr-teacher-extra-fields"/);
+});
+
+test('19. Class stream removal, teacher coursework/exams with PDF/image/video uploads, student answer & media workspace, grading & class announcements', async () => {
+  const admin = new SessionClient();
+  const teacher = new SessionClient();
+  const studentG10A = new SessionClient();
+  const studentG10B = new SessionClient();
+  const studentG11 = new SessionClient();
+
+  await admin.login('admin@school.edu.gh', 'Admin@2026!');
+  await teacher.login('kofi.mensah@school.edu.gh', 'Teacher@2026!');
+  await studentG10A.login('kwame.asante@student.school.edu.gh', 'Student@2026!');
+  await studentG10B.login('abena.boateng@student.school.edu.gh', 'Student@2026!');
+  await studentG11.login('esi.darko@student.school.edu.gh', 'Student@2026!');
+
+  // 19a. Verify Class Stream endpoints & UI elements are completely removed
+  const removedStreamEndpoint = await admin.request('/api/superadmin/streams', {
+    method: 'POST',
+    body: { classId: 1, name: 'Legacy Stream' },
+  });
+  assert.equal(removedStreamEndpoint.status, 404);
+
+  const saDashHtml = (await admin.request('/dashboard/superadmin')).text;
+  const tcDashHtml = (await teacher.request('/dashboard/teacher')).text;
+  const stDashHtml = (await studentG10A.request('/dashboard/student')).text;
+  assert.doesNotMatch(saDashHtml, /create-stream-form/i);
+  assert.doesNotMatch(tcDashHtml, /Class \/ Stream/i);
+  assert.doesNotMatch(stDashHtml, /Class &amp; Stream/i);
+  assert.match(tcDashHtml, /id="create-coursework-form"/);
+  assert.match(tcDashHtml, /id="tc-create-announcement-form"/);
+  assert.match(stDashHtml, /id="sec-coursework"/);
+
+  // 19b. Inspect teacher's assigned classes & subjects (Grade 10 & Grade 11)
+  const tcOv = await teacher.request('/api/teacher/overview');
+  assert.equal(tcOv.status, 200);
+  assert.ok(Array.isArray(tcOv.json.assignedClasses));
+  assert.equal(tcOv.json.assignedClasses.length, 2);
+  const grade10 = tcOv.json.assignedClasses.find((c) => c.name === 'Grade 10');
+  const grade11 = tcOv.json.assignedClasses.find((c) => c.name === 'Grade 11');
+  assert.ok(grade10 && grade11);
+  const mathSub = tcOv.json.registeredSubjects.find((s) => s.code === 'MTH101');
+  assert.ok(mathSub);
+
+  // 19c. Teacher publishes Classwork to Grade 10 ONLY with PDF + Image + Video attachments
+  const cwForm = new FormData();
+  cwForm.set('workType', 'classwork');
+  cwForm.set('subjectId', String(mathSub.id));
+  cwForm.set('title', 'Quadratic Equations Classwork Sheet');
+  cwForm.set('instructions', 'Solve questions 1-5 from the attached PDF and watch the short walkthrough video.');
+  cwForm.set('maxScore', '25');
+  cwForm.set('dueAt', '2026-11-05T16:00');
+  cwForm.set('classIds', JSON.stringify([grade10.id]));
+  cwForm.append(
+    'attachments',
+    new Blob([Buffer.from('%PDF-1.4\n%Sample Teacher Worksheet PDF\n%%EOF')], { type: 'application/pdf' }),
+    'quadratics_worksheet.pdf'
+  );
+  cwForm.append(
+    'attachments',
+    new Blob([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x01, 0x02, 0x03])], {
+      type: 'image/png',
+    }),
+    'graph_diagram.png'
+  );
+  cwForm.append(
+    'attachments',
+    new Blob([Buffer.from('00000018ftypmp4200000000mp42isomSampleTeacherLessonVideoBytes')], {
+      type: 'video/mp4',
+    }),
+    'lesson_walkthrough.mp4'
+  );
+
+  const cwCreateRes = await teacher.request('/api/teacher/coursework', {
+    method: 'POST',
+    body: cwForm,
+  });
+  assert.equal(cwCreateRes.status, 201);
+  assert.equal(cwCreateRes.json.coursework.workType, 'classwork');
+  assert.deepEqual(cwCreateRes.json.coursework.targetClassIds, [grade10.id]);
+  assert.equal(cwCreateRes.json.coursework.attachments.length, 3);
+  const g10CourseworkId = cwCreateRes.json.coursework.id;
+  const teacherVideoAtt = cwCreateRes.json.coursework.attachments.find((a) => a.mediaKind === 'video');
+  const teacherPdfAtt = cwCreateRes.json.coursework.attachments.find((a) => a.mediaKind === 'pdf');
+  assert.ok(teacherVideoAtt && teacherPdfAtt);
+
+  // 19d. Teacher publishes an Exam to ALL Assigned Classes (Grade 10 & Grade 11)
+  const examForm = new FormData();
+  examForm.set('workType', 'exam');
+  examForm.set('subjectId', String(mathSub.id));
+  examForm.set('title', 'End of Term Core Mathematics Mock Exam');
+  examForm.set('instructions', 'Answer all sections clearly and attach photos/PDFs of your workings.');
+  examForm.set('maxScore', '100');
+  examForm.set('applyToAllClasses', '1');
+
+  const examCreateRes = await teacher.request('/api/teacher/coursework', {
+    method: 'POST',
+    body: examForm,
+  });
+  assert.equal(examCreateRes.status, 201);
+  assert.equal(examCreateRes.json.coursework.workType, 'exam');
+  assert.equal(examCreateRes.json.coursework.targetClassIds.length, 2);
+  const allClassExamId = examCreateRes.json.coursework.id;
+
+  // 19e. Verify class-scoped visibility: Grade 10 student sees both; Grade 11 student only sees the all-classes Exam
+  const g10CwList = await studentG10A.request('/api/student/coursework');
+  assert.equal(g10CwList.status, 200);
+  assert.ok(g10CwList.json.items.some((i) => i.id === g10CourseworkId));
+  assert.ok(g10CwList.json.items.some((i) => i.id === allClassExamId));
+
+  const g11CwList = await studentG11.request('/api/student/coursework');
+  assert.equal(g11CwList.status, 200);
+  assert.equal(g11CwList.json.items.some((i) => i.id === g10CourseworkId), false);
+  assert.equal(g11CwList.json.items.some((i) => i.id === allClassExamId), true);
+
+  // Grade 11 student cannot download Grade 10 teacher PDF or submit to Grade 10 classwork (Anti-IDOR)
+  const g11ForbiddenMedia = await studentG11.request(`/api/media/${teacherPdfAtt.id}`);
+  assert.equal(g11ForbiddenMedia.status, 403);
+
+  const g11ForbiddenSub = new FormData();
+  g11ForbiddenSub.set('answerText', 'Trying to submit to another class');
+  const g11SubAttempt = await studentG11.request(`/api/student/coursework/${g10CourseworkId}/submit`, {
+    method: 'POST',
+    body: g11ForbiddenSub,
+  });
+  assert.equal(g11SubAttempt.status, 403);
+
+  // 19f. Grade 10 student streams teacher PDF (200) and Video with HTTP Range (206 Partial Content)
+  const pdfDownload = await studentG10A.request(`/api/media/${teacherPdfAtt.id}`);
+  assert.equal(pdfDownload.status, 200);
+  assert.match(pdfDownload.headers.get('content-type') || '', /application\/pdf/);
+
+  const videoRangeDownload = await studentG10A.request(`/api/media/${teacherVideoAtt.id}`, {
+    extraHeaders: { Range: 'bytes=0-15' },
+  });
+  assert.equal(videoRangeDownload.status, 206);
+  assert.equal(videoRangeDownload.buffer.length, 16);
+
+  // 19g. Grade 10 student submits written answer + Image + Document + Video uploads
+  const stSubForm = new FormData();
+  stSubForm.set('answerText', '1) x = 3 or x = -5. Full step-by-step factorization attached.');
+  stSubForm.append(
+    'attachments',
+    new Blob([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])], { type: 'image/png' }),
+    'handwritten_working.png'
+  );
+  stSubForm.append(
+    'attachments',
+    new Blob([Buffer.from('PK\x03\x04SampleDocxAnswerContent')], {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    }),
+    'solutions_notes.docx'
+  );
+  stSubForm.append(
+    'attachments',
+    new Blob([Buffer.from('00000018ftypmp42StudentExplanationClip')], { type: 'video/mp4' }),
+    'explanation_clip.mp4'
+  );
+
+  const stSubmitRes = await studentG10A.request(`/api/student/coursework/${g10CourseworkId}/submit`, {
+    method: 'POST',
+    body: stSubForm,
+  });
+  assert.equal(stSubmitRes.status, 201);
+  assert.equal(stSubmitRes.json.submission.attachments.length, 3);
+  const studentPrivateImg = stSubmitRes.json.submission.attachments[0];
+
+  // Another student in the SAME class (abena.boateng) CANNOT access kwame.asante's uploaded submission file!
+  const peerIdorMedia = await studentG10B.request(`/api/media/${studentPrivateImg.id}`);
+  assert.equal(peerIdorMedia.status, 403);
+
+  // Teacher CAN access kwame.asante's uploaded submission file and grade the submission
+  const teacherViewsStudentMedia = await teacher.request(`/api/media/${studentPrivateImg.id}`);
+  assert.equal(teacherViewsStudentMedia.status, 200);
+
+  const subsView = await teacher.request(`/api/teacher/coursework/${g10CourseworkId}/submissions`);
+  assert.equal(subsView.status, 200);
+  const kwameRow = subsView.json.learners.find((l) => l.admissionNumber === 'ADM-2026-001');
+  assert.ok(kwameRow && kwameRow.submitted && kwameRow.submission);
+  assert.equal(kwameRow.submission.attachments.length, 3);
+
+  const gradeRes = await teacher.request(
+    `/api/teacher/coursework/submissions/${kwameRow.submission.id}/grade`,
+    {
+      method: 'POST',
+      body: { score: 23.5, feedback: 'Great quadratic factorization and clear video explanation!' },
+    }
+  );
+  assert.equal(gradeRes.status, 200);
+
+  // Student now sees graded score & feedback, and graded submission is locked from edits
+  const g10AfterGrade = await studentG10A.request('/api/student/coursework');
+  const gradedItem = g10AfterGrade.json.items.find((i) => i.id === g10CourseworkId);
+  assert.equal(gradedItem.submission.status, 'graded');
+  assert.equal(gradedItem.submission.score, 23.5);
+  assert.match(gradedItem.submission.feedback, /Great quadratic factorization/);
+
+  const editAfterGradeForm = new FormData();
+  editAfterGradeForm.set('answerText', 'Trying to alter answer after grading');
+  const lockedRes = await studentG10A.request(`/api/student/coursework/${g10CourseworkId}/submit`, {
+    method: 'POST',
+    body: editAfterGradeForm,
+  });
+  assert.equal(lockedRes.status, 403);
+
+  // 19h. Teacher Class Announcements — single assigned class vs All Assigned Classes
+  const g10OnlyAnn = await teacher.request('/api/teacher/announcements', {
+    method: 'POST',
+    body: {
+      title: 'Grade 10 Calculator Reminder',
+      body: 'Bring your non-programmable scientific calculators for tomorrow morning lesson.',
+      priority: 'important',
+      classIds: [grade10.id],
+    },
+  });
+  assert.equal(g10OnlyAnn.status, 201);
+  assert.deepEqual(g10OnlyAnn.json.targetClassIds, [grade10.id]);
+
+  const allAssignedAnn = await teacher.request('/api/teacher/announcements', {
+    method: 'POST',
+    body: {
+      title: 'Mathematics Department Revision Clinic',
+      body: 'All my Mathematics classes will hold revision clinic on Friday at 2:00 PM.',
+      priority: 'urgent',
+      applyToAllClasses: true,
+    },
+  });
+  assert.equal(allAssignedAnn.status, 201);
+  assert.equal(allAssignedAnn.json.targetClassIds.length, 2);
+
+  const g10Ov = await studentG10A.request('/api/student/overview');
+  const g11Ov = await studentG11.request('/api/student/overview');
+  assert.equal(
+    g10Ov.json.announcements.some((a) => a.title === 'Grade 10 Calculator Reminder'),
+    true
+  );
+  assert.equal(
+    g10Ov.json.announcements.some((a) => a.title === 'Mathematics Department Revision Clinic'),
+    true
+  );
+  assert.equal(
+    g11Ov.json.announcements.some((a) => a.title === 'Grade 10 Calculator Reminder'),
+    false
+  );
+  assert.equal(
+    g11Ov.json.announcements.some((a) => a.title === 'Mathematics Department Revision Clinic'),
+    true
+  );
 });
 
 

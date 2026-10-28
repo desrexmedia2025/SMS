@@ -1,6 +1,7 @@
 const db = require('../config/database');
 const systemModel = require('../models/system.model');
 const academicModel = require('../models/academic.model');
+const courseworkService = require('./coursework.service');
 const { recordAudit } = require('./audit.service');
 const { AppError } = require('../middleware/errorHandler');
 
@@ -22,8 +23,19 @@ async function getOverview(user) {
   const teacher = await requireTeacherRecord(user);
   const context = await systemModel.getPublicSchoolContext();
   const assignments = await academicModel.getTeacherAssignments(teacher.id, context.activeYear?.id);
+  const assignedClassIds = Array.from(new Set(assignments.map((a) => Number(a.class_id)).filter(Boolean)));
+  const assignedClassMap = new Map();
+  for (const a of assignments) {
+    if (!assignedClassMap.has(Number(a.class_id))) {
+      assignedClassMap.set(Number(a.class_id), {
+        id: Number(a.class_id),
+        name: a.class_name,
+      });
+    }
+  }
+  const assignedClasses = Array.from(assignedClassMap.values());
 
-  const [registeredSubjects, timetable, assessments, recentSessions, announcements, myCorrectionRequests] = await Promise.all([
+  const [registeredSubjects, timetable, assessments, recentSessions, announcements, myCorrectionRequests, courseworkData] = await Promise.all([
     db.query(
       `SELECT s.id, s.code, s.name, s.department
        FROM teacher_subjects ts
@@ -33,10 +45,9 @@ async function getOverview(user) {
       [teacher.id]
     ),
     db.query(
-      `SELECT tt.*, c.name AS class_name, st.name AS stream_name, sub.code AS subject_code, sub.name AS subject_name
+      `SELECT tt.*, c.name AS class_name, sub.code AS subject_code, sub.name AS subject_name
        FROM timetables tt
        INNER JOIN classes c ON c.id = tt.class_id
-       LEFT JOIN streams st ON st.id = tt.stream_id
        INNER JOIN subjects sub ON sub.id = tt.subject_id
        WHERE tt.teacher_id = ?
        ORDER BY tt.day_of_week ASC, tt.start_time ASC`,
@@ -45,19 +56,17 @@ async function getOverview(user) {
     db.query(
       `SELECT
          a.*,
-         c.name AS class_name, st.name AS stream_name,
+         c.name AS class_name,
          sub.code AS subject_code, sub.name AS subject_name,
          tr.name AS term_name,
          (SELECT COUNT(*) FROM marks m WHERE m.assessment_id = a.id) AS marks_count
        FROM assessments a
        INNER JOIN classes c ON c.id = a.class_id
-       LEFT JOIN streams st ON st.id = a.stream_id
        INNER JOIN subjects sub ON sub.id = a.subject_id
        INNER JOIN terms tr ON tr.id = a.term_id
        WHERE EXISTS (
          SELECT 1 FROM teacher_assignments ta
          WHERE ta.teacher_id = ? AND ta.class_id = a.class_id AND ta.subject_id = a.subject_id
-           AND (ta.stream_id IS NULL OR a.stream_id IS NULL OR ta.stream_id = a.stream_id)
        )
        ORDER BY a.id DESC`,
       [teacher.id]
@@ -65,13 +74,12 @@ async function getOverview(user) {
     db.query(
       `SELECT
          s.*,
-         c.name AS class_name, st.name AS stream_name, sub.name AS subject_name,
+         c.name AS class_name, sub.name AS subject_name,
          COUNT(ar.id) AS records_count,
          SUM(CASE WHEN ar.status = 'present' THEN 1 ELSE 0 END) AS present_count,
          SUM(CASE WHEN ar.status = 'absent' THEN 1 ELSE 0 END) AS absent_count
        FROM attendance_sessions s
        INNER JOIN classes c ON c.id = s.class_id
-       LEFT JOIN streams st ON st.id = s.stream_id
        LEFT JOIN subjects sub ON sub.id = s.subject_id
        LEFT JOIN attendance_records ar ON ar.session_id = s.id
        WHERE s.taken_by_user_id = ?
@@ -80,7 +88,7 @@ async function getOverview(user) {
        LIMIT 20`,
       [user.id]
     ),
-    systemModel.listAnnouncementsForAudience(['all', 'teachers']),
+    systemModel.listAnnouncementsForTeacher(user.id, assignedClassIds),
     db.query(
       `SELECT mcr.*, a.title AS assessment_title, s.first_name, s.last_name, s.admission_number
        FROM mark_correction_requests mcr
@@ -90,6 +98,7 @@ async function getOverview(user) {
        ORDER BY mcr.id DESC`,
       [user.id]
     ),
+    courseworkService.listTeacherCoursework(user),
   ]);
 
   const subjectMap = new Map();
@@ -108,8 +117,9 @@ async function getOverview(user) {
     }
   }
   const allSubjects = Array.from(subjectMap.values());
-  const uniqueClasses = new Set(assignments.map((a) => `${a.class_id}:${a.stream_id || 0}`)).size;
+  const uniqueClasses = assignedClasses.length;
   const uniqueSubjects = allSubjects.length;
+  const courseworkItems = courseworkData?.items || [];
 
   return {
     ...context,
@@ -123,10 +133,13 @@ async function getOverview(user) {
       assignedClasses: uniqueClasses,
       assignedSubjects: uniqueSubjects,
       weeklyLessons: timetable.length,
-      assessmentsCount: assessments.length,
+      assessmentsCount: assessments.length + courseworkItems.length,
+      courseworkCount: courseworkItems.length,
     },
+    assignedClasses,
     registeredSubjects: allSubjects,
     assignments,
+    coursework: courseworkItems,
     timetable,
     assessments,
     recentSessions,
@@ -135,33 +148,30 @@ async function getOverview(user) {
   };
 }
 
-async function getClassList(user, { classId, streamId }) {
+async function getClassList(user, { classId }) {
   const teacher = await requireTeacherRecord(user);
   const permitted = await academicModel.isTeacherAssignedTo({
     teacherId: teacher.id,
     classId,
-    streamId,
   });
   if (!permitted) {
-    throw new AppError(403, 'You are not assigned to this class or stream.');
+    throw new AppError(403, 'You are not assigned to this class.');
   }
 
   const context = await systemModel.getSchoolContext();
-  const students = await academicModel.getStudentsInClassStream({
+  const students = await academicModel.getStudentsInClass({
     classId,
-    streamId,
     academicYearId: context.activeYear?.id,
   });
 
   return { students };
 }
 
-async function getAttendanceSessionDetails(user, { classId, streamId, subjectId, sessionDate }) {
+async function getAttendanceSessionDetails(user, { classId, subjectId, sessionDate }) {
   const teacher = await requireTeacherRecord(user);
   const permitted = await academicModel.isTeacherAssignedTo({
     teacherId: teacher.id,
     classId,
-    streamId,
     subjectId,
   });
   if (!permitted) {
@@ -169,13 +179,12 @@ async function getAttendanceSessionDetails(user, { classId, streamId, subjectId,
   }
 
   const context = await systemModel.getSchoolContext();
-  const students = await academicModel.getStudentsInClassStream({
+  const students = await academicModel.getStudentsInClass({
     classId,
-    streamId,
     academicYearId: context.activeYear?.id,
   });
 
-  const sessionKey = `${classId}:${streamId || 0}:${subjectId || 0}:${sessionDate}`;
+  const sessionKey = `${classId}:0:${subjectId || 0}:${sessionDate}`;
   const session = await db.get('SELECT * FROM attendance_sessions WHERE session_key = ?', [sessionKey]);
   const existingMap = new Map();
   if (session) {
@@ -193,12 +202,11 @@ async function getAttendanceSessionDetails(user, { classId, streamId, subjectId,
   };
 }
 
-async function submitAttendance(user, { classId, streamId, subjectId, sessionDate, notes, entries, ipAddress }) {
+async function submitAttendance(user, { classId, subjectId, sessionDate, notes, entries, ipAddress }) {
   const teacher = await requireTeacherRecord(user);
   const permitted = await academicModel.isTeacherAssignedTo({
     teacherId: teacher.id,
     classId,
-    streamId,
     subjectId,
   });
   if (!permitted) {
@@ -215,7 +223,7 @@ async function submitAttendance(user, { classId, streamId, subjectId, sessionDat
   }
 
   const validStatuses = new Set(['present', 'absent', 'late', 'excused']);
-  const sessionKey = `${classId}:${streamId || 0}:${subjectId || 0}:${sessionDate}`;
+  const sessionKey = `${classId}:0:${subjectId || 0}:${sessionDate}`;
 
   return db.withTransaction(async (tx) => {
     let session = await tx.get('SELECT * FROM attendance_sessions WHERE session_key = ?', [sessionKey]);
@@ -223,10 +231,9 @@ async function submitAttendance(user, { classId, streamId, subjectId, sessionDat
       const ins = await tx.run(
         `INSERT INTO attendance_sessions
          (class_id, stream_id, subject_id, academic_year_id, term_id, session_date, session_key, taken_by_user_id, status, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'submitted', ?)`,
+         VALUES (?, NULL, ?, ?, ?, ?, ?, ?, 'submitted', ?)`,
         [
           classId,
-          streamId || null,
           subjectId || null,
           context.activeYear.id,
           context.activeTerm?.id || null,
@@ -279,7 +286,7 @@ async function submitAttendance(user, { classId, streamId, subjectId, sessionDat
         targetType: 'attendance_session',
         targetId: String(session.id),
         ipAddress,
-        metadata: { classId, streamId, subjectId, sessionDate, count: seenStudentIds.size },
+        metadata: { classId, subjectId, sessionDate, count: seenStudentIds.size },
       },
       tx
     );
@@ -293,7 +300,6 @@ async function createAssessment(user, payload, ipAddress) {
   const permitted = await academicModel.isTeacherAssignedTo({
     teacherId: teacher.id,
     classId: payload.classId,
-    streamId: payload.streamId,
     subjectId: payload.subjectId,
   });
   if (!permitted) {
@@ -308,12 +314,11 @@ async function createAssessment(user, payload, ipAddress) {
   const ins = await db.run(
     `INSERT INTO assessments
      (title, assessment_type, class_id, stream_id, subject_id, academic_year_id, term_id, max_score, weight_percent, scheduled_date, is_published, created_by_user_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
+     VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, 0, ?)`,
     [
       payload.title,
       payload.assessmentType,
       payload.classId,
-      payload.streamId || null,
       payload.subjectId,
       context.activeYear.id,
       context.activeTerm.id,
@@ -340,10 +345,9 @@ async function createAssessment(user, payload, ipAddress) {
 async function getAssessmentMarksheet(user, assessmentId) {
   const teacher = await requireTeacherRecord(user);
   const assessment = await db.get(
-    `SELECT a.*, c.name AS class_name, st.name AS stream_name, sub.name AS subject_name, sub.code AS subject_code
+    `SELECT a.*, c.name AS class_name, sub.name AS subject_name, sub.code AS subject_code
      FROM assessments a
      INNER JOIN classes c ON c.id = a.class_id
-     LEFT JOIN streams st ON st.id = a.stream_id
      INNER JOIN subjects sub ON sub.id = a.subject_id
      WHERE a.id = ?`,
     [assessmentId]
@@ -353,16 +357,14 @@ async function getAssessmentMarksheet(user, assessmentId) {
   const permitted = await academicModel.isTeacherAssignedTo({
     teacherId: teacher.id,
     classId: assessment.class_id,
-    streamId: assessment.stream_id,
     subjectId: assessment.subject_id,
   });
   if (!permitted) {
     throw new AppError(403, 'You are not assigned to this assessment class/subject.');
   }
 
-  const students = await academicModel.getStudentsInClassStream({
+  const students = await academicModel.getStudentsInClass({
     classId: assessment.class_id,
-    streamId: assessment.stream_id,
     academicYearId: assessment.academic_year_id,
   });
   const marksRows = await db.query('SELECT * FROM marks WHERE assessment_id = ?', [assessment.id]);
@@ -397,7 +399,6 @@ async function submitMarks(user, { assessmentId, entries, ipAddress }) {
   const permitted = await academicModel.isTeacherAssignedTo({
     teacherId: teacher.id,
     classId: assessment.class_id,
-    streamId: assessment.stream_id,
     subjectId: assessment.subject_id,
   });
   if (!permitted) {
@@ -472,7 +473,7 @@ async function submitMarks(user, { assessmentId, entries, ipAddress }) {
 async function submitMarkCorrectionRequest(user, { markId, proposedScore, reason, ipAddress }) {
   const teacher = await requireTeacherRecord(user);
   const markRow = await db.get(
-    `SELECT m.*, a.class_id, a.stream_id, a.subject_id, a.max_score
+    `SELECT m.*, a.class_id, a.subject_id, a.max_score
      FROM marks m
      INNER JOIN assessments a ON a.id = m.assessment_id
      WHERE m.id = ?`,
@@ -483,7 +484,6 @@ async function submitMarkCorrectionRequest(user, { markId, proposedScore, reason
   const permitted = await academicModel.isTeacherAssignedTo({
     teacherId: teacher.id,
     classId: markRow.class_id,
-    streamId: markRow.stream_id,
     subjectId: markRow.subject_id,
   });
   if (!permitted) throw new AppError(403, 'You are not assigned to this subject/class.');
@@ -517,7 +517,6 @@ async function getClassProgressReport(user) {
   const rows = await db.query(
     `SELECT
        c.name AS class_name,
-       COALESCE(st.name, 'All') AS stream_name,
        sub.code AS subject_code,
        sub.name AS subject_name,
        sub.pass_mark,
@@ -528,12 +527,11 @@ async function getClassProgressReport(user) {
        SUM(CASE WHEN m.percentage >= sub.pass_mark THEN 1 ELSE 0 END) AS pass_count
      FROM teacher_assignments ta
      INNER JOIN classes c ON c.id = ta.class_id
-     LEFT JOIN streams st ON st.id = ta.stream_id
      INNER JOIN subjects sub ON sub.id = ta.subject_id
      LEFT JOIN assessments a ON a.class_id = ta.class_id AND a.subject_id = ta.subject_id
      LEFT JOIN marks m ON m.assessment_id = a.id
      WHERE ta.teacher_id = ?
-     GROUP BY ta.id, c.name, st.name, sub.code, sub.name, sub.pass_mark
+     GROUP BY ta.id, c.name, sub.code, sub.name, sub.pass_mark
      ORDER BY c.level_order ASC, sub.name ASC`,
     [teacher.id]
   );

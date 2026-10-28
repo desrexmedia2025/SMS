@@ -28,6 +28,7 @@ const teacherRoutes = require('./routes/teacher.routes');
 const studentRoutes = require('./routes/student.routes');
 const financialRoutes = require('./routes/financial.routes');
 const paystackService = require('./services/paystack.service');
+const courseworkService = require('./services/coursework.service');
 
 function createApp() {
   const app = express();
@@ -53,7 +54,8 @@ function createApp() {
           scriptSrc: ["'self'"],
           scriptSrcAttr: ["'none'"],
           styleSrc: ["'self'", "'unsafe-inline'"],
-          imgSrc: ["'self'", 'data:', 'https:'],
+          imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+          mediaSrc: ["'self'", 'data:', 'blob:'],
           fontSrc: ["'self'", 'data:'],
           connectSrc: ["'self'", 'https://api.paystack.co', 'https://checkout.paystack.com'],
           formAction: ["'self'", 'https://accounts.google.com'],
@@ -217,6 +219,9 @@ function createApp() {
   // Authentication & OAuth 2.0 endpoints
   app.use('/auth', authRoutes);
   app.use('/api/auth', authRoutes);
+
+  // Authenticated, ownership-verified multimedia streaming (PDFs, images, videos, documents)
+  app.get('/api/media/:id', authenticate, courseworkService.streamMediaFile);
 
   // Role-protected API routers
   app.use('/api/superadmin', superadminRoutes);

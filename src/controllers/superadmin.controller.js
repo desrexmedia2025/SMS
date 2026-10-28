@@ -153,18 +153,6 @@ async function createClass(req, res) {
   return res.status(201).json({ ok: true, ...created });
 }
 
-async function createStream(req, res) {
-  const created = await superadminService.createStream({
-    classId: requirePositiveInt(req.body.classId, 'Class'),
-    name: requireString(req.body.name, 'Stream name', { min: 1, max: 60 }),
-    roomNumber: optionalString(req.body.roomNumber, 40),
-    classTeacherId: optionalPositiveInt(req.body.classTeacherId),
-    actor: req.user,
-    ipAddress: req.ip,
-  });
-  return res.status(201).json({ ok: true, ...created });
-}
-
 async function createSubject(req, res) {
   const created = await superadminService.createSubject({
     code: requireString(req.body.code, 'Subject code', { min: 2, max: 20 }),
@@ -239,7 +227,6 @@ async function assignTeacher(req, res) {
   const created = await superadminService.assignTeacher({
     teacherId: requirePositiveInt(req.body.teacherId, 'Teacher'),
     classId: requirePositiveInt(req.body.classId, 'Class'),
-    streamId: optionalPositiveInt(req.body.streamId),
     subjectId: !hasSubjectIds ? requirePositiveInt(req.body.subjectId, 'Subject') : null,
     subjectIds: hasSubjectIds ? req.body.subjectIds : undefined,
     academicYearId: optionalPositiveInt(req.body.academicYearId),
@@ -273,7 +260,6 @@ async function enrolStudent(req, res) {
     guardianEmail: optionalString(req.body.guardianEmail, 160),
     address: optionalString(req.body.address, 255),
     classId: optionalPositiveInt(req.body.classId),
-    streamId: optionalPositiveInt(req.body.streamId),
     academicYearId: optionalPositiveInt(req.body.academicYearId),
     termId: optionalPositiveInt(req.body.termId),
     rollNumber: optionalString(req.body.rollNumber, 30),
@@ -303,7 +289,6 @@ async function createTimetable(req, res) {
     academicYearId: optionalPositiveInt(req.body.academicYearId),
     termId: optionalPositiveInt(req.body.termId),
     classId: requirePositiveInt(req.body.classId, 'Class'),
-    streamId: optionalPositiveInt(req.body.streamId),
     subjectId: requirePositiveInt(req.body.subjectId, 'Subject'),
     teacherId: requirePositiveInt(req.body.teacherId, 'Teacher'),
     dayOfWeek: requireEnum(
@@ -571,7 +556,6 @@ async function reviewStudentRequest(req, res) {
   const decision = requireEnum(req.body.decision, ['approved', 'rejected'], 'Decision');
   const admissionNumber = optionalString(req.body.admissionNumber, 40);
   const classId = optionalPositiveInt(req.body.classId);
-  const streamId = optionalPositiveInt(req.body.streamId);
   const reviewNote = optionalString(req.body.reviewNote, 250);
 
   const outcome = await superadminService.reviewStudentRegistrationRequest({
@@ -579,7 +563,6 @@ async function reviewStudentRequest(req, res) {
     decision,
     admissionNumber,
     classId,
-    streamId,
     reviewNote,
     actor: req.user,
     ipAddress: req.ip,
@@ -606,7 +589,6 @@ module.exports = {
   createTerm,
   activatePeriod,
   createClass,
-  createStream,
   createSubject,
   listTeachers,
   createTeacher,
