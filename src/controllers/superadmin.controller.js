@@ -394,10 +394,15 @@ async function getSettings(_req, res) {
 }
 
 async function updateSettings(req, res) {
+  const rawGoogleEnabled =
+    req.body.googleOauthEnabled !== undefined
+      ? req.body.googleOauthEnabled
+      : req.body.googleOAuthEnabled;
+
   const data = await superadminService.updateSchoolSettings(
     {
       schoolName: requireString(req.body.schoolName, 'School name', { min: 2, max: 180 }),
-      schoolCode: requireString(req.body.schoolCode, 'School code', { min: 2, max: 40 }),
+      schoolCode: optionalString(req.body.schoolCode, 40) || 'SMS',
       motto: optionalString(req.body.motto, 255),
       email: optionalString(req.body.email, 160),
       phone: optionalString(req.body.phone, 60),
@@ -409,7 +414,7 @@ async function updateSettings(req, res) {
       attendanceCutoffTime: optionalString(req.body.attendanceCutoffTime, 10) || '08:30',
       allowTeacherMarkEditAfterPublish: Boolean(req.body.allowTeacherMarkEditAfterPublish),
       googleOauthEnabled:
-        req.body.googleOauthEnabled === undefined ? undefined : Boolean(req.body.googleOauthEnabled),
+        rawGoogleEnabled === undefined ? undefined : Boolean(rawGoogleEnabled),
       googleClientId:
         req.body.googleClientId === undefined ? undefined : optionalString(req.body.googleClientId, 255),
       googleClientSecret: optionalString(req.body.googleClientSecret, 255),

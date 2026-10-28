@@ -10,21 +10,23 @@
     document.getElementById('sb-user-info').textContent = `${user.fullName} | ${user.email}`;
   }
 
+  let currentSettings = null;
   let acadCache = { classes: [], subjects: [], years: [], terms: [] };
   let teachersCache = [];
   let customRegSubjects = [];
+  let editCustomSubjects = [];
 
-  // Sub-tab controller
-  function activateSubtab(group, subtabId) {
+  // Sub-tab controller matching .subnav-tabs[data-tab-group] & #subtab-<slug>[data-tab-pane]
+  function activateSubtab(group, subtabSlug) {
     document
-      .querySelectorAll(`.subtab-bar[data-tab-group="${group}"] .subtab-btn`)
-      .forEach((btn) => btn.classList.toggle('active', btn.dataset.subtab === subtabId));
+      .querySelectorAll(`.subnav-tabs[data-tab-group="${group}"] .subtab-btn`)
+      .forEach((btn) => btn.classList.toggle('active', btn.dataset.subtab === subtabSlug));
     document
-      .querySelectorAll(`.subtab-panel[data-tab-panel-group="${group}"]`)
-      .forEach((panel) => panel.classList.toggle('hidden', panel.id !== subtabId));
+      .querySelectorAll(`.subtab-pane[data-tab-pane="${group}"]`)
+      .forEach((pane) => pane.classList.toggle('hidden', pane.id !== `subtab-${subtabSlug}`));
   }
 
-  document.querySelectorAll('.subtab-bar').forEach((bar) => {
+  document.querySelectorAll('.subnav-tabs[data-tab-group]').forEach((bar) => {
     const group = bar.dataset.tabGroup;
     bar.addEventListener('click', (e) => {
       const btn = e.target.closest('.subtab-btn');
@@ -91,14 +93,28 @@
     const checked = getCheckedValues('tch-reg-subject-checkboxes').length;
     const rows = getSubjectRowValues('tch-subject-rows-list').length;
     const total = checked + rows + customRegSubjects.length;
-    const badge = document.getElementById('tch-selected-subjects-count');
-    if (badge) badge.textContent = `${total} selected`;
+    document.getElementById('tch-selected-subjects-count').textContent = `${total} subject(s) selected`;
+  }
+
+  function updateUsrSubjectCountBadge() {
+    const checked = getCheckedValues('usr-tch-subject-checkboxes').length;
+    const rows = getSubjectRowValues('usr-tch-subject-rows').length;
+    document.getElementById('usr-tch-subjects-count').textContent = `${checked + rows} subject(s) selected`;
+  }
+
+  function updateEditSubjectCountBadge() {
+    const checked = getCheckedValues('edit-tch-subject-checkboxes').length;
+    const total = checked + editCustomSubjects.length;
+    document.getElementById('edit-tch-subjects-count').textContent = `${total} subject(s) selected`;
+  }
+
+  function updateAsgSubjectCountBadge() {
+    const checked = getCheckedValues('asg-subjects-checkboxes').length;
+    document.getElementById('asg-selected-subjects-count').textContent = `${checked} subject(s) selected`;
   }
 
   function renderCustomRegChips() {
-    const wrap = document.getElementById('tch-custom-subject-chips');
-    if (!wrap) return;
-    wrap.innerHTML = customRegSubjects
+    document.getElementById('tch-custom-subject-chips').innerHTML = customRegSubjects
       .map(
         (name, idx) =>
           `<span class="subject-badge-tag">${esc(name)} <button type="button" data-del-reg-chip="${idx}" style="border:none;background:none;color:#1d4ed8;font-weight:800;cursor:pointer;margin-left:4px;">&times;</button></span>`
@@ -107,21 +123,42 @@
     updateTeacherSubjectCountBadge();
   }
 
-  function showCredentialsBanner(boxId, creds, label) {
-    const el = document.getElementById(boxId);
-    if (!el || !creds) return;
-    el.innerHTML = `<strong>${esc(label)}:</strong> Email: <code>${esc(creds.email)}</code> | Username: <code>${esc(creds.username)}</code> | Initial Password: <code>${esc(creds.initialPassword)}</code>`;
-    el.classList.remove('hidden');
+  function renderEditCustomChips() {
+    document.getElementById('edit-tch-custom-subject-chips').innerHTML = editCustomSubjects
+      .map(
+        (name, idx) =>
+          `<span class="subject-badge-tag">${esc(name)} <button type="button" data-del-edit-chip="${idx}" style="border:none;background:none;color:#1d4ed8;font-weight:800;cursor:pointer;margin-left:4px;">&times;</button></span>`
+      )
+      .join('');
+    updateEditSubjectCountBadge();
   }
+
+  function showIssuedCredentials(creds) {
+    if (!creds) return;
+    document.getElementById('sa-issued-creds-body').innerHTML = `
+      <div><strong>Name:</strong> ${esc(creds.fullName || '-')}</div>
+      <div><strong>Role:</strong> <code>${esc(creds.role || '-')}</code></div>
+      <div><strong>Email:</strong> <code>${esc(creds.email)}</code></div>
+      <div><strong>Username:</strong> <code>${esc(creds.username)}</code></div>
+      <div><strong>Initial Password:</strong> <code>${esc(creds.initialPassword)}</code></div>
+    `;
+    const banner = document.getElementById('sa-issued-creds-banner');
+    banner.classList.remove('hidden');
+    banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  document.getElementById('close-creds-banner').addEventListener('click', () => {
+    document.getElementById('sa-issued-creds-banner').classList.add('hidden');
+  });
 
   function populateSettingsForm(data) {
     const s = data.settings;
     if (!s) return;
+    currentSettings = s;
     document.getElementById('set-school-name').value = s.school_name || 'School Management System';
-    document.getElementById('set-school-code').value = s.school_code || '';
-    document.getElementById('set-school-email').value = s.email || '';
-    document.getElementById('set-school-phone').value = s.phone || '';
-    document.getElementById('set-school-address').value = s.address || '';
+    document.getElementById('set-phone').value = s.phone || '';
+    document.getElementById('set-email').value = s.email || '';
+    document.getElementById('set-address').value = s.address || '';
     document.getElementById('set-fee-portal').checked = s.student_fee_portal_enabled !== 0;
 
     const curSel = document.getElementById('set-currency-code');
@@ -137,7 +174,23 @@
       if (opt?.dataset.sym) document.getElementById('set-currency-symbol').value = opt.dataset.sym;
     };
 
+    // Google Sign-In
+    document.getElementById('set-google-enabled').checked =
+      s.google_oauth_enabled === undefined ? true : Boolean(s.google_oauth_enabled);
+    document.getElementById('set-google-client-id').value = s.google_client_id || '';
+    const gSec = document.getElementById('set-google-client-secret');
+    gSec.value = '';
+    gSec.placeholder = s.google_secret_configured
+      ? 'Configured (leave blank to keep existing secret)'
+      : 'Paste Google Client Secret';
+
     // Paystack Keys & Transaction Policies
+    document.getElementById('set-psk-receive-enabled').checked =
+      s.paystack_enabled === undefined ? true : Boolean(s.paystack_enabled);
+    document.getElementById('set-psk-send-enabled').checked =
+      s.paystack_transfers_enabled === undefined ? true : Boolean(s.paystack_transfers_enabled);
+    document.getElementById('set-psk-reverse-enabled').checked =
+      s.paystack_refunds_enabled === undefined ? true : Boolean(s.paystack_refunds_enabled);
     document.getElementById('set-paystack-public-key').value =
       s.paystack_public_key || data.paystack?.publicKey || '';
     const pskSecInput = document.getElementById('set-paystack-secret-key');
@@ -145,40 +198,7 @@
     pskSecInput.placeholder = s.paystack_secret_configured
       ? 'Configured (leave blank to keep current Secret Key)'
       : 'sk_live_... or sk_test_...';
-    const pskWhInput = document.getElementById('set-paystack-webhook-secret');
-    pskWhInput.value = '';
-    pskWhInput.placeholder = s.paystack_webhook_secret_configured
-      ? 'Configured (leave blank to keep current Webhook Secret)'
-      : 'Optional';
     document.getElementById('set-clear-paystack-secret').checked = false;
-    document.getElementById('set-paystack-enabled').checked =
-      s.paystack_enabled === undefined ? true : Boolean(s.paystack_enabled);
-    document.getElementById('set-paystack-transfers').checked =
-      s.paystack_transfers_enabled === undefined ? true : Boolean(s.paystack_transfers_enabled);
-    document.getElementById('set-paystack-refunds').checked =
-      s.paystack_refunds_enabled === undefined ? true : Boolean(s.paystack_refunds_enabled);
-
-    const pskBadge = document.getElementById('set-paystack-status-badge');
-    const pMode = data.paystack?.mode || 'sandbox';
-    pskBadge.textContent =
-      data.paystack?.enabled === false
-        ? 'Disabled'
-        : pMode === 'live'
-          ? 'Live Keys Active'
-          : pMode === 'test'
-            ? 'Test Keys Active'
-            : 'Sandbox Mode';
-
-    // Google OAuth
-    document.getElementById('set-google-client-id').value = s.google_client_id || '';
-    const gSec = document.getElementById('set-google-client-secret');
-    gSec.value = '';
-    gSec.placeholder = s.google_secret_configured
-      ? 'Configured (leave blank to keep current Client Secret)'
-      : 'GOCSPX-...';
-    document.getElementById('set-clear-google-secret').checked = false;
-    document.getElementById('set-google-enabled').checked =
-      s.google_oauth_enabled === undefined ? true : Boolean(s.google_oauth_enabled);
   }
 
   // ---------------- LOADERS ----------------
@@ -189,7 +209,7 @@
       data.settings.school_name || 'School Management System';
 
     SMS.populateCurrencyOptions(
-      'header-currency-select',
+      'sa-currency-switcher',
       data.currencies || [],
       data.settings.currency_code
     );
@@ -197,15 +217,29 @@
     const m = data.metrics;
     const pendingCount = Number(m.pendingStudentRequests || 0);
     const pill = document.getElementById('nav-pending-proposals-pill');
-    if (pill) {
-      pill.textContent = String(pendingCount);
-      pill.classList.toggle('hidden', pendingCount === 0);
+    pill.textContent = String(pendingCount);
+    pill.classList.toggle('hidden', pendingCount === 0);
+
+    const propSubBtn = document.getElementById('stu-proposals-subtab-btn');
+    propSubBtn.textContent =
+      pendingCount > 0 ? `Join Proposals (${pendingCount})` : 'Join Proposals';
+
+    const pendingBanner = document.getElementById('ov-pending-banner');
+    if (pendingCount > 0) {
+      pendingBanner.innerHTML = `<div class="alert alert-info" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:0;">
+        <span><strong>${pendingCount}</strong> student join proposal(s) waiting for your approval.</span>
+        <button type="button" class="btn btn-primary btn-sm" id="ov-open-proposals-btn">Review Proposals</button>
+      </div>`;
+      pendingBanner.classList.remove('hidden');
+    } else {
+      pendingBanner.innerHTML = '';
+      pendingBanner.classList.add('hidden');
     }
 
     document.getElementById('ov-kpis').innerHTML = `
       <div class="kpi-card"><div class="kpi-label">Classes</div><div class="kpi-value">${m.activeClasses || 0}</div><div class="kpi-sub">Active classes</div></div>
       <div class="kpi-card"><div class="kpi-label">Teachers</div><div class="kpi-value">${m.activeTeachers || 0}</div><div class="kpi-sub">${m.activeUsers || 0} active accounts</div></div>
-      <div class="kpi-card"><div class="kpi-label">Students</div><div class="kpi-value">${m.activeStudents || 0}</div><div class="kpi-sub">${pendingCount} pending join proposal(s)</div></div>
+      <div class="kpi-card"><div class="kpi-label">Students</div><div class="kpi-value">${m.activeStudents || 0}</div><div class="kpi-sub">${pendingCount} pending proposal(s)</div></div>
       <div class="kpi-card"><div class="kpi-label">Fees Collected</div><div class="kpi-value">${money(m.finance?.collected || 0)}</div><div class="kpi-sub">Balance: ${money(m.finance?.outstanding || 0)}</div></div>
     `;
 
@@ -223,7 +257,7 @@
         .join('') || '<div class="empty-state">No announcements published yet.</div>';
 
     document.getElementById('ov-announcements').innerHTML = annHtml;
-    document.getElementById('all-announcements-list').innerHTML = annHtml;
+    document.getElementById('ann-list').innerHTML = annHtml;
 
     populateSettingsForm(data);
   }
@@ -237,40 +271,65 @@
     teachersCache = tData.teachers || [];
 
     const dl = document.getElementById('subject-suggestions-list');
-    if (dl) {
-      dl.innerHTML = acad.subjects.map((s) => `<option value="${esc(s.name)}"></option>`).join('');
+    const defaultSubjects = [
+      'Mathematics',
+      'Further Mathematics',
+      'English Language',
+      'Literature in English',
+      'Integrated Science',
+      'Physics',
+      'Chemistry',
+      'Biology',
+      'Social Studies',
+      'Computing / ICT',
+      'Economics',
+      'Geography',
+      'History',
+      'Government',
+      'French',
+    ];
+    const seenSub = new Set();
+    const mergedSubNames = [];
+    for (const s of acad.subjects) {
+      if (s?.name && !seenSub.has(s.name.toLowerCase())) {
+        seenSub.add(s.name.toLowerCase());
+        mergedSubNames.push(s.name);
+      }
     }
+    for (const def of defaultSubjects) {
+      if (!seenSub.has(def.toLowerCase())) {
+        seenSub.add(def.toLowerCase());
+        mergedSubNames.push(def);
+      }
+    }
+    dl.innerHTML = mergedSubNames.map((n) => `<option value="${esc(n)}"></option>`).join('');
 
-    document.getElementById('classes-tbody').innerHTML =
+    document.getElementById('classes-list-tbody').innerHTML =
       acad.classes
         .map(
           (c) => `<tr>
             <td><strong>${esc(c.name)}</strong></td>
             <td class="num">${c.level_order}</td>
-            <td class="num">${c.capacity}</td>
             <td>${statusBadge(c.status)}</td>
           </tr>`
         )
-        .join('') || '<tr><td colspan="4" class="empty-state">No classes created yet.</td></tr>';
+        .join('') || '<tr><td colspan="3" class="empty-state">No classes created yet.</td></tr>';
 
-    document.getElementById('subjects-tbody').innerHTML =
+    document.getElementById('subjects-list-tbody').innerHTML =
       acad.subjects
         .map(
           (s) => `<tr>
             <td><code>${esc(s.code)}</code></td>
             <td><strong>${esc(s.name)}</strong></td>
             <td>${esc(s.department || '-')}</td>
-            <td class="num">${s.pass_mark}%</td>
           </tr>`
         )
-        .join('') || '<tr><td colspan="4" class="empty-state">No subjects created yet.</td></tr>';
+        .join('') || '<tr><td colspan="3" class="empty-state">No subjects created yet.</td></tr>';
 
     const classOpts = acad.classes
-      .map((c) => `<option value="${c.id}">${esc(c.name)}</option>`)
-      .join('');
+      .map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
     const subOpts = acad.subjects
-      .map((s) => `<option value="${s.id}">${esc(s.code)} - ${esc(s.name)}</option>`)
-      .join('');
+      .map((s) => `<option value="${s.id}">${esc(s.code)} - ${esc(s.name)}</option>`).join('');
     const teacherOpts = teachersCache
       .map(
         (t) =>
@@ -278,24 +337,21 @@
       )
       .join('');
 
-    const stuClassSel = document.getElementById('stu-class-select');
-    if (stuClassSel) stuClassSel.innerHTML = '<option value="">Unassigned</option>' + classOpts;
-
-    const ttClassSel = document.getElementById('tt-class');
-    if (ttClassSel) ttClassSel.innerHTML = classOpts || '<option value="">Add a Class first</option>';
+    document.getElementById('st-class-select').innerHTML =
+      '<option value="">Unassigned</option>' + classOpts;
+    document.getElementById('tt-class').innerHTML =
+      classOpts || '<option value="">Add a Class first</option>';
     const ttFilterSel = document.getElementById('tt-filter-class');
-    if (ttFilterSel) {
-      const prev = ttFilterSel.value;
-      ttFilterSel.innerHTML = '<option value="">All Classes</option>' + classOpts;
-      if (prev) ttFilterSel.value = prev;
-    }
-    const ttSubSel = document.getElementById('tt-subject');
-    if (ttSubSel) ttSubSel.innerHTML = subOpts || '<option value="">Add a Subject first</option>';
-    const ttTeacherSel = document.getElementById('tt-teacher');
-    if (ttTeacherSel) ttTeacherSel.innerHTML = teacherOpts || '<option value="">Register a Teacher first</option>';
+    const prevTtVal = ttFilterSel.value;
+    ttFilterSel.innerHTML = '<option value="">All Classes</option>' + classOpts;
+    if (prevTtVal) ttFilterSel.value = prevTtVal;
 
-    const asgTeacherSel = document.getElementById('asg-teacher');
-    if (asgTeacherSel) asgTeacherSel.innerHTML = teacherOpts || '<option value="">Register a Teacher first</option>';
+    document.getElementById('tt-subject').innerHTML =
+      subOpts || '<option value="">Add a Subject first</option>';
+    document.getElementById('tt-teacher').innerHTML =
+      teacherOpts || '<option value="">Register a Teacher first</option>';
+    document.getElementById('asg-teacher').innerHTML =
+      teacherOpts || '<option value="">Register a Teacher first</option>';
 
     renderSubjectCheckPills(
       'tch-reg-subject-checkboxes',
@@ -319,6 +375,7 @@
     );
     syncAssignTeacherSubjects();
     updateTeacherSubjectCountBadge();
+    updateUsrSubjectCountBadge();
 
     document.getElementById('teachers-list-tbody').innerHTML =
       teachersCache
@@ -340,7 +397,7 @@
         })
         .join('') || '<tr><td colspan="6" class="empty-state">No teachers registered yet.</td></tr>';
 
-    document.getElementById('teacher-assignments-tbody').innerHTML =
+    document.getElementById('assignments-tbody').innerHTML =
       (tData.assignments || [])
         .map(
           (a) => `<tr>
@@ -354,14 +411,15 @@
   }
 
   function syncAssignTeacherSubjects() {
-    const tid = Number(document.getElementById('asg-teacher')?.value || 0);
+    const tid = Number(document.getElementById('asg-teacher').value || 0);
     const found = teachersCache.find((t) => Number(t.id) === tid);
     const prechecked = found?.subjectIds || [];
     renderSubjectCheckPills('asg-subjects-checkboxes', acadCache.subjects, prechecked);
+    updateAsgSubjectCountBadge();
   }
 
   async function loadStudents() {
-    const search = document.getElementById('stu-search')?.value.trim() || '';
+    const search = document.getElementById('stu-search').value.trim();
     const data = await api(`/api/superadmin/students?search=${encodeURIComponent(search)}`);
     const items = data.items || [];
     document.getElementById('students-tbody').innerHTML =
@@ -372,26 +430,15 @@
             <td><strong>${esc(s.first_name)} ${esc(s.last_name)}</strong></td>
             <td>${esc(s.class_name || 'Unassigned')}</td>
             <td>${esc(s.email)}</td>
-            <td>${esc(s.guardian_name || '-')} ${s.guardian_phone ? '(' + esc(s.guardian_phone) + ')' : ''}</td>
+            <td>${esc(s.guardian_phone || '-')}</td>
             <td>${statusBadge(s.status)}</td>
           </tr>`
         )
         .join('') || '<tr><td colspan="6" class="empty-state">No students enrolled yet.</td></tr>';
-
-    const stuOpts = items
-      .map(
-        (s) =>
-          `<option value="${s.id}">${esc(s.admission_number)} - ${esc(s.first_name)} ${esc(s.last_name)}</option>`
-      )
-      .join('');
-    ['fin-student-select', 'fin-psk-student'].forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) el.innerHTML = stuOpts || '<option value="">No enrolled students yet</option>';
-    });
   }
 
   async function loadStudentRequests() {
-    const status = document.getElementById('srr-status-filter')?.value || 'pending';
+    const status = document.getElementById('stu-req-status-filter').value;
     const data = await api(`/api/superadmin/student-requests?status=${encodeURIComponent(status)}`);
     const classOpts =
       '<option value="">Select Class</option>' +
@@ -402,6 +449,7 @@
         .map((r) => {
           const isPending = r.status === 'pending';
           return `<tr>
+            <td class="tabular">${esc(String(r.created_at || '').slice(0, 16))}</td>
             <td><strong>${esc(r.first_name)} ${esc(r.last_name)}</strong></td>
             <td>${esc(r.email)}</td>
             <td>
@@ -425,7 +473,7 @@
             </td>
           </tr>`;
         })
-        .join('') || '<tr><td colspan="6" class="empty-state">No student join proposals found.</td></tr>';
+        .join('') || '<tr><td colspan="7" class="empty-state">No student join proposals found.</td></tr>';
 
     (data.items || []).forEach((r) => {
       if (r.status === 'pending' && r.requested_class_id) {
@@ -436,7 +484,7 @@
   }
 
   async function loadTimetable() {
-    const classId = document.getElementById('tt-filter-class')?.value || '';
+    const classId = document.getElementById('tt-filter-class').value || '';
     const qs = classId ? `?classId=${encodeURIComponent(classId)}` : '';
     const data = await api(`/api/superadmin/timetables${qs}`);
     SMS.renderTimetableMatrix('tt-matrix-container', data.items || [], {
@@ -447,13 +495,14 @@
   }
 
   async function loadFinance() {
-    const [fin, acad, stuData] = await Promise.all([
+    const [fin, acad, stuData, trfData] = await Promise.all([
       api('/api/superadmin/finance/stats'),
       api('/api/superadmin/academic'),
-      api('/api/superadmin/students?limit=200'),
+      api('/api/superadmin/students?limit=100'),
+      api('/api/financial/paystack/transfers'),
     ]);
     const m = fin.metrics;
-    document.getElementById('adm-fin-kpis').innerHTML = `
+    document.getElementById('sa-fin-kpis').innerHTML = `
       <div class="kpi-card"><div class="kpi-label">Total Billed</div><div class="kpi-value">${money(m.netBilled)}</div></div>
       <div class="kpi-card"><div class="kpi-label">Total Collected</div><div class="kpi-value">${money(m.totalCollected)}</div><div class="kpi-sub">${m.collectionRate}% collected</div></div>
       <div class="kpi-card"><div class="kpi-label">Paystack Collected</div><div class="kpi-value">${money(m.paystackCollected || 0)}</div></div>
@@ -461,7 +510,7 @@
     `;
 
     const cats = fin.feeCategories || [];
-    document.getElementById('fin-cats-tbody').innerHTML =
+    document.getElementById('sa-fin-cats-tbody').innerHTML =
       cats
         .map(
           (c) => `<tr>
@@ -472,12 +521,12 @@
         )
         .join('') || '<tr><td colspan="3" class="empty-state">No fee items created yet.</td></tr>';
 
-    document.getElementById('fin-cat-select').innerHTML =
+    document.getElementById('sa-fin-cat-sel').innerHTML =
       cats
         .map((c) => `<option value="${c.id}">${esc(c.name)} (${money(c.default_amount)})</option>`)
         .join('') || '<option value="">Create a Fee Item first</option>';
 
-    document.getElementById('fin-class-select').innerHTML =
+    document.getElementById('sa-fin-class-sel').innerHTML =
       acad.classes.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('') ||
       '<option value="">Add a Class first</option>';
 
@@ -487,12 +536,12 @@
           `<option value="${s.id}">${esc(s.admission_number)} - ${esc(s.first_name)} ${esc(s.last_name)}</option>`
       )
       .join('');
-    ['fin-student-select', 'fin-psk-student'].forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) el.innerHTML = stuOpts || '<option value="">No enrolled students yet</option>';
-    });
+    document.getElementById('sa-fin-student-sel').innerHTML =
+      stuOpts || '<option value="">No enrolled students yet</option>';
+    document.getElementById('sa-psk-student').innerHTML =
+      stuOpts || '<option value="">No enrolled students yet</option>';
 
-    document.getElementById('fin-payments-tbody').innerHTML =
+    document.getElementById('sa-fin-payments-tbody').innerHTML =
       (fin.recentPayments || [])
         .map(
           (p) => `<tr>
@@ -512,6 +561,19 @@
           </tr>`
         )
         .join('') || '<tr><td colspan="7" class="empty-state">No payments recorded yet.</td></tr>';
+
+    document.getElementById('sa-fin-transfers-tbody').innerHTML =
+      (trfData.items || [])
+        .map(
+          (t) => `<tr>
+            <td class="tabular">${esc(String(t.created_at || '').slice(0, 16))}</td>
+            <td><code>${esc(t.reference)}</code></td>
+            <td><strong>${esc(t.recipient_name)}</strong> (${esc(t.bank_or_network)})</td>
+            <td class="num"><strong>${money(t.amount)}</strong></td>
+            <td>${statusBadge(t.status)}</td>
+          </tr>`
+        )
+        .join('') || '<tr><td colspan="5" class="empty-state">No transfers sent yet.</td></tr>';
   }
 
   async function loadUsers() {
@@ -537,50 +599,52 @@
   }
 
   // ---------------- NAVIGATION ----------------
+  async function loadSectionData(sec) {
+    if (sec === 'overview') await loadOverview();
+    if (sec === 'academic' || sec === 'teachers') await loadAcademicAndTeachers();
+    if (sec === 'students') {
+      await loadAcademicAndTeachers();
+      await loadStudents();
+      await loadStudentRequests();
+    }
+    if (sec === 'timetables') {
+      await loadAcademicAndTeachers();
+      await loadTimetable();
+    }
+    if (sec === 'finance') await loadFinance();
+    if (sec === 'users') {
+      await loadAcademicAndTeachers();
+      await loadUsers();
+    }
+    if (sec === 'announcements' || sec === 'settings') await loadOverview();
+  }
+
   SMS.initNavigation(async (sec) => {
     try {
-      if (sec === 'overview') await loadOverview();
-      if (sec === 'academic' || sec === 'teachers') await loadAcademicAndTeachers();
-      if (sec === 'students') {
-        await loadAcademicAndTeachers();
-        await loadStudents();
-        await loadStudentRequests();
-      }
-      if (sec === 'timetable') {
-        await loadAcademicAndTeachers();
-        await loadTimetable();
-      }
-      if (sec === 'finance') await loadFinance();
-      if (sec === 'users') {
-        await loadAcademicAndTeachers();
-        await loadUsers();
-      }
-      if (sec === 'announcements' || sec === 'settings') await loadOverview();
+      await loadSectionData(sec);
     } catch (err) {
       toast(err.message, 'error');
     }
   });
 
-  // Overview quick buttons
-  document.querySelectorAll('[data-jump-sec]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const sec = btn.dataset.jumpSec;
+  // Overview quick buttons & pending proposals jump
+  document.getElementById('sec-overview').addEventListener('click', (e) => {
+    const jumpBtn = e.target.closest('[data-jump-section]');
+    if (jumpBtn) {
+      const sec = jumpBtn.dataset.jumpSection;
       activateSection(sec);
-      if (sec === 'academic' || sec === 'teachers') loadAcademicAndTeachers().catch(() => {});
-      if (sec === 'students') {
-        loadAcademicAndTeachers()
-          .then(() => Promise.all([loadStudents(), loadStudentRequests()]))
-          .catch(() => {});
-      }
-      if (sec === 'timetable') {
-        loadAcademicAndTeachers().then(loadTimetable).catch(() => {});
-      }
-      if (sec === 'settings') loadOverview().catch(() => {});
-    });
+      loadSectionData(sec).catch((err) => toast(err.message, 'error'));
+      return;
+    }
+    if (e.target.closest('#ov-open-proposals-btn')) {
+      activateSection('students');
+      activateSubtab('students', 'stu-proposals');
+      loadSectionData('students').catch((err) => toast(err.message, 'error'));
+    }
   });
 
   // Topbar currency switcher
-  SMS.bindCurrencySelect('header-currency-select', '/api/superadmin/settings/currency', async () => {
+  SMS.bindCurrencySelect('sa-currency-switcher', '/api/superadmin/settings/currency', async () => {
     await loadOverview();
     if (!document.getElementById('sec-finance').classList.contains('hidden')) await loadFinance();
   });
@@ -618,18 +682,18 @@
     const wrap = document.getElementById('tch-subject-rows-list');
     const idx = wrap.querySelectorAll('[data-subject-row]').length + 1;
     const row = document.createElement('div');
-    row.className = 'subject-input-row';
+    row.className = 'subject-row-item';
     row.setAttribute('data-subject-row', '');
     row.innerHTML = `
       <span class="subject-row-label">Subject ${idx}</span>
       <input type="text" class="tch-subject-row-input" list="subject-suggestions-list" placeholder="Type another subject">
-      <button type="button" class="btn btn-danger btn-sm" data-del-sub-row>&times;</button>
+      <button type="button" class="btn btn-secondary btn-sm" data-remove-subject-row>Remove</button>
     `;
     wrap.appendChild(row);
   });
 
   document.getElementById('tch-subject-rows-list').addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-del-sub-row]');
+    const btn = e.target.closest('[data-remove-subject-row]');
     if (!btn) return;
     btn.closest('[data-subject-row]')?.remove();
     updateTeacherSubjectCountBadge();
@@ -679,7 +743,7 @@
       e.target.reset();
       customRegSubjects = [];
       renderCustomRegChips();
-      showCredentialsBanner('issued-teacher-creds-box', res.issuedCredentials, 'Teacher Login Ready');
+      showIssuedCredentials(res.issuedCredentials);
       toast('Teacher registered.', 'success');
       await loadAcademicAndTeachers();
       await loadOverview();
@@ -697,10 +761,34 @@
     if (!teacher) return;
     document.getElementById('edit-tch-id').value = String(tid);
     document.getElementById('edit-teacher-subjects-title').textContent =
-      `Edit Subjects — ${teacher.first_name} ${teacher.last_name}`;
+      `Update Subjects — ${teacher.first_name} ${teacher.last_name}`;
+    editCustomSubjects = [];
     renderSubjectCheckPills('edit-tch-subject-checkboxes', acadCache.subjects, teacher.subjectIds || []);
     document.getElementById('edit-tch-custom-subject-input').value = '';
+    renderEditCustomChips();
     document.getElementById('edit-teacher-subjects-card').classList.remove('hidden');
+  });
+
+  document.getElementById('edit-tch-subject-checkboxes').addEventListener('change', updateEditSubjectCountBadge);
+
+  document.getElementById('btn-add-edit-tch-subject').addEventListener('click', () => {
+    const inp = document.getElementById('edit-tch-custom-subject-input');
+    const parts = inp.value
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    for (const p of parts) {
+      if (!editCustomSubjects.includes(p)) editCustomSubjects.push(p);
+    }
+    inp.value = '';
+    renderEditCustomChips();
+  });
+
+  document.getElementById('edit-tch-custom-subject-chips').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-del-edit-chip]');
+    if (!btn) return;
+    editCustomSubjects.splice(Number(btn.dataset.delEditChip), 1);
+    renderEditCustomChips();
   });
 
   document.getElementById('btn-cancel-edit-teacher-subjects').addEventListener('click', () => {
@@ -711,11 +799,11 @@
     e.preventDefault();
     const tid = Number(document.getElementById('edit-tch-id').value);
     const subjectIds = getCheckedValues('edit-tch-subject-checkboxes');
-    const customRaw = document.getElementById('edit-tch-custom-subject-input').value;
-    const customSubjects = customRaw
+    const inlinePending = document.getElementById('edit-tch-custom-subject-input').value
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
+    const customSubjects = Array.from(new Set([...editCustomSubjects, ...inlinePending]));
     try {
       await api(`/api/superadmin/teachers/${tid}/subjects`, {
         method: 'PUT',
@@ -731,6 +819,7 @@
 
   // Assign Teacher to Classes
   document.getElementById('asg-teacher').addEventListener('change', syncAssignTeacherSubjects);
+  document.getElementById('asg-subjects-checkboxes').addEventListener('change', updateAsgSubjectCountBadge);
   document.getElementById('asg-all-classes-chk').addEventListener('change', (e) => {
     document
       .querySelectorAll('#asg-classes-checkboxes input[type="checkbox"]')
@@ -768,8 +857,12 @@
   });
 
   // Students & Join Proposals
-  document.getElementById('stu-search-btn').addEventListener('click', loadStudents);
-  document.getElementById('srr-status-filter').addEventListener('change', loadStudentRequests);
+  document.getElementById('stu-filter-btn').addEventListener('click', () => {
+    loadStudents().catch((err) => toast(err.message, 'error'));
+  });
+  document.getElementById('stu-req-status-filter').addEventListener('change', () => {
+    loadStudentRequests().catch((err) => toast(err.message, 'error'));
+  });
 
   document.getElementById('create-student-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -777,7 +870,7 @@
     try {
       const res = await api('/api/superadmin/students', { method: 'POST', body: fd });
       e.target.reset();
-      showCredentialsBanner('issued-student-creds-box', res.issuedCredentials, 'Student Login Ready');
+      showIssuedCredentials(res.issuedCredentials);
       toast('Student enrolled.', 'success');
       await loadStudents();
       await loadOverview();
@@ -828,7 +921,7 @@
   document.getElementById('tt-filter-class').addEventListener('change', () => {
     loadTimetable().catch((err) => toast(err.message, 'error'));
   });
-  document.getElementById('create-timetable-form').addEventListener('submit', async (e) => {
+  document.getElementById('create-tt-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target).entries());
     try {
@@ -841,13 +934,13 @@
   });
 
   // Finance & Paystack
-  document.getElementById('fin-target-type').addEventListener('change', (e) => {
+  document.getElementById('sa-bill-target-type').addEventListener('change', (e) => {
     const isClass = e.target.value === 'class';
-    document.getElementById('fin-target-class-wrap').classList.toggle('hidden', !isClass);
-    document.getElementById('fin-target-student-wrap').classList.toggle('hidden', isClass);
+    document.getElementById('sa-bill-class-wrap').classList.toggle('hidden', !isClass);
+    document.getElementById('sa-bill-student-wrap').classList.toggle('hidden', isClass);
   });
 
-  document.getElementById('fin-create-cat-form').addEventListener('submit', async (e) => {
+  document.getElementById('sa-fee-cat-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target).entries());
     try {
@@ -860,7 +953,7 @@
     }
   });
 
-  document.getElementById('fin-assign-fee-form').addEventListener('submit', async (e) => {
+  document.getElementById('sa-assign-fee-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target).entries());
     try {
@@ -873,7 +966,7 @@
     }
   });
 
-  document.getElementById('fin-paystack-collect-form').addEventListener('submit', async (e) => {
+  document.getElementById('sa-paystack-init-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target).entries());
     fd.callbackUrl = `${window.location.origin}/dashboard/superadmin`;
@@ -891,19 +984,20 @@
     }
   });
 
-  document.getElementById('fin-paystack-transfer-form').addEventListener('submit', async (e) => {
+  document.getElementById('sa-paystack-transfer-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target).entries());
     try {
       const res = await api('/api/financial/paystack/transfers', { method: 'POST', body: fd });
       toast(`Transfer sent (${res.transfer.reference}).`, 'success');
       e.target.reset();
+      await loadFinance();
     } catch (err) {
       toast(err.message, 'error');
     }
   });
 
-  document.getElementById('fin-payments-tbody').addEventListener('click', async (e) => {
+  document.getElementById('sa-fin-payments-tbody').addEventListener('click', async (e) => {
     const revBtn = e.target.closest('[data-rev-pay]');
     if (!revBtn) return;
     const reason = prompt('Reason for reversing this payment:');
@@ -929,28 +1023,33 @@
   const syncUsrTeacherFields = () => {
     document
       .getElementById('usr-teacher-extra-fields')
-      ?.classList.toggle('hidden', usrRoleSel.value !== 'teacher');
+      .classList.toggle('hidden', usrRoleSel.value !== 'teacher');
   };
   usrRoleSel.addEventListener('change', syncUsrTeacherFields);
   syncUsrTeacherFields();
+
+  document.getElementById('usr-tch-subject-checkboxes').addEventListener('change', updateUsrSubjectCountBadge);
+  document.getElementById('usr-tch-subject-rows').addEventListener('input', updateUsrSubjectCountBadge);
 
   document.getElementById('btn-add-usr-subject-row').addEventListener('click', () => {
     const wrap = document.getElementById('usr-tch-subject-rows');
     const idx = wrap.querySelectorAll('[data-subject-row]').length + 1;
     const row = document.createElement('div');
-    row.className = 'subject-input-row';
+    row.className = 'subject-row-item';
     row.setAttribute('data-subject-row', '');
     row.innerHTML = `
       <span class="subject-row-label">Subject ${idx}</span>
-      <input type="text" class="usr-tch-subject-row-input" list="subject-suggestions-list" placeholder="Type subject name">
-      <button type="button" class="btn btn-danger btn-sm" data-del-usr-sub>&times;</button>
+      <input type="text" class="tch-subject-row-input" list="subject-suggestions-list" placeholder="Type subject name">
+      <button type="button" class="btn btn-secondary btn-sm" data-del-usr-sub>Remove</button>
     `;
     wrap.appendChild(row);
   });
 
   document.getElementById('usr-tch-subject-rows').addEventListener('click', (e) => {
     const btn = e.target.closest('[data-del-usr-sub]');
-    if (btn) btn.closest('[data-subject-row]')?.remove();
+    if (!btn) return;
+    btn.closest('[data-subject-row]')?.remove();
+    updateUsrSubjectCountBadge();
   });
 
   document.getElementById('create-user-form').addEventListener('submit', async (e) => {
@@ -964,7 +1063,7 @@
       const res = await api('/api/superadmin/users', { method: 'POST', body: fd });
       e.target.reset();
       syncUsrTeacherFields();
-      showCredentialsBanner('issued-user-creds-box', res.issuedCredentials, 'Staff Account Ready');
+      showIssuedCredentials(res.issuedCredentials);
       toast('Staff account created.', 'success');
       await loadUsers();
       await loadAcademicAndTeachers();
@@ -990,7 +1089,7 @@
   });
 
   // Announcements
-  document.getElementById('create-announcement-form').addEventListener('submit', async (e) => {
+  document.getElementById('create-ann-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target).entries());
     try {
@@ -1008,24 +1107,22 @@
     e.preventDefault();
     const payload = {
       schoolName: document.getElementById('set-school-name').value.trim(),
-      schoolCode: document.getElementById('set-school-code').value.trim(),
-      email: document.getElementById('set-school-email').value.trim(),
-      phone: document.getElementById('set-school-phone').value.trim(),
-      address: document.getElementById('set-school-address').value.trim(),
+      schoolCode: currentSettings?.school_code || 'SMS',
+      phone: document.getElementById('set-phone').value.trim(),
+      email: document.getElementById('set-email').value.trim(),
+      address: document.getElementById('set-address').value.trim(),
       currencyCode: document.getElementById('set-currency-code').value,
       currencySymbol: document.getElementById('set-currency-symbol').value.trim(),
       studentFeePortalEnabled: document.getElementById('set-fee-portal').checked,
-      paystackPublicKey: document.getElementById('set-paystack-public-key').value.trim(),
-      paystackSecretKey: document.getElementById('set-paystack-secret-key').value.trim(),
-      paystackWebhookSecret: document.getElementById('set-paystack-webhook-secret').value.trim(),
-      clearPaystackSecret: document.getElementById('set-clear-paystack-secret').checked,
-      paystackEnabled: document.getElementById('set-paystack-enabled').checked,
-      paystackTransfersEnabled: document.getElementById('set-paystack-transfers').checked,
-      paystackRefundsEnabled: document.getElementById('set-paystack-refunds').checked,
+      googleOauthEnabled: document.getElementById('set-google-enabled').checked,
       googleClientId: document.getElementById('set-google-client-id').value.trim(),
       googleClientSecret: document.getElementById('set-google-client-secret').value.trim(),
-      clearGoogleSecret: document.getElementById('set-clear-google-secret').checked,
-      googleOAuthEnabled: document.getElementById('set-google-enabled').checked,
+      paystackEnabled: document.getElementById('set-psk-receive-enabled').checked,
+      paystackTransfersEnabled: document.getElementById('set-psk-send-enabled').checked,
+      paystackRefundsEnabled: document.getElementById('set-psk-reverse-enabled').checked,
+      paystackPublicKey: document.getElementById('set-paystack-public-key').value.trim(),
+      paystackSecretKey: document.getElementById('set-paystack-secret-key').value.trim(),
+      clearPaystackSecret: document.getElementById('set-clear-paystack-secret').checked,
     };
 
     try {

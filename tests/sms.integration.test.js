@@ -1788,10 +1788,10 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
     finance.request('/dashboard/financial').then((r) => r.text),
   ]);
 
-  // Every dashboard includes Show/Hide Menu button & clean v3.0 assets with unneeded bloat removed
+  // Every dashboard includes Show/Hide Menu button & clean v3.x assets with unneeded bloat removed
   for (const html of [saHtml, tcHtml, stHtml, fnHtml]) {
     assert.match(html, /id="mobile-menu-btn"/);
-    assert.match(html, /\?v=3\.0/);
+    assert.match(html, /\?v=3\.1/);
     assert.doesNotMatch(html, /Hide Figures/i);
     assert.doesNotMatch(html, /Audit Log/i);
     assert.doesNotMatch(html, /Database Backups/i);
@@ -1799,6 +1799,40 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
     assert.doesNotMatch(html, /Mark Correction/i);
     assert.doesNotMatch(html, /Profile Correction/i);
     assert.doesNotMatch(html, /Record Attendance/i);
+  }
+
+  // Verify every getElementById, sidebar data-section, and data-subtab in client JS exists in its HTML view
+  const viewPairs = [
+    ['src/views/superadmin.html', 'src/public/js/superadmin.js'],
+    ['src/views/teacher.html', 'src/public/js/teacher.js'],
+    ['src/views/student.html', 'src/public/js/student.js'],
+    ['src/views/financial.html', 'src/public/js/financial.js'],
+    ['src/views/login.html', 'src/public/js/login.js'],
+  ];
+  for (const [hRel, jRel] of viewPairs) {
+    const hSrc = fs.readFileSync(path.join(__dirname, '..', hRel), 'utf8');
+    const jSrc = fs.readFileSync(path.join(__dirname, '..', jRel), 'utf8');
+    const idSet = new Set([...hSrc.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
+    for (const m of jSrc.matchAll(/getElementById\(['"]([^'"]+)['"]\)/g)) {
+      const targetId = m[1];
+      const dynamicallyCreated =
+        jSrc.includes(`id="${targetId}"`) || jSrc.includes(`id='${targetId}'`);
+      assert.equal(
+        idSet.has(targetId) || dynamicallyCreated,
+        true,
+        `Missing #${targetId} in ${hRel} (referenced in ${jRel})`
+      );
+    }
+    for (const m of hSrc.matchAll(/data-section="([^"]+)"/g)) {
+      assert.equal(idSet.has(`sec-${m[1]}`), true, `Missing #sec-${m[1]} in ${hRel}`);
+    }
+    for (const m of hSrc.matchAll(/data-subtab="([^"]+)"/g)) {
+      assert.equal(
+        idSet.has(`subtab-${m[1]}`) || idSet.has(m[1]),
+        true,
+        `Missing subtab pane for ${m[1]} in ${hRel}`
+      );
+    }
   }
 
   // Simulate a fresh school with no active academic year/term and verify auto-bootstrap
