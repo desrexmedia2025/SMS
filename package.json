@@ -15,7 +15,7 @@
     "url": "git+https://github.com/desrexmedia2025/SMS.git"
   },
   "engines": {
-    "node": "22.x"
+    "node": ">=22.0.0"
   },
   "license": "ISC",
   "dependencies": {
