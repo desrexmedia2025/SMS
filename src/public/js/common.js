@@ -95,6 +95,10 @@ window.SMS = (() => {
   function setCurrency(code, symbol) {
     if (code) currencyCode = code;
     if (symbol) currencySymbol = symbol;
+    const sbCur = document.getElementById('sb-currency-display');
+    if (sbCur) {
+      sbCur.textContent = `${currencyCode} (${currencySymbol})`;
+    }
   }
 
   function getCurrency() {

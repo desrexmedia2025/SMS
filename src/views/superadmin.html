@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Superadmin - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=3.1">
+  <link rel="stylesheet" href="/css/styles.css?v=3.2">
 </head>
 <body>
   <div class="app-layout">
@@ -15,7 +15,7 @@
       </div>
 
       <nav class="sidebar-nav">
-        <div class="nav-section-label">School Management</div>
+        <div class="nav-section-label">Academics</div>
         <button class="nav-btn active" data-section="overview" data-title="Overview">
           <span class="nav-item-label">Overview</span>
         </button>
@@ -33,7 +33,7 @@
           <span class="nav-item-label">Timetable</span>
         </button>
 
-        <div class="nav-section-label">Administration</div>
+        <div class="nav-section-label">Operations</div>
         <button class="nav-btn" data-section="finance" data-title="Finance &amp; Paystack">
           <span class="nav-item-label">Finance &amp; Paystack</span>
         </button>
@@ -48,34 +48,34 @@
         </button>
       </nav>
 
-      <div class="sidebar-footer" id="sb-user-info">Signed in as Superadmin</div>
+      <div class="sidebar-bottom">
+        <div class="sidebar-control-group">
+          <label class="sidebar-control-label" for="sa-currency-switcher">Currency</label>
+          <select id="sa-currency-switcher" aria-label="Switch School Currency"></select>
+        </div>
+        <div class="sidebar-session-box">
+          <div class="sidebar-footer" id="sb-user-info">Signed in as Superadmin</div>
+          <a href="/auth/google?mode=link" class="sidebar-google-link hidden" id="google-link-btn">Link Google</a>
+        </div>
+        <button type="button" class="sidebar-logout-btn" id="logout-btn">Sign Out</button>
+      </div>
     </aside>
 
     <div class="main-area">
       <header class="topbar">
         <div class="topbar-left">
           <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle Menu">Menu</button>
-          <div class="topbar-heading">
-            <h1 class="topbar-title" id="topbar-title">Overview</h1>
-          </div>
-        </div>
-        <div class="topbar-right">
-          <div class="topbar-select-group" title="Active School Currency">
-            <span class="topbar-select-label">Currency</span>
-            <select id="sa-currency-switcher" aria-label="Switch School Currency"></select>
-          </div>
-          <a href="/auth/google?mode=link" class="btn btn-secondary btn-sm hidden" id="google-link-btn">Link Google</a>
-          <button class="btn btn-secondary btn-sm" id="logout-btn">Sign Out</button>
+          <h1 class="topbar-title" id="topbar-title">Overview</h1>
         </div>
       </header>
 
       <main class="content-body">
         <!-- Issued Staff / Student Credentials Banner -->
-        <div id="sa-issued-creds-banner" class="card hidden" style="border-left:4px solid var(--primary);background:#eff6ff;">
+        <div id="sa-issued-creds-banner" class="card hidden" style="border-left:3px solid var(--primary);background:#f5f9ff;">
           <div class="card-header" style="margin-bottom:8px;padding-bottom:8px;">
             <div>
-              <h2 class="card-title" style="color:#1e3a8a;">Account Created — Copy Login Details</h2>
-              <div class="card-subtitle">Share these credentials securely with the user</div>
+              <h2 class="card-title" style="color:#14367a;">Account Created — Copy Login Details</h2>
+              <div class="card-subtitle">Share these credentials with the user</div>
             </div>
             <button type="button" class="btn btn-secondary btn-sm" id="close-creds-banner">Dismiss</button>
           </div>
@@ -90,27 +90,21 @@
 
           <div class="card">
             <div class="card-header">
-              <div>
-                <h2 class="card-title">Quick Actions</h2>
-                <div class="card-subtitle">Jump straight to common tasks</div>
-              </div>
+              <h2 class="card-title">Shortcuts</h2>
             </div>
             <div style="display:flex;gap:10px;flex-wrap:wrap;">
-              <button type="button" class="btn btn-primary btn-sm" data-jump-section="academic">+ Add Class or Subject</button>
-              <button type="button" class="btn btn-secondary btn-sm" data-jump-section="teachers">+ Register Teacher</button>
-              <button type="button" class="btn btn-secondary btn-sm" data-jump-section="students">+ Enrol Student</button>
-              <button type="button" class="btn btn-secondary btn-sm" data-jump-section="timetables">+ Schedule Timetable</button>
-              <button type="button" class="btn btn-secondary btn-sm" data-jump-section="announcements">+ Post Announcement</button>
+              <button type="button" class="btn btn-primary btn-sm" data-jump-section="academic">Add Class or Subject</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-jump-section="teachers">Register Teacher</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-jump-section="students">Enrol Student</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-jump-section="timetables">Schedule Timetable</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-jump-section="announcements">Post Announcement</button>
             </div>
           </div>
 
           <div class="card">
             <div class="card-header">
-              <div>
-                <h2 class="card-title">Recent Announcements</h2>
-                <div class="card-subtitle">Latest school and class notices</div>
-              </div>
-              <button type="button" class="btn btn-secondary btn-sm" data-jump-section="announcements">Manage Announcements</button>
+              <h2 class="card-title">Recent Announcements</h2>
+              <button type="button" class="btn btn-secondary btn-sm" data-jump-section="announcements">All Announcements</button>
             </div>
             <div id="ov-announcements"></div>
           </div>
@@ -122,10 +116,7 @@
             <!-- Classes -->
             <div class="card">
               <div class="card-header">
-                <div>
-                  <h2 class="card-title">Classes</h2>
-                  <div class="card-subtitle">Create and view school classes</div>
-                </div>
+                <h2 class="card-title">Classes</h2>
               </div>
               <form id="create-class-form" class="form-grid" style="margin-bottom:16px;">
                 <div class="form-group">
@@ -151,10 +142,7 @@
             <!-- Subjects -->
             <div class="card">
               <div class="card-header">
-                <div>
-                  <h2 class="card-title">Subjects</h2>
-                  <div class="card-subtitle">Create and view school subjects</div>
-                </div>
+                <h2 class="card-title">Subjects</h2>
               </div>
               <form id="create-subject-form" class="form-grid" style="margin-bottom:16px;">
                 <div class="form-group">
@@ -765,7 +753,7 @@
     </div>
   </div>
 
-  <script src="/js/common.js?v=3.1"></script>
-  <script src="/js/superadmin.js?v=3.1"></script>
+  <script src="/js/common.js?v=3.2"></script>
+  <script src="/js/superadmin.js?v=3.2"></script>
 </body>
 </html>

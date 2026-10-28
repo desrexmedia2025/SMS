@@ -4,24 +4,33 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Financial Dashboard - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=3.1">
+  <link rel="stylesheet" href="/css/styles.css?v=3.2">
 </head>
 <body>
   <div class="app-layout">
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="sidebar-title" id="sb-school-name">School Management System</div>
-        <span class="sidebar-role-tag" style="background:rgba(245,158,11,0.22);color:#fde68a;">Finance</span>
+        <span class="sidebar-role-tag">Finance</span>
       </div>
       <nav class="sidebar-nav">
-        <div class="nav-section-label">Finance</div>
         <button class="nav-btn active" data-section="overview">Overview</button>
         <button class="nav-btn" data-section="billing">Fees &amp; Billing</button>
         <button class="nav-btn" data-section="payments">Payments &amp; Receipts</button>
         <button class="nav-btn" data-section="accounts">Student Balances</button>
         <button class="nav-btn" data-section="timetable">Timetable</button>
       </nav>
-      <div class="sidebar-footer" id="sb-user-info">Signed in as Finance</div>
+      <div class="sidebar-bottom">
+        <div class="sidebar-control-group">
+          <label class="sidebar-control-label" for="fin-currency-switcher">Currency</label>
+          <select id="fin-currency-switcher" aria-label="Switch Currency"></select>
+        </div>
+        <div class="sidebar-session-box">
+          <div class="sidebar-footer" id="sb-user-info">Signed in as Finance</div>
+          <a href="/auth/google?mode=link" class="sidebar-google-link hidden" id="google-link-btn">Link Google</a>
+        </div>
+        <button type="button" class="sidebar-logout-btn" id="logout-btn">Sign Out</button>
+      </div>
     </aside>
 
     <div class="main-area">
@@ -29,14 +38,6 @@
         <div class="topbar-left">
           <button class="mobile-menu-btn" id="mobile-menu-btn">Menu</button>
           <h1 class="topbar-title" id="topbar-title">Overview</h1>
-        </div>
-        <div class="topbar-right">
-          <div class="topbar-select-group" title="Active Currency">
-            <span class="topbar-select-label">Currency</span>
-            <select id="fin-currency-switcher" aria-label="Switch Currency"></select>
-          </div>
-          <a href="/auth/google?mode=link" class="btn btn-secondary btn-sm hidden" id="google-link-btn">Link Google</a>
-          <button class="btn btn-secondary btn-sm" id="logout-btn">Sign Out</button>
         </div>
       </header>
 
@@ -205,7 +206,7 @@
     </div>
   </div>
 
-  <script src="/js/common.js?v=3.1"></script>
-  <script src="/js/financial.js?v=3.1"></script>
+  <script src="/js/common.js?v=3.2"></script>
+  <script src="/js/financial.js?v=3.2"></script>
 </body>
 </html>

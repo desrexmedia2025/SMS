@@ -1791,7 +1791,7 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
   // Every dashboard includes Show/Hide Menu button & clean v3.x assets with unneeded bloat removed
   for (const html of [saHtml, tcHtml, stHtml, fnHtml]) {
     assert.match(html, /id="mobile-menu-btn"/);
-    assert.match(html, /\?v=3\.1/);
+    assert.match(html, /\?v=3\.2/);
     assert.doesNotMatch(html, /Hide Figures/i);
     assert.doesNotMatch(html, /Audit Log/i);
     assert.doesNotMatch(html, /Database Backups/i);
@@ -1833,7 +1833,28 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
         `Missing subtab pane for ${m[1]} in ${hRel}`
       );
     }
+
+    if (hRel !== 'src/views/login.html') {
+      const asideMatch = hSrc.match(/<aside[^>]*class="sidebar"[^>]*>([\s\S]*?)<\/aside>/);
+      assert.ok(asideMatch, `Expected <aside class="sidebar"> in ${hRel}`);
+      const asideHtml = asideMatch[1];
+      assert.equal(asideHtml.includes('class="sidebar-bottom"'), true, `Missing .sidebar-bottom in ${hRel}`);
+      assert.equal(asideHtml.includes('id="logout-btn"'), true, `Expected #logout-btn inside sidebar in ${hRel}`);
+      assert.equal(asideHtml.includes('id="sb-user-info"'), true, `Expected #sb-user-info inside sidebar in ${hRel}`);
+      assert.equal(asideHtml.includes('id="google-link-btn"'), true, `Expected #google-link-btn inside sidebar in ${hRel}`);
+      assert.equal(
+        asideHtml.includes('currency-switcher') || asideHtml.includes('id="sb-currency-display"'),
+        true,
+        `Expected currency control/readout inside sidebar in ${hRel}`
+      );
+      assert.equal(hSrc.includes('class="topbar-right"'), false, `Unexpected .topbar-right clutter in ${hRel}`);
+    }
   }
+
+  const cssSrc = fs.readFileSync(path.join(__dirname, '..', 'src/public/css/styles.css'), 'utf8');
+  assert.equal(cssSrc.includes('--sidebar-top: #163f8c'), true);
+  assert.equal(cssSrc.includes('.sidebar-bottom'), true);
+  assert.equal(cssSrc.includes('.sidebar-logout-btn'), true);
 
   // Simulate a fresh school with no active academic year/term and verify auto-bootstrap
   await db.run('UPDATE academic_years SET is_active = 0');
