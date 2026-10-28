@@ -173,6 +173,12 @@ window.SMS = (() => {
     if (sess.school) {
       setCurrency(sess.school.currency_code, sess.school.currency_symbol);
     }
+    try {
+      sessionStorage.removeItem('sms_privacy_masked');
+      document.body?.classList.remove('privacy-masked');
+    } catch (_) {
+      // ignore storage errors
+    }
     enhancePasswordInputs();
     installBackButtonGuard();
     return sess;

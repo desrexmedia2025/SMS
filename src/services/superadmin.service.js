@@ -420,10 +420,14 @@ async function createClass({ name, levelOrder, capacity, actor, ipAddress }) {
 }
 
 async function createSubject({ code, name, department, isElective, passMark, maxMark, actor, ipAddress }) {
+  const finalCode =
+    code && String(code).trim()
+      ? String(code).trim().toUpperCase()
+      : await generateUniqueSubjectCode(db, name);
   const ins = await db.run(
     `INSERT INTO subjects (code, name, department, is_elective, pass_mark, max_mark, status)
      VALUES (?, ?, ?, ?, ?, ?, 'active')`,
-    [code.toUpperCase(), name, department || '', isElective ? 1 : 0, passMark ?? 50, maxMark ?? 100]
+    [finalCode, name, department || '', isElective ? 1 : 0, passMark ?? 50, maxMark ?? 100]
   );
   await recordAudit({
     actorUserId: actor.id,
@@ -432,9 +436,9 @@ async function createSubject({ code, name, department, isElective, passMark, max
     targetType: 'subject',
     targetId: String(ins.insertId),
     ipAddress,
-    metadata: { code: code.toUpperCase(), name },
+    metadata: { code: finalCode, name },
   });
-  return { id: ins.insertId };
+  return { id: ins.insertId, code: finalCode };
 }
 
 // ---------------- TEACHERS & ASSIGNMENTS ----------------

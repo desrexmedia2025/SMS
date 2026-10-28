@@ -155,7 +155,7 @@ async function createClass(req, res) {
 
 async function createSubject(req, res) {
   const created = await superadminService.createSubject({
-    code: requireString(req.body.code, 'Subject code', { min: 2, max: 20 }),
+    code: optionalString(req.body.code, 20),
     name: requireString(req.body.name, 'Subject name', { min: 2, max: 120 }),
     department: optionalString(req.body.department, 100),
     isElective: Boolean(req.body.isElective),
