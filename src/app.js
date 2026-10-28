@@ -44,7 +44,7 @@ function createApp() {
       frameguard: env.isProduction ? { action: 'sameorigin' } : false,
       referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
       crossOriginEmbedderPolicy: false,
-      crossOriginOpenerPolicy: env.isProduction ? { policy: 'same-origin' } : false,
+      crossOriginOpenerPolicy: env.isProduction ? { policy: 'same-origin-allow-popups' } : false,
       crossOriginResourcePolicy: env.isProduction ? { policy: 'same-origin' } : { policy: 'cross-origin' },
       contentSecurityPolicy: {
         useDefaults: false,

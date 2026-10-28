@@ -220,7 +220,7 @@ async function listAnnouncementsForAudience(audiences = ['all']) {
 }
 
 async function createVerifiedBackup(actorUserId) {
-  const backupsDir = path.resolve(process.cwd(), 'backups');
+  const backupsDir = env.backupsDir || path.resolve(process.cwd(), 'backups');
   fs.mkdirSync(backupsDir, { recursive: true, mode: 0o700 });
 
   const snapshot = {

@@ -5,29 +5,50 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env'), quiet: true });
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const isProduction = NODE_ENV === 'production';
+const isVercel = Boolean(process.env.VERCEL);
 
 const SESSION_SECRET = process.env.SESSION_SECRET || '';
 if (isProduction && (!SESSION_SECRET || SESSION_SECRET.length < 32 || SESSION_SECRET.includes('replace_with'))) {
   throw new Error('Configuration error: SESSION_SECRET must be at least 32 strong characters in production.');
 }
 
+const defaultDbDriver = process.env.DB_DRIVER
+  ? process.env.DB_DRIVER.toLowerCase()
+  : isVercel && !process.env.DB_HOST
+    ? 'sqlite'
+    : 'mysql';
+
+const defaultSqlitePath = process.env.SQLITE_PATH
+  ? path.resolve(process.cwd(), process.env.SQLITE_PATH)
+  : isVercel
+    ? '/tmp/sms_vercel.sqlite'
+    : path.resolve(process.cwd(), './data/sms_dev.sqlite');
+
 const env = {
   nodeEnv: NODE_ENV,
   isProduction,
+  isVercel,
   port: parseInt(process.env.PORT || '3000', 10),
   host: process.env.HOST || '0.0.0.0',
-  appBaseUrl: process.env.APP_BASE_URL || `http://localhost:${process.env.PORT || '3000'}`,
+  appBaseUrl:
+    process.env.APP_BASE_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : `http://localhost:${process.env.PORT || '3000'}`),
+  backupsDir: isVercel ? '/tmp/backups' : path.resolve(process.cwd(), 'backups'),
 
   db: {
-    driver: (process.env.DB_DRIVER || 'mysql').toLowerCase(),
-    autoFallback: process.env.DB_AUTO_FALLBACK !== 'false' && !isProduction,
+    driver: defaultDbDriver,
+    autoFallback: process.env.DB_AUTO_FALLBACK !== 'false' && (!isProduction || isVercel),
     host: process.env.DB_HOST || '127.0.0.1',
     port: parseInt(process.env.DB_PORT || '3306', 10),
     name: process.env.DB_NAME || 'school_management',
     user: process.env.DB_USER || 'sms_app_user',
     password: process.env.DB_PASSWORD || '',
     connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT || '10', 10),
-    sqlitePath: path.resolve(process.cwd(), process.env.SQLITE_PATH || './data/sms_dev.sqlite'),
+    sqlitePath: defaultSqlitePath,
   },
 
   session: {

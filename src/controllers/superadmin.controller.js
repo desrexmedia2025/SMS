@@ -461,7 +461,8 @@ async function downloadBackup(req, res) {
   if (!safeName.startsWith('sms_backup_') || !safeName.endsWith('.json')) {
     throw new AppError(400, 'Invalid backup filename.');
   }
-  const fullPath = path.resolve(process.cwd(), 'backups', safeName);
+  const env = require('../config/environment');
+  const fullPath = path.resolve(env.backupsDir || path.resolve(process.cwd(), 'backups'), safeName);
   if (!fs.existsSync(fullPath)) {
     throw new AppError(404, 'Backup snapshot file not found on disk.');
   }
