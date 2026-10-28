@@ -1,0 +1,1533 @@
+const bcrypt = require('bcryptjs');
+const db = require('../config/database');
+const systemModel = require('../models/system.model');
+const academicModel = require('../models/academic.model');
+const financialService = require('./financial.service');
+const { isCurrentlyLocked } = require('./auth.service');
+const { recordAudit } = require('./audit.service');
+const { AppError } = require('../middleware/errorHandler');
+const { resolveCurrency } = require('../utils/currency');
+const { parsePagination, buildPaginatedResult } = require('../utils/pagination');
+
+async function getOverview() {
+  const context = await systemModel.getSchoolContext();
+  const [
+    studentsCnt,
+    teachersCnt,
+    classesCnt,
+    usersCnt,
+    pendingMarkCorr,
+    pendingProfReq,
+    pendingStuReq,
+    attSummary,
+    managedFinance,
+    recentAudits,
+    announcements,
+  ] = await Promise.all([
+    db.get("SELECT COUNT(*) AS cnt FROM students WHERE status = 'active'"),
+    db.get("SELECT COUNT(*) AS cnt FROM teachers WHERE status = 'active'"),
+    db.get("SELECT COUNT(*) AS cnt FROM classes WHERE status = 'active'"),
+    db.get("SELECT COUNT(*) AS cnt FROM users WHERE status = 'active'"),
+    db.get("SELECT COUNT(*) AS cnt FROM mark_correction_requests WHERE status = 'pending'"),
+    db.get("SELECT COUNT(*) AS cnt FROM profile_change_requests WHERE status = 'pending'"),
+    db.get("SELECT COUNT(*) AS cnt FROM student_registration_requests WHERE status = 'pending'"),
+    db.get(
+      `SELECT
+         COUNT(*) AS total_records,
+         SUM(CASE WHEN status IN ('present', 'late') THEN 1 ELSE 0 END) AS present_records
+       FROM attendance_records`
+    ),
+    financialService.computeManagedFinancialMetrics(context.settings),
+    db.query(
+      `SELECT al.*, u.full_name AS actor_name
+       FROM audit_logs al
+       LEFT JOIN users u ON u.id = al.actor_user_id
+       ORDER BY al.id DESC LIMIT 10`
+    ),
+    systemModel.listAnnouncementsForAudience(['all', 'superadmin', 'teachers', 'students', 'financial']),
+  ]);
+
+  const totalAtt = Number(attSummary?.total_records || 0);
+  const presentAtt = Number(attSummary?.present_records || 0);
+  const attendanceRate = totalAtt > 0 ? Math.round((presentAtt / totalAtt) * 1000) / 10 : 100;
+
+  return {
+    ...context,
+    metrics: {
+      activeStudents: Number(studentsCnt?.cnt || 0),
+      activeTeachers: Number(teachersCnt?.cnt || 0),
+      activeClasses: Number(classesCnt?.cnt || 0),
+      activeUsers: Number(usersCnt?.cnt || 0),
+      attendanceRate,
+      pendingMarkCorrections: Number(pendingMarkCorr?.cnt || 0),
+      pendingProfileRequests: Number(pendingProfReq?.cnt || 0),
+      pendingStudentRequests: Number(pendingStuReq?.cnt || 0),
+      finance: {
+        netBilled: managedFinance.netBilled,
+        collected: managedFinance.totalCollected,
+        outstanding: managedFinance.totalOutstanding,
+        collectionRate: managedFinance.collectionRate,
+        paystackCollected: managedFinance.paystackCollected,
+        termRevenueTarget: managedFinance.termRevenueTarget,
+        targetAttainmentRate: managedFinance.targetAttainmentRate,
+        treasuryPosition: managedFinance.treasuryPosition,
+      },
+    },
+    recentAudits,
+    announcements,
+  };
+}
+
+// ---------------- USERS & ROLES ----------------
+async function listUsers(query = {}) {
+  const { page, limit, offset } = parsePagination(query, { page: 1, limit: 25, maxLimit: 100 });
+  const params = [];
+  let where = 'WHERE 1=1';
+
+  if (query.role) {
+    where += ' AND r.slug = ?';
+    params.push(String(query.role).trim());
+  }
+  if (query.status) {
+    where += ' AND u.status = ?';
+    params.push(String(query.status).trim());
+  }
+  if (query.search) {
+    const q = `%${String(query.search).trim().toLowerCase()}%`;
+    where += ' AND (LOWER(u.full_name) LIKE ? OR LOWER(u.email) LIKE ? OR LOWER(u.username) LIKE ?)';
+    params.push(q, q, q);
+  }
+
+  const countRow = await db.get(
+    `SELECT COUNT(*) AS cnt
+     FROM users u
+     LEFT JOIN user_roles ur ON ur.user_id = u.id
+     LEFT JOIN roles r ON r.id = ur.role_id
+     ${where}`,
+    params
+  );
+
+  const items = await db.query(
+    `SELECT
+       u.id, u.username, u.email, u.full_name, u.phone, u.status,
+       u.email_verified, u.auth_provider, u.google_subject_id,
+       u.failed_login_attempts, u.locked_until, u.last_login_at, u.created_at,
+       r.slug AS role, r.name AS role_name
+     FROM users u
+     LEFT JOIN user_roles ur ON ur.user_id = u.id
+     LEFT JOIN roles r ON r.id = ur.role_id
+     ${where}
+     ORDER BY u.id DESC
+     LIMIT ? OFFSET ?`,
+    [...params, limit, offset]
+  );
+
+  const roles = await db.query('SELECT id, slug, name, description FROM roles ORDER BY id ASC');
+  return {
+    ...buildPaginatedResult(
+      items.map((u) => ({
+        ...u,
+        google_linked: Boolean(u.google_subject_id),
+        is_locked: isCurrentlyLocked(u.locked_until),
+        google_subject_id: undefined,
+        locked_until: undefined,
+      })),
+      countRow?.cnt || 0,
+      { page, limit }
+    ),
+    roles,
+  };
+}
+
+async function createUserAccount({ username, email, fullName, phone, password, roleSlug, actor, ipAddress }) {
+  const role = await db.get('SELECT id, slug FROM roles WHERE slug = ?', [roleSlug]);
+  if (!role) throw new AppError(400, 'Invalid role selected.');
+
+  const existing = await db.get(
+    'SELECT id FROM users WHERE LOWER(email) = ? OR LOWER(username) = ?',
+    [email.toLowerCase(), username.toLowerCase()]
+  );
+  if (existing) throw new AppError(409, 'A user with that email or username already exists.');
+
+  const hash = await bcrypt.hash(password, 10);
+  const userId = await db.withTransaction(async (tx) => {
+    const ins = await tx.run(
+      `INSERT INTO users (username, email, password_hash, full_name, phone, status, email_verified, auth_provider)
+       VALUES (?, ?, ?, ?, ?, 'active', 1, 'local')`,
+      [username.toLowerCase(), email.toLowerCase(), hash, fullName, phone || '']
+    );
+    await tx.run('INSERT INTO user_roles (user_id, role_id, assigned_by_user_id) VALUES (?, ?, ?)', [
+      ins.insertId,
+      role.id,
+      actor.id,
+    ]);
+    await recordAudit(
+      {
+        actorUserId: actor.id,
+        actorRole: actor.role,
+        action: 'USER_CREATED',
+        targetType: 'user',
+        targetId: String(ins.insertId),
+        ipAddress,
+        metadata: { email: email.toLowerCase(), role: roleSlug },
+      },
+      tx
+    );
+    return ins.insertId;
+  });
+
+  return {
+    id: userId,
+    username: username.toLowerCase(),
+    email: email.toLowerCase(),
+    role: roleSlug,
+  };
+}
+
+async function updateUserRoleOrStatus({ targetUserId, roleSlug, status, newPassword, actor, ipAddress }) {
+  const target = await db.get('SELECT id, email FROM users WHERE id = ?', [targetUserId]);
+  if (!target) throw new AppError(404, 'User not found.');
+  if (target.id === actor.id && status && status !== 'active') {
+    throw new AppError(400, 'You cannot deactivate your own active Superadmin session.');
+  }
+
+  await db.withTransaction(async (tx) => {
+    if (status) {
+      await tx.run('UPDATE users SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [
+        status,
+        targetUserId,
+      ]);
+      if (status !== 'active') {
+        await tx.run('DELETE FROM user_sessions WHERE user_id = ?', [targetUserId]);
+      }
+    }
+
+    if (roleSlug) {
+      const role = await tx.get('SELECT id FROM roles WHERE slug = ?', [roleSlug]);
+      if (!role) throw new AppError(400, 'Invalid role.');
+      if (target.id === actor.id && roleSlug !== 'superadmin') {
+        throw new AppError(400, 'You cannot remove your own Superadmin role.');
+      }
+      await tx.run('DELETE FROM user_roles WHERE user_id = ?', [targetUserId]);
+      await tx.run('INSERT INTO user_roles (user_id, role_id, assigned_by_user_id) VALUES (?, ?, ?)', [
+        targetUserId,
+        role.id,
+        actor.id,
+      ]);
+    }
+
+    if (newPassword && String(newPassword).trim().length >= 8) {
+      const hash = await bcrypt.hash(String(newPassword).trim(), 10);
+      await tx.run('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [
+        hash,
+        targetUserId,
+      ]);
+    }
+
+    await recordAudit(
+      {
+        actorUserId: actor.id,
+        actorRole: actor.role,
+        action: 'USER_ACCESS_UPDATED',
+        targetType: 'user',
+        targetId: String(targetUserId),
+        ipAddress,
+        metadata: { roleSlug, status, passwordReset: Boolean(newPassword) },
+      },
+      tx
+    );
+  });
+}
+
+// ---------------- ACADEMIC STRUCTURE ----------------
+async function getAcademicSetup() {
+  const [years, terms, classes, streams, subjects, gradingScales] = await Promise.all([
+    db.query('SELECT * FROM academic_years ORDER BY id DESC'),
+    db.query(
+      `SELECT tr.*, ay.name AS academic_year_name
+       FROM terms tr
+       INNER JOIN academic_years ay ON ay.id = tr.academic_year_id
+       ORDER BY tr.id ASC`
+    ),
+    db.query('SELECT * FROM classes ORDER BY level_order ASC, name ASC'),
+    db.query(
+      `SELECT st.*, c.name AS class_name, u.full_name AS class_teacher_name
+       FROM streams st
+       INNER JOIN classes c ON c.id = st.class_id
+       LEFT JOIN teachers t ON t.id = st.class_teacher_id
+       LEFT JOIN users u ON u.id = t.user_id
+       ORDER BY c.level_order ASC, st.name ASC`
+    ),
+    db.query('SELECT * FROM subjects ORDER BY code ASC'),
+    db.query('SELECT * FROM grading_scales ORDER BY min_score DESC'),
+  ]);
+  return { years, terms, classes, streams, subjects, gradingScales };
+}
+
+async function createAcademicYear({ name, startDate, endDate, isActive, actor, ipAddress }) {
+  return db.withTransaction(async (tx) => {
+    const existingActive = await tx.get('SELECT id FROM academic_years WHERE is_active = 1 LIMIT 1');
+    const shouldActivate = Boolean(isActive || !existingActive);
+    if (shouldActivate) {
+      await tx.run('UPDATE academic_years SET is_active = 0');
+    }
+    const ins = await tx.run(
+      'INSERT INTO academic_years (name, start_date, end_date, is_active, status) VALUES (?, ?, ?, ?, ?)',
+      [name, startDate, endDate, shouldActivate ? 1 : 0, 'active']
+    );
+    await recordAudit(
+      {
+        actorUserId: actor.id,
+        actorRole: actor.role,
+        action: 'ACADEMIC_YEAR_CREATED',
+        targetType: 'academic_year',
+        targetId: String(ins.insertId),
+        ipAddress,
+        metadata: { name, isActive: shouldActivate },
+      },
+      tx
+    );
+    return { id: ins.insertId, isActive: shouldActivate };
+  });
+}
+
+async function createTerm({ academicYearId, name, startDate, endDate, isActive, actor, ipAddress }) {
+  return db.withTransaction(async (tx) => {
+    const existingActiveTerm = await tx.get('SELECT id FROM terms WHERE is_active = 1 LIMIT 1');
+    const shouldActivate = Boolean(isActive || !existingActiveTerm);
+    if (shouldActivate) {
+      await tx.run('UPDATE terms SET is_active = 0');
+    }
+    const ins = await tx.run(
+      'INSERT INTO terms (academic_year_id, name, start_date, end_date, is_active) VALUES (?, ?, ?, ?, ?)',
+      [academicYearId, name, startDate, endDate, shouldActivate ? 1 : 0]
+    );
+    await recordAudit(
+      {
+        actorUserId: actor.id,
+        actorRole: actor.role,
+        action: 'TERM_CREATED',
+        targetType: 'term',
+        targetId: String(ins.insertId),
+        ipAddress,
+        metadata: { academicYearId, name, isActive: shouldActivate },
+      },
+      tx
+    );
+    return { id: ins.insertId, isActive: shouldActivate };
+  });
+}
+
+async function activatePeriod({ academicYearId, termId, actor, ipAddress }) {
+  await db.withTransaction(async (tx) => {
+    if (academicYearId) {
+      await tx.run('UPDATE academic_years SET is_active = 0');
+      await tx.run('UPDATE academic_years SET is_active = 1 WHERE id = ?', [academicYearId]);
+    }
+    if (termId) {
+      await tx.run('UPDATE terms SET is_active = 0');
+      await tx.run('UPDATE terms SET is_active = 1 WHERE id = ?', [termId]);
+    }
+    await recordAudit(
+      {
+        actorUserId: actor.id,
+        actorRole: actor.role,
+        action: 'ACTIVE_ACADEMIC_PERIOD_CHANGED',
+        targetType: 'academic_period',
+        targetId: `${academicYearId || ''}:${termId || ''}`,
+        ipAddress,
+      },
+      tx
+    );
+  });
+}
+
+async function createClass({ name, levelOrder, capacity, actor, ipAddress }) {
+  const ins = await db.run(
+    'INSERT INTO classes (name, level_order, capacity, status) VALUES (?, ?, ?, ?)',
+    [name, levelOrder, capacity, 'active']
+  );
+  await recordAudit({
+    actorUserId: actor.id,
+    actorRole: actor.role,
+    action: 'CLASS_CREATED',
+    targetType: 'class',
+    targetId: String(ins.insertId),
+    ipAddress,
+    metadata: { name },
+  });
+  return { id: ins.insertId };
+}
+
+async function createStream({ classId, name, roomNumber, classTeacherId, actor, ipAddress }) {
+  const ins = await db.run(
+    'INSERT INTO streams (class_id, name, room_number, class_teacher_id) VALUES (?, ?, ?, ?)',
+    [classId, name, roomNumber || '', classTeacherId || null]
+  );
+  await recordAudit({
+    actorUserId: actor.id,
+    actorRole: actor.role,
+    action: 'STREAM_CREATED',
+    targetType: 'stream',
+    targetId: String(ins.insertId),
+    ipAddress,
+    metadata: { classId, name },
+  });
+  return { id: ins.insertId };
+}
+
+async function createSubject({ code, name, department, isElective, passMark, maxMark, actor, ipAddress }) {
+  const ins = await db.run(
+    `INSERT INTO subjects (code, name, department, is_elective, pass_mark, max_mark, status)
+     VALUES (?, ?, ?, ?, ?, ?, 'active')`,
+    [code.toUpperCase(), name, department || '', isElective ? 1 : 0, passMark ?? 50, maxMark ?? 100]
+  );
+  await recordAudit({
+    actorUserId: actor.id,
+    actorRole: actor.role,
+    action: 'SUBJECT_CREATED',
+    targetType: 'subject',
+    targetId: String(ins.insertId),
+    ipAddress,
+    metadata: { code: code.toUpperCase(), name },
+  });
+  return { id: ins.insertId };
+}
+
+// ---------------- TEACHERS & ASSIGNMENTS ----------------
+async function listTeachers() {
+  const teachers = await db.query(
+    `SELECT
+       t.*,
+       u.username, u.email, u.phone, u.status AS user_status
+     FROM teachers t
+     INNER JOIN users u ON u.id = t.user_id
+     ORDER BY t.id DESC`
+  );
+  const assignments = await db.query(
+    `SELECT
+       ta.*,
+       t.first_name, t.last_name, t.staff_number,
+       c.name AS class_name,
+       st.name AS stream_name,
+       sub.code AS subject_code, sub.name AS subject_name,
+       ay.name AS academic_year_name
+     FROM teacher_assignments ta
+     INNER JOIN teachers t ON t.id = ta.teacher_id
+     INNER JOIN classes c ON c.id = ta.class_id
+     LEFT JOIN streams st ON st.id = ta.stream_id
+     INNER JOIN subjects sub ON sub.id = ta.subject_id
+     INNER JOIN academic_years ay ON ay.id = ta.academic_year_id
+     ORDER BY ta.id DESC`
+  );
+  return { teachers, assignments };
+}
+
+async function createTeacher({
+  staffNumber,
+  firstName,
+  lastName,
+  email,
+  phone,
+  password,
+  qualification,
+  specialization,
+  department,
+  hireDate,
+  actor,
+  ipAddress,
+}) {
+  const existingStaff = await db.get('SELECT id FROM teachers WHERE staff_number = ?', [staffNumber]);
+  if (existingStaff) throw new AppError(409, 'Staff number already exists.');
+  const existingEmail = await db.get('SELECT id FROM users WHERE LOWER(email) = ?', [email.toLowerCase()]);
+  if (existingEmail) throw new AppError(409, 'Email address is already in use.');
+
+  const role = await db.get("SELECT id FROM roles WHERE slug = 'teacher'");
+  const hash = await bcrypt.hash(password || 'Teacher@2026!', 10);
+  const baseUsername = `${firstName}.${lastName}`.toLowerCase().replace(/[^a-z0-9.]/g, '') + '.' + Date.now().toString().slice(-4);
+
+  return db.withTransaction(async (tx) => {
+    const uRes = await tx.run(
+      `INSERT INTO users (username, email, password_hash, full_name, phone, status, email_verified, auth_provider)
+       VALUES (?, ?, ?, ?, ?, 'active', 1, 'local')`,
+      [baseUsername, email.toLowerCase(), hash, `${firstName} ${lastName}`, phone || '']
+    );
+    await tx.run('INSERT INTO user_roles (user_id, role_id, assigned_by_user_id) VALUES (?, ?, ?)', [
+      uRes.insertId,
+      role.id,
+      actor.id,
+    ]);
+    const tRes = await tx.run(
+      `INSERT INTO teachers (user_id, staff_number, first_name, last_name, qualification, specialization, department, hire_date, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
+      [
+        uRes.insertId,
+        staffNumber,
+        firstName,
+        lastName,
+        qualification || '',
+        specialization || '',
+        department || '',
+        hireDate || new Date().toISOString().slice(0, 10),
+      ]
+    );
+    await recordAudit(
+      {
+        actorUserId: actor.id,
+        actorRole: actor.role,
+        action: 'TEACHER_ENROLLED',
+        targetType: 'teacher',
+        targetId: String(tRes.insertId),
+        ipAddress,
+        metadata: { staffNumber, email: email.toLowerCase() },
+      },
+      tx
+    );
+    return {
+      teacherId: tRes.insertId,
+      userId: uRes.insertId,
+      username: baseUsername,
+      email: email.toLowerCase(),
+      role: 'teacher',
+    };
+  });
+}
+
+async function assignTeacher({ teacherId, classId, streamId, subjectId, academicYearId, termId, actor, ipAddress }) {
+  let resolvedYearId = academicYearId;
+  let resolvedTermId = termId;
+  if (!resolvedYearId) {
+    const activeYr = await db.get('SELECT id FROM academic_years WHERE is_active = 1 ORDER BY id DESC LIMIT 1');
+    if (!activeYr) {
+      throw new AppError(400, 'Please add an Academic Year first under Academic Setup.');
+    }
+    resolvedYearId = activeYr.id;
+  }
+  if (!resolvedTermId) {
+    const activeTr = await db.get('SELECT id FROM terms WHERE is_active = 1 ORDER BY id DESC LIMIT 1');
+    resolvedTermId = activeTr ? activeTr.id : null;
+  }
+
+  const key = `${teacherId}:${classId}:${streamId || 0}:${subjectId}:${resolvedYearId}`;
+  const existing = await db.get('SELECT id FROM teacher_assignments WHERE assignment_key = ?', [key]);
+  if (existing) throw new AppError(409, 'This teacher is already assigned to that class/stream/subject.');
+
+  const ins = await db.run(
+    `INSERT INTO teacher_assignments (teacher_id, class_id, stream_id, subject_id, academic_year_id, term_id, assignment_key)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [teacherId, classId, streamId || null, subjectId, resolvedYearId, resolvedTermId || null, key]
+  );
+
+  await recordAudit({
+    actorUserId: actor.id,
+    actorRole: actor.role,
+    action: 'TEACHER_ASSIGNED',
+    targetType: 'teacher_assignment',
+    targetId: String(ins.insertId),
+    ipAddress,
+    metadata: { teacherId, classId, streamId, subjectId },
+  });
+  return { id: ins.insertId };
+}
+
+// ---------------- STUDENTS & ENROLMENTS ----------------
+async function listStudents(query = {}) {
+  const { page, limit, offset } = parsePagination(query, { page: 1, limit: 25, maxLimit: 100 });
+  const params = [];
+  let where = 'WHERE 1=1';
+
+  if (query.classId) {
+    where += ' AND se.class_id = ?';
+    params.push(Number(query.classId));
+  }
+  if (query.status) {
+    where += ' AND s.status = ?';
+    params.push(String(query.status));
+  }
+  if (query.search) {
+    const q = `%${String(query.search).trim().toLowerCase()}%`;
+    where +=
+      ' AND (LOWER(s.first_name) LIKE ? OR LOWER(s.last_name) LIKE ? OR LOWER(s.admission_number) LIKE ? OR LOWER(u.email) LIKE ?)';
+    params.push(q, q, q, q);
+  }
+
+  const countRow = await db.get(
+    `SELECT COUNT(*) AS cnt
+     FROM students s
+     INNER JOIN users u ON u.id = s.user_id
+     LEFT JOIN student_enrolments se ON se.student_id = s.id
+     ${where}`,
+    params
+  );
+
+  const items = await db.query(
+    `SELECT
+       s.*,
+       u.email, u.username, u.status AS user_status,
+       se.class_id, se.stream_id, se.roll_number, se.academic_year_id,
+       c.name AS class_name,
+       st.name AS stream_name
+     FROM students s
+     INNER JOIN users u ON u.id = s.user_id
+     LEFT JOIN student_enrolments se ON se.student_id = s.id
+     LEFT JOIN classes c ON c.id = se.class_id
+     LEFT JOIN streams st ON st.id = se.stream_id
+     ${where}
+     ORDER BY s.id DESC
+     LIMIT ? OFFSET ?`,
+    [...params, limit, offset]
+  );
+
+  return buildPaginatedResult(items, countRow?.cnt || 0, { page, limit });
+}
+
+async function enrolStudent({
+  admissionNumber,
+  firstName,
+  lastName,
+  email,
+  password,
+  gender,
+  dateOfBirth,
+  guardianName,
+  guardianPhone,
+  guardianEmail,
+  address,
+  classId,
+  streamId,
+  academicYearId,
+  termId,
+  rollNumber,
+  actor,
+  ipAddress,
+}) {
+  const existingAdm = await db.get('SELECT id FROM students WHERE admission_number = ?', [admissionNumber]);
+  if (existingAdm) throw new AppError(409, 'Admission number is already assigned to another student.');
+  const existingEmail = await db.get('SELECT id FROM users WHERE LOWER(email) = ?', [email.toLowerCase()]);
+  if (existingEmail) throw new AppError(409, 'Email address is already in use.');
+
+  const role = await db.get("SELECT id FROM roles WHERE slug = 'student'");
+  const hash = await bcrypt.hash(password || 'Student@2026!', 10);
+  const username = admissionNumber.toLowerCase().replace(/[^a-z0-9.-]/g, '');
+
+  return db.withTransaction(async (tx) => {
+    const uRes = await tx.run(
+      `INSERT INTO users (username, email, password_hash, full_name, phone, status, email_verified, auth_provider)
+       VALUES (?, ?, ?, ?, ?, 'active', 1, 'local')`,
+      [username, email.toLowerCase(), hash, `${firstName} ${lastName}`, guardianPhone || '']
+    );
+    await tx.run('INSERT INTO user_roles (user_id, role_id, assigned_by_user_id) VALUES (?, ?, ?)', [
+      uRes.insertId,
+      role.id,
+      actor.id,
+    ]);
+    const sRes = await tx.run(
+      `INSERT INTO students (user_id, admission_number, first_name, last_name, gender, date_of_birth, guardian_name, guardian_phone, guardian_email, address, enrollment_date, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
+      [
+        uRes.insertId,
+        admissionNumber,
+        firstName,
+        lastName,
+        gender || '',
+        dateOfBirth || '',
+        guardianName || '',
+        guardianPhone || '',
+        guardianEmail || '',
+        address || '',
+        new Date().toISOString().slice(0, 10),
+      ]
+    );
+
+    let resolvedYearId = academicYearId;
+    let resolvedTermId = termId;
+    if (classId && !resolvedYearId) {
+      const activeYr = await tx.get('SELECT id FROM academic_years WHERE is_active = 1 ORDER BY id DESC LIMIT 1');
+      resolvedYearId = activeYr ? activeYr.id : null;
+    }
+    if (classId && !resolvedTermId) {
+      const activeTr = await tx.get('SELECT id FROM terms WHERE is_active = 1 ORDER BY id DESC LIMIT 1');
+      resolvedTermId = activeTr ? activeTr.id : null;
+    }
+
+    if (classId && resolvedYearId) {
+      await tx.run(
+        `INSERT INTO student_enrolments (student_id, class_id, stream_id, academic_year_id, term_id, roll_number, status)
+         VALUES (?, ?, ?, ?, ?, ?, 'enrolled')`,
+        [sRes.insertId, classId, streamId || null, resolvedYearId, resolvedTermId || null, rollNumber || '']
+      );
+    }
+
+    await recordAudit(
+      {
+        actorUserId: actor.id,
+        actorRole: actor.role,
+        action: 'STUDENT_ENROLLED',
+        targetType: 'student',
+        targetId: String(sRes.insertId),
+        ipAddress,
+        metadata: { admissionNumber, classId, streamId },
+      },
+      tx
+    );
+    return {
+      studentId: sRes.insertId,
+      userId: uRes.insertId,
+      username,
+      email: email.toLowerCase(),
+    };
+  });
+}
+
+// ---------------- TIMETABLES ----------------
+async function listTimetables(query = {}) {
+  const params = [];
+  let where = 'WHERE 1=1';
+  if (query.classId) {
+    where += ' AND tt.class_id = ?';
+    params.push(Number(query.classId));
+  }
+  return db.query(
+    `SELECT
+       tt.*,
+       c.name AS class_name,
+       st.name AS stream_name,
+       sub.code AS subject_code, sub.name AS subject_name,
+       u.full_name AS teacher_name
+     FROM timetables tt
+     INNER JOIN classes c ON c.id = tt.class_id
+     LEFT JOIN streams st ON st.id = tt.stream_id
+     INNER JOIN subjects sub ON sub.id = tt.subject_id
+     INNER JOIN teachers t ON t.id = tt.teacher_id
+     INNER JOIN users u ON u.id = t.user_id
+     ${where}
+     ORDER BY tt.day_of_week ASC, tt.start_time ASC`,
+    params
+  );
+}
+
+async function createTimetableSlot({
+  academicYearId,
+  termId,
+  classId,
+  streamId,
+  subjectId,
+  teacherId,
+  dayOfWeek,
+  startTime,
+  endTime,
+  room,
+  actor,
+  ipAddress,
+}) {
+  let resolvedYearId = academicYearId;
+  let resolvedTermId = termId;
+  if (!resolvedYearId) {
+    const activeYr = await db.get('SELECT id FROM academic_years WHERE is_active = 1 ORDER BY id DESC LIMIT 1');
+    if (!activeYr) {
+      throw new AppError(400, 'Please add an Academic Year first under Academic Setup.');
+    }
+    resolvedYearId = activeYr.id;
+  }
+  if (!resolvedTermId) {
+    const activeTr = await db.get('SELECT id FROM terms WHERE is_active = 1 ORDER BY id DESC LIMIT 1');
+    resolvedTermId = activeTr ? activeTr.id : null;
+  }
+
+  if (startTime >= endTime) {
+    throw new AppError(400, 'Start time must be earlier than end time.');
+  }
+
+  // Conflict check: teacher cannot be double-booked on same day & overlapping time
+  const teacherConflict = await db.get(
+    `SELECT id FROM timetables
+     WHERE academic_year_id = ? AND day_of_week = ? AND teacher_id = ?
+       AND start_time < ? AND end_time > ?
+     LIMIT 1`,
+    [resolvedYearId, dayOfWeek, teacherId, endTime, startTime]
+  );
+  if (teacherConflict) {
+    throw new AppError(409, 'Schedule conflict: that teacher already has an overlapping class on that day.');
+  }
+
+  // Conflict check: class/stream cannot have overlapping lessons
+  const classConflict = await db.get(
+    `SELECT id FROM timetables
+     WHERE academic_year_id = ? AND day_of_week = ? AND class_id = ?
+       AND (stream_id IS NULL OR stream_id = ?)
+       AND start_time < ? AND end_time > ?
+     LIMIT 1`,
+    [resolvedYearId, dayOfWeek, classId, streamId || 0, endTime, startTime]
+  );
+  if (classConflict) {
+    throw new AppError(409, 'Schedule conflict: that class/stream already has an overlapping timetable entry.');
+  }
+
+  const ins = await db.run(
+    `INSERT INTO timetables (academic_year_id, term_id, class_id, stream_id, subject_id, teacher_id, day_of_week, start_time, end_time, room)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [resolvedYearId, resolvedTermId || null, classId, streamId || null, subjectId, teacherId, dayOfWeek, startTime, endTime, room || '']
+  );
+
+  await recordAudit({
+    actorUserId: actor.id,
+    actorRole: actor.role,
+    action: 'TIMETABLE_SLOT_CREATED',
+    targetType: 'timetable',
+    targetId: String(ins.insertId),
+    ipAddress,
+  });
+  return { id: ins.insertId };
+}
+
+// ---------------- ATTENDANCE & EXAMS OVERSIGHT ----------------
+async function getAttendanceOverview() {
+  const sessions = await db.query(
+    `SELECT
+       s.*,
+       c.name AS class_name,
+       st.name AS stream_name,
+       sub.name AS subject_name,
+       u.full_name AS taken_by_name,
+       COUNT(ar.id) AS total_marked,
+       SUM(CASE WHEN ar.status = 'present' THEN 1 ELSE 0 END) AS present_count,
+       SUM(CASE WHEN ar.status = 'absent' THEN 1 ELSE 0 END) AS absent_count,
+       SUM(CASE WHEN ar.status = 'late' THEN 1 ELSE 0 END) AS late_count
+     FROM attendance_sessions s
+     INNER JOIN classes c ON c.id = s.class_id
+     LEFT JOIN streams st ON st.id = s.stream_id
+     LEFT JOIN subjects sub ON sub.id = s.subject_id
+     LEFT JOIN users u ON u.id = s.taken_by_user_id
+     LEFT JOIN attendance_records ar ON ar.session_id = s.id
+     GROUP BY s.id
+     ORDER BY s.session_date DESC, s.id DESC
+     LIMIT 50`
+  );
+  return { sessions };
+}
+
+async function getExamsGovernance() {
+  const [assessments, gradingScales, correctionRequests, profileRequests] = await Promise.all([
+    db.query(
+      `SELECT
+         a.*,
+         c.name AS class_name,
+         st.name AS stream_name,
+         sub.name AS subject_name,
+         tr.name AS term_name,
+         u.full_name AS creator_name,
+         (SELECT COUNT(*) FROM marks m WHERE m.assessment_id = a.id) AS marks_count
+       FROM assessments a
+       INNER JOIN classes c ON c.id = a.class_id
+       LEFT JOIN streams st ON st.id = a.stream_id
+       INNER JOIN subjects sub ON sub.id = a.subject_id
+       INNER JOIN terms tr ON tr.id = a.term_id
+       LEFT JOIN users u ON u.id = a.created_by_user_id
+       ORDER BY a.id DESC`
+    ),
+    db.query('SELECT * FROM grading_scales ORDER BY min_score DESC'),
+    db.query(
+      `SELECT
+         mcr.*,
+         a.title AS assessment_title, a.max_score,
+         sub.name AS subject_name,
+         s.admission_number, s.first_name, s.last_name,
+         u.full_name AS requested_by_name
+       FROM mark_correction_requests mcr
+       INNER JOIN assessments a ON a.id = mcr.assessment_id
+       INNER JOIN subjects sub ON sub.id = a.subject_id
+       INNER JOIN students s ON s.id = mcr.student_id
+       INNER JOIN users u ON u.id = mcr.requested_by_user_id
+       ORDER BY mcr.id DESC`
+    ),
+    db.query(
+      `SELECT
+         pcr.*,
+         u.full_name AS requester_name, u.email AS requester_email
+       FROM profile_change_requests pcr
+       INNER JOIN users u ON u.id = pcr.user_id
+       ORDER BY pcr.id DESC`
+    ),
+  ]);
+  return { assessments, gradingScales, correctionRequests, profileRequests };
+}
+
+async function createGradingScale({ grade, minScore, maxScore, gradePoint, remark, actor, ipAddress }) {
+  if (Number(minScore) < 0 || Number(maxScore) > 100 || Number(minScore) > Number(maxScore)) {
+    throw new AppError(400, 'Score range must be between 0 and 100 with Min Score <= Max Score.');
+  }
+  const existing = await db.get('SELECT id FROM grading_scales WHERE UPPER(grade) = ?', [
+    grade.toUpperCase(),
+  ]);
+  if (existing) {
+    throw new AppError(409, `Grade "${grade.toUpperCase()}" already exists in the grading scale.`);
+  }
+  const ins = await db.run(
+    'INSERT INTO grading_scales (grade, min_score, max_score, grade_point, remark) VALUES (?, ?, ?, ?, ?)',
+    [grade.toUpperCase(), Number(minScore), Number(maxScore), Number(gradePoint || 0), remark || '']
+  );
+  await recordAudit({
+    actorUserId: actor.id,
+    actorRole: actor.role,
+    action: 'GRADING_SCALE_CREATED',
+    targetType: 'grading_scale',
+    targetId: String(ins.insertId),
+    ipAddress,
+    metadata: { grade: grade.toUpperCase(), minScore, maxScore },
+  });
+  return { id: ins.insertId };
+}
+
+async function deleteGradingScale({ scaleId, actor, ipAddress }) {
+  const existing = await db.get('SELECT id, grade FROM grading_scales WHERE id = ?', [scaleId]);
+  if (!existing) throw new AppError(404, 'Grading band not found.');
+  await db.run('DELETE FROM grading_scales WHERE id = ?', [scaleId]);
+  await recordAudit({
+    actorUserId: actor.id,
+    actorRole: actor.role,
+    action: 'GRADING_SCALE_DELETED',
+    targetType: 'grading_scale',
+    targetId: String(scaleId),
+    ipAddress,
+    metadata: { grade: existing.grade },
+  });
+}
+
+async function toggleAssessmentPublication({ assessmentId, isPublished, actor, ipAddress }) {
+  const assess = await db.get('SELECT id, title FROM assessments WHERE id = ?', [assessmentId]);
+  if (!assess) throw new AppError(404, 'Assessment not found.');
+
+  await db.run('UPDATE assessments SET is_published = ? WHERE id = ?', [isPublished ? 1 : 0, assessmentId]);
+  await recordAudit({
+    actorUserId: actor.id,
+    actorRole: actor.role,
+    action: isPublished ? 'ASSESSMENT_PUBLISHED' : 'ASSESSMENT_UNPUBLISHED',
+    targetType: 'assessment',
+    targetId: String(assessmentId),
+    ipAddress,
+    metadata: { title: assess.title },
+  });
+}
+
+async function reviewMarkCorrection({ requestId, decision, reviewNote, actor, ipAddress }) {
+  const reqRow = await db.get(
+    `SELECT mcr.*, a.max_score
+     FROM mark_correction_requests mcr
+     INNER JOIN assessments a ON a.id = mcr.assessment_id
+     WHERE mcr.id = ?`,
+    [requestId]
+  );
+  if (!reqRow) throw new AppError(404, 'Mark correction request not found.');
+  if (reqRow.status !== 'pending') throw new AppError(400, 'This request has already been reviewed.');
+
+  await db.withTransaction(async (tx) => {
+    if (decision === 'approved') {
+      const pct = Math.round((Number(reqRow.proposed_score) / Number(reqRow.max_score)) * 10000) / 100;
+      const gradeInfo = await academicModel.resolveGradeForPercentage(pct, tx);
+      await tx.run(
+        `UPDATE marks
+         SET score = ?, percentage = ?, grade = ?, remark = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [reqRow.proposed_score, pct, gradeInfo.grade, gradeInfo.remark, reqRow.mark_id]
+      );
+    }
+
+    await tx.run(
+      `UPDATE mark_correction_requests
+       SET status = ?, reviewed_by_user_id = ?, review_note = ?, reviewed_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [decision, actor.id, reviewNote || '', requestId]
+    );
+
+    await recordAudit(
+      {
+        actorUserId: actor.id,
+        actorRole: actor.role,
+        action: `MARK_CORRECTION_${decision.toUpperCase()}`,
+        targetType: 'mark_correction_request',
+        targetId: String(requestId),
+        ipAddress,
+        metadata: {
+          markId: reqRow.mark_id,
+          previousScore: reqRow.previous_score,
+          proposedScore: reqRow.proposed_score,
+        },
+      },
+      tx
+    );
+  });
+}
+
+async function reviewProfileChangeRequest({ requestId, decision, actor, ipAddress }) {
+  const reqRow = await db.get('SELECT * FROM profile_change_requests WHERE id = ?', [requestId]);
+  if (!reqRow) throw new AppError(404, 'Profile change request not found.');
+  if (reqRow.status !== 'pending') throw new AppError(400, 'Already processed.');
+
+  const allowedStudentFields = new Set(['first_name', 'last_name', 'date_of_birth', 'guardian_name', 'guardian_phone', 'address']);
+  await db.withTransaction(async (tx) => {
+    if (decision === 'approved' && reqRow.student_id && allowedStudentFields.has(reqRow.field_name)) {
+      await tx.run(`UPDATE students SET ${reqRow.field_name} = ? WHERE id = ?`, [
+        reqRow.requested_value,
+        reqRow.student_id,
+      ]);
+      if (reqRow.field_name === 'first_name' || reqRow.field_name === 'last_name') {
+        const s = await tx.get('SELECT first_name, last_name, user_id FROM students WHERE id = ?', [
+          reqRow.student_id,
+        ]);
+        if (s) {
+          await tx.run('UPDATE users SET full_name = ? WHERE id = ?', [
+            `${s.first_name} ${s.last_name}`,
+            s.user_id,
+          ]);
+        }
+      }
+    }
+
+    await tx.run(
+      `UPDATE profile_change_requests
+       SET status = ?, reviewed_by_user_id = ?, reviewed_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [decision, actor.id, requestId]
+    );
+
+    await recordAudit(
+      {
+        actorUserId: actor.id,
+        actorRole: actor.role,
+        action: `PROFILE_CHANGE_${decision.toUpperCase()}`,
+        targetType: 'profile_change_request',
+        targetId: String(requestId),
+        ipAddress,
+        metadata: { field: reqRow.field_name },
+      },
+      tx
+    );
+  });
+}
+
+// ---------------- ANNOUNCEMENTS, SETTINGS, REPORTS, AUDIT, BACKUP ----------------
+async function createAnnouncement({ title, body, audience, priority, actor, ipAddress }) {
+  const ins = await db.run(
+    `INSERT INTO announcements (title, body, audience, priority, author_user_id, status)
+     VALUES (?, ?, ?, ?, ?, 'published')`,
+    [title, body, audience || 'all', priority || 'normal', actor.id]
+  );
+  await recordAudit({
+    actorUserId: actor.id,
+    actorRole: actor.role,
+    action: 'ANNOUNCEMENT_PUBLISHED',
+    targetType: 'announcement',
+    targetId: String(ins.insertId),
+    ipAddress,
+    metadata: { title, audience },
+  });
+  return { id: ins.insertId };
+}
+
+async function updateSchoolSettings(payload, actor, ipAddress) {
+  const resolvedCurr = resolveCurrency(payload.currencyCode, payload.currencySymbol);
+  const current = await db.get(
+    `SELECT google_oauth_enabled, google_client_id, google_client_secret,
+            paystack_enabled, paystack_transfers_enabled, paystack_refunds_enabled,
+            paystack_public_key, paystack_secret_key, paystack_webhook_secret
+     FROM school_settings WHERE id = 1`
+  );
+  const googleOauthEnabled =
+    payload.googleOauthEnabled === undefined
+      ? Boolean(current ? current.google_oauth_enabled !== 0 : true)
+      : Boolean(payload.googleOauthEnabled);
+  const googleClientId =
+    payload.googleClientId === undefined
+      ? String(current?.google_client_id || '')
+      : String(payload.googleClientId || '').trim();
+  const googleClientSecret = payload.clearGoogleSecret
+    ? ''
+    : payload.googleClientSecret && String(payload.googleClientSecret).trim()
+      ? String(payload.googleClientSecret).trim()
+      : String(current?.google_client_secret || '');
+
+  const paystackEnabled =
+    payload.paystackEnabled === undefined
+      ? Boolean(current ? current.paystack_enabled !== 0 : true)
+      : Boolean(payload.paystackEnabled);
+  const paystackTransfersEnabled =
+    payload.paystackTransfersEnabled === undefined
+      ? Boolean(current ? current.paystack_transfers_enabled !== 0 : true)
+      : Boolean(payload.paystackTransfersEnabled);
+  const paystackRefundsEnabled =
+    payload.paystackRefundsEnabled === undefined
+      ? Boolean(current ? current.paystack_refunds_enabled !== 0 : true)
+      : Boolean(payload.paystackRefundsEnabled);
+  const paystackPublicKey =
+    payload.paystackPublicKey === undefined
+      ? String(current?.paystack_public_key || '')
+      : String(payload.paystackPublicKey || '').trim();
+  const paystackSecretKey = payload.clearPaystackSecret
+    ? ''
+    : payload.paystackSecretKey && String(payload.paystackSecretKey).trim()
+      ? String(payload.paystackSecretKey).trim()
+      : String(current?.paystack_secret_key || '');
+  const paystackWebhookSecret = payload.clearPaystackSecret
+    ? ''
+    : payload.paystackWebhookSecret && String(payload.paystackWebhookSecret).trim()
+      ? String(payload.paystackWebhookSecret).trim()
+      : String(current?.paystack_webhook_secret || '');
+
+  await db.run(
+    `UPDATE school_settings
+     SET school_name = ?,
+         school_code = ?,
+         motto = ?,
+         email = ?,
+         phone = ?,
+         address = ?,
+         timezone = ?,
+         currency_code = ?,
+         currency_symbol = ?,
+         student_fee_portal_enabled = ?,
+         attendance_cutoff_time = ?,
+         allow_teacher_mark_edit_after_publish = ?,
+         google_oauth_enabled = ?,
+         google_client_id = ?,
+         google_client_secret = ?,
+         paystack_enabled = ?,
+         paystack_transfers_enabled = ?,
+         paystack_refunds_enabled = ?,
+         paystack_public_key = ?,
+         paystack_secret_key = ?,
+         paystack_webhook_secret = ?,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE id = 1`,
+    [
+      payload.schoolName,
+      payload.schoolCode,
+      payload.motto || '',
+      payload.email || '',
+      payload.phone || '',
+      payload.address || '',
+      payload.timezone || 'Africa/Accra',
+      resolvedCurr.code,
+      resolvedCurr.symbol,
+      payload.studentFeePortalEnabled ? 1 : 0,
+      payload.attendanceCutoffTime || '08:30',
+      payload.allowTeacherMarkEditAfterPublish ? 1 : 0,
+      googleOauthEnabled ? 1 : 0,
+      googleClientId,
+      googleClientSecret,
+      paystackEnabled ? 1 : 0,
+      paystackTransfersEnabled ? 1 : 0,
+      paystackRefundsEnabled ? 1 : 0,
+      paystackPublicKey,
+      paystackSecretKey,
+      paystackWebhookSecret,
+    ]
+  );
+
+  await recordAudit({
+    actorUserId: actor.id,
+    actorRole: actor.role,
+    action: 'SCHOOL_SETTINGS_UPDATED',
+    targetType: 'school_settings',
+    targetId: '1',
+    ipAddress,
+    metadata: {
+      currencyCode: resolvedCurr.code,
+      currencySymbol: resolvedCurr.symbol,
+      studentFeePortalEnabled: Boolean(payload.studentFeePortalEnabled),
+      googleOauthEnabled,
+      googleLiveKeysConfigured: Boolean(googleClientId && googleClientSecret),
+      paystackEnabled,
+      paystackTransfersEnabled,
+      paystackRefundsEnabled,
+      paystackSecretConfigured: Boolean(paystackSecretKey),
+    },
+  });
+
+  return systemModel.getSchoolContext();
+}
+
+async function getSchoolWideReports() {
+  const context = await systemModel.getSchoolContext();
+  const [classPerformance, classAttendance, feeByClass] = await Promise.all([
+    db.query(
+      `SELECT
+         c.name AS class_name,
+         COUNT(DISTINCT m.student_id) AS students_assessed,
+         ROUND(AVG(m.percentage), 2) AS avg_percentage
+       FROM classes c
+       LEFT JOIN assessments a ON a.class_id = c.id AND a.is_published = 1
+       LEFT JOIN marks m ON m.assessment_id = a.id
+       GROUP BY c.id, c.name
+       ORDER BY c.level_order ASC`
+    ),
+    db.query(
+      `SELECT
+         c.name AS class_name,
+         COUNT(ar.id) AS total_entries,
+         SUM(CASE WHEN ar.status IN ('present', 'late') THEN 1 ELSE 0 END) AS attended_entries
+       FROM classes c
+       LEFT JOIN attendance_sessions s ON s.class_id = c.id
+       LEFT JOIN attendance_records ar ON ar.session_id = s.id
+       GROUP BY c.id, c.name
+       ORDER BY c.level_order ASC`
+    ),
+    db.query(
+      `SELECT
+         c.name AS class_name,
+         COALESCE(SUM(fa.amount_due - fa.discount_amount), 0) AS net_billed,
+         COALESCE(SUM(fa.amount_paid), 0) AS collected
+       FROM classes c
+       LEFT JOIN student_enrolments se ON se.class_id = c.id
+       LEFT JOIN fee_assignments fa ON fa.student_id = se.student_id
+       GROUP BY c.id, c.name
+       ORDER BY c.level_order ASC`
+    ),
+  ]);
+
+  return {
+    ...context,
+    classPerformance,
+    classAttendance,
+    feeByClass,
+  };
+}
+
+async function listAuditLogs(query = {}) {
+  const { page, limit, offset } = parsePagination(query, { page: 1, limit: 30, maxLimit: 100 });
+  const params = [];
+  let where = 'WHERE 1=1';
+
+  if (query.role) {
+    where += ' AND al.actor_role = ?';
+    params.push(String(query.role));
+  }
+  if (query.search) {
+    const q = `%${String(query.search).trim().toLowerCase()}%`;
+    where += ' AND (LOWER(al.action) LIKE ? OR LOWER(al.target_type) LIKE ? OR LOWER(COALESCE(u.full_name, \'\')) LIKE ?)';
+    params.push(q, q, q);
+  }
+
+  const countRow = await db.get(
+    `SELECT COUNT(*) AS cnt FROM audit_logs al LEFT JOIN users u ON u.id = al.actor_user_id ${where}`,
+    params
+  );
+  const items = await db.query(
+    `SELECT al.*, u.full_name AS actor_name, u.email AS actor_email
+     FROM audit_logs al
+     LEFT JOIN users u ON u.id = al.actor_user_id
+     ${where}
+     ORDER BY al.id DESC
+     LIMIT ? OFFSET ?`,
+    [...params, limit, offset]
+  );
+
+  return buildPaginatedResult(items, countRow?.cnt || 0, { page, limit });
+}
+
+async function getBackupStatus() {
+  const backups = await db.query(
+    `SELECT bl.*, u.full_name AS created_by_name
+     FROM backup_logs bl
+     LEFT JOIN users u ON u.id = bl.created_by_user_id
+     ORDER BY bl.id DESC
+     LIMIT 20`
+  );
+  const health = await db.healthCheck();
+  return { health, backups };
+}
+
+async function triggerBackup(actor, ipAddress) {
+  const backup = await systemModel.createVerifiedBackup(actor.id);
+  await recordAudit({
+    actorUserId: actor.id,
+    actorRole: actor.role,
+    action: 'DATABASE_BACKUP_VERIFIED',
+    targetType: 'backup',
+    targetId: backup.filename,
+    ipAddress,
+    metadata: { sizeBytes: backup.sizeBytes, totalRows: backup.totalRows },
+  });
+  return backup;
+}
+
+async function unlockUserAndRevokeSessions({ targetUserId, actor, ipAddress }) {
+  const target = await db.get('SELECT id, email FROM users WHERE id = ?', [targetUserId]);
+  if (!target) throw new AppError(404, 'User not found.');
+
+  await db.withTransaction(async (tx) => {
+    await tx.run(
+      `UPDATE users
+       SET failed_login_attempts = 0,
+           locked_until = NULL,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [targetUserId]
+    );
+    if (Number(targetUserId) !== Number(actor.id)) {
+      await tx.run('DELETE FROM user_sessions WHERE user_id = ?', [targetUserId]);
+    }
+    await recordAudit(
+      {
+        actorUserId: actor.id,
+        actorRole: actor.role,
+        action: 'USER_UNLOCKED_SESSIONS_REVOKED',
+        targetType: 'user',
+        targetId: String(targetUserId),
+        ipAddress,
+      },
+      tx
+    );
+  });
+}
+
+async function listStudentRegistrationRequests(query = {}) {
+  const params = [];
+  let where = 'WHERE 1=1';
+
+  if (query.status) {
+    where += ' AND srr.status = ?';
+    params.push(String(query.status).trim().toLowerCase());
+  }
+
+  const items = await db.query(
+    `SELECT
+       srr.id, srr.first_name, srr.last_name, srr.email, srr.phone,
+       srr.gender, srr.date_of_birth, srr.requested_class_id,
+       srr.guardian_name, srr.guardian_phone, srr.auth_provider, srr.status,
+       srr.admission_number, srr.approved_user_id, srr.approved_student_id,
+       srr.review_note, srr.reviewed_at, srr.created_at,
+       c.name AS requested_class_name,
+       u.full_name AS reviewer_name
+     FROM student_registration_requests srr
+     LEFT JOIN classes c ON c.id = srr.requested_class_id
+     LEFT JOIN users u ON u.id = srr.reviewed_by_user_id
+     ${where}
+     ORDER BY CASE WHEN srr.status = 'pending' THEN 0 ELSE 1 END ASC, srr.id DESC
+     LIMIT 100`,
+    params
+  );
+
+  return { items };
+}
+
+async function reviewStudentRegistrationRequest({
+  requestId,
+  decision,
+  admissionNumber,
+  classId,
+  streamId,
+  reviewNote,
+  actor,
+  ipAddress,
+}) {
+  const reqRow = await db.get('SELECT * FROM student_registration_requests WHERE id = ?', [requestId]);
+  if (!reqRow) throw new AppError(404, 'Student join proposal not found.');
+  if (reqRow.status !== 'pending') {
+    throw new AppError(409, 'This student join proposal has already been reviewed.');
+  }
+
+  if (decision === 'rejected') {
+    await db.run(
+      `UPDATE student_registration_requests
+       SET status = 'rejected',
+           reviewed_by_user_id = ?,
+           review_note = ?,
+           reviewed_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [actor.id, reviewNote || '', requestId]
+    );
+    await recordAudit({
+      actorUserId: actor.id,
+      actorRole: actor.role,
+      action: 'STUDENT_JOIN_REQUEST_REJECTED',
+      targetType: 'student_registration_request',
+      targetId: String(requestId),
+      ipAddress,
+      metadata: { email: reqRow.email, reviewNote: reviewNote || '' },
+    });
+    return { status: 'rejected' };
+  }
+
+  // decision === 'approved'
+  const role = await db.get("SELECT id FROM roles WHERE slug = 'student'");
+  if (!role) throw new AppError(500, 'Student role missing in system roles.');
+
+  return db.withTransaction(async (tx) => {
+    const existingEmail = await tx.get('SELECT id FROM users WHERE LOWER(email) = ?', [
+      reqRow.email.toLowerCase(),
+    ]);
+    if (existingEmail) {
+      throw new AppError(409, 'A user account with this email address already exists.');
+    }
+
+    if (reqRow.google_subject_id) {
+      const existingGoogleSub = await tx.get(
+        'SELECT id FROM users WHERE google_subject_id = ?',
+        [reqRow.google_subject_id]
+      );
+      if (existingGoogleSub) {
+        throw new AppError(409, 'That Google account is already linked to another user.');
+      }
+    }
+
+    let finalAdm = String(admissionNumber || '').trim();
+    if (finalAdm) {
+      const existingAdm = await tx.get('SELECT id FROM students WHERE admission_number = ?', [finalAdm]);
+      if (existingAdm) {
+        throw new AppError(409, 'Admission number is already assigned to another student.');
+      }
+    } else {
+      const yr = new Date().getFullYear();
+      const countRow = await tx.get('SELECT COUNT(*) AS cnt FROM students');
+      let seq = Number(countRow?.cnt || 0) + 1;
+      let candidate = `ADM-${yr}-${String(seq).padStart(3, '0')}`;
+      while (await tx.get('SELECT id FROM students WHERE admission_number = ?', [candidate])) {
+        seq += 1;
+        candidate = `ADM-${yr}-${String(seq).padStart(3, '0')}`;
+      }
+      finalAdm = candidate;
+    }
+
+    const baseUsername = finalAdm.toLowerCase().replace(/[^a-z0-9.-]/g, '') || `student.${requestId}`;
+    let finalUsername = baseUsername;
+    let uSeq = 1;
+    while (await tx.get('SELECT id FROM users WHERE LOWER(username) = ?', [finalUsername])) {
+      uSeq += 1;
+      finalUsername = `${baseUsername}.${uSeq}`;
+    }
+
+    const hasLocalPw = Boolean(reqRow.password_hash && String(reqRow.password_hash).trim());
+    const googleSubId = reqRow.google_subject_id || null;
+    const provider = googleSubId ? (hasLocalPw ? 'both' : 'google') : 'local';
+
+    const uRes = await tx.run(
+      `INSERT INTO users (username, email, password_hash, full_name, phone, status, email_verified, google_subject_id, auth_provider)
+       VALUES (?, ?, ?, ?, ?, 'active', 1, ?, ?)`,
+      [
+        finalUsername,
+        reqRow.email.toLowerCase(),
+        hasLocalPw ? reqRow.password_hash : null,
+        `${reqRow.first_name} ${reqRow.last_name}`,
+        reqRow.phone || reqRow.guardian_phone || '',
+        googleSubId,
+        provider,
+      ]
+    );
+
+    await tx.run('INSERT INTO user_roles (user_id, role_id, assigned_by_user_id) VALUES (?, ?, ?)', [
+      uRes.insertId,
+      role.id,
+      actor.id,
+    ]);
+
+    const sRes = await tx.run(
+      `INSERT INTO students (user_id, admission_number, first_name, last_name, gender, date_of_birth, guardian_name, guardian_phone, enrollment_date, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
+      [
+        uRes.insertId,
+        finalAdm,
+        reqRow.first_name,
+        reqRow.last_name,
+        reqRow.gender || '',
+        reqRow.date_of_birth || '',
+        reqRow.guardian_name || '',
+        reqRow.guardian_phone || '',
+        new Date().toISOString().slice(0, 10),
+      ]
+    );
+
+    const targetClassId = classId || reqRow.requested_class_id || null;
+    if (targetClassId) {
+      const activeYear = await tx.get(
+        'SELECT id FROM academic_years WHERE is_active = 1 ORDER BY id DESC LIMIT 1'
+      );
+      const activeTerm = await tx.get(
+        'SELECT id FROM terms WHERE is_active = 1 ORDER BY id DESC LIMIT 1'
+      );
+      if (activeYear) {
+        await tx.run(
+          `INSERT INTO student_enrolments (student_id, class_id, stream_id, academic_year_id, term_id, status)
+           VALUES (?, ?, ?, ?, ?, 'enrolled')`,
+          [sRes.insertId, targetClassId, streamId || null, activeYear.id, activeTerm?.id || null]
+        );
+      }
+    }
+
+    await tx.run(
+      `UPDATE student_registration_requests
+       SET status = 'approved',
+           admission_number = ?,
+           approved_user_id = ?,
+           approved_student_id = ?,
+           reviewed_by_user_id = ?,
+           review_note = ?,
+           reviewed_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [finalAdm, uRes.insertId, sRes.insertId, actor.id, reviewNote || '', requestId]
+    );
+
+    await recordAudit(
+      {
+        actorUserId: actor.id,
+        actorRole: actor.role,
+        action: 'STUDENT_JOIN_REQUEST_APPROVED',
+        targetType: 'student_registration_request',
+        targetId: String(requestId),
+        ipAddress,
+        metadata: {
+          studentId: sRes.insertId,
+          userId: uRes.insertId,
+          admissionNumber: finalAdm,
+          email: reqRow.email.toLowerCase(),
+        },
+      },
+      tx
+    );
+
+    return {
+      status: 'approved',
+      studentId: sRes.insertId,
+      userId: uRes.insertId,
+      admissionNumber: finalAdm,
+      username: finalUsername,
+      email: reqRow.email.toLowerCase(),
+    };
+  });
+}
+
+module.exports = {
+  getOverview,
+  listUsers,
+  createUserAccount,
+  updateUserRoleOrStatus,
+  unlockUserAndRevokeSessions,
+  getAcademicSetup,
+  createAcademicYear,
+  createTerm,
+  activatePeriod,
+  createClass,
+  createStream,
+  createSubject,
+  listTeachers,
+  createTeacher,
+  assignTeacher,
+  listStudents,
+  enrolStudent,
+  listStudentRegistrationRequests,
+  reviewStudentRegistrationRequest,
+  listTimetables,
+  createTimetableSlot,
+  getAttendanceOverview,
+  getExamsGovernance,
+  createGradingScale,
+  deleteGradingScale,
+  toggleAssessmentPublication,
+  reviewMarkCorrection,
+  reviewProfileChangeRequest,
+  createAnnouncement,
+  updateSchoolSettings,
+  getSchoolWideReports,
+  listAuditLogs,
+  getBackupStatus,
+  triggerBackup,
+};

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign In - School Management System</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="centered-shell login-page-bg">
+  <div class="login-split-card">
+    <!-- Left Curved Blue Welcome Panel -->
+    <div class="login-hero-side">
+      <div class="login-hero-inner">
+        <div class="login-logo-circle" aria-hidden="true">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path d="M12 3L2 8L12 13L22 8L12 3Z" fill="#1d4ed8"/>
+            <path d="M6 10.8V16.2C6 17.9 8.7 19.5 12 19.5C15.3 19.5 18 17.9 18 16.2V10.8L12 13.8L6 10.8Z" fill="#2563eb"/>
+            <path d="M20.5 9.2V15.5" stroke="#93c5fd" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="login-brand-title" id="brand-school-name">School Management System</div>
+
+        <div class="login-hero-copy">
+          <h2 id="hero-heading">Welcome Back!</h2>
+          <p id="brand-school-motto">
+            To stay connected with us please login with your personal info
+          </p>
+          <button type="button" class="login-hero-outline-btn" id="hero-signin-btn">
+            SIGN IN
+          </button>
+        </div>
+
+        <div class="login-hero-meta">
+          <span>PORTAL ACCESS</span>
+          <span class="login-meta-sep">|</span>
+          <span>SECURE SESSION</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right White Login / Student Account Proposal Panel -->
+    <div class="login-form-side">
+      <div class="login-form-inner">
+        <!-- Main Sign-In View -->
+        <div id="signin-view">
+          <h1 class="login-welcome-heading">welcome</h1>
+          <p class="login-welcome-sub">Log in to your account to continue</p>
+
+          <div id="login-alert" class="alert alert-error hidden" style="text-align:left;"></div>
+          <div id="login-info" class="alert alert-info hidden" style="text-align:left;"></div>
+
+          <div id="google-sso-block">
+            <a href="/auth/google" id="google-login-btn" class="google-btn">
+              <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+                <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.5z"/>
+                <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+                <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.3 0-9.7-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/>
+                <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.6-.4-3.5z"/>
+              </svg>
+              <span>Continue with Google</span>
+            </a>
+            <div class="divider-line">or sign in with password</div>
+          </div>
+
+          <form id="login-form" autocomplete="on" class="login-pill-form">
+            <div class="login-pill-field">
+              <input
+                type="text"
+                id="identifier"
+                name="identifier"
+                placeholder="Email or Username"
+                aria-label="Email or Username"
+                autocomplete="username"
+                spellcheck="false"
+                autocapitalize="off"
+                required
+              >
+            </div>
+            <div class="login-pill-field">
+              <input
+                type="password"
+                id="password"
+                name="password"
+                placeholder="Password"
+                aria-label="Password"
+                autocomplete="current-password"
+                required
+              >
+            </div>
+
+            <div class="login-forgot-row">
+              <button type="button" id="toggle-reset-btn" class="login-text-link">
+                Forgot your password?
+              </button>
+            </div>
+
+            <div class="login-submit-row">
+              <button type="submit" id="login-submit-btn" class="login-pill-submit">
+                LOG IN
+              </button>
+            </div>
+
+            <div class="login-bottom-prompt">
+              Don't have an account?
+              <button type="button" id="toggle-register-btn" class="login-inline-link">create one</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Student-Only Create Account / Join Proposal View -->
+        <div id="register-panel" class="hidden">
+          <h2 class="login-welcome-heading" style="font-size:27px;">create account</h2>
+          <p class="login-welcome-sub" style="margin-bottom:14px;">
+            Student join proposal — activated upon administrator approval
+          </p>
+
+          <div id="register-feedback" class="alert alert-error hidden" style="text-align:left;"></div>
+
+          <div id="google-register-block">
+            <button type="button" id="google-register-btn" class="google-btn">
+              <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+                <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.5z"/>
+                <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+                <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.3 0-9.7-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/>
+                <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.6-.4-3.5z"/>
+              </svg>
+              <span>Sign up with Google</span>
+            </button>
+            <div class="divider-line" style="margin:12px 0;">or apply with email</div>
+          </div>
+
+          <form id="student-register-form" class="login-pill-form" style="gap:10px;">
+            <div class="login-pill-row-2">
+              <div class="login-pill-field">
+                <input
+                  type="text"
+                  id="reg-first-name"
+                  name="firstName"
+                  placeholder="First Name"
+                  aria-label="First Name"
+                  required
+                >
+              </div>
+              <div class="login-pill-field">
+                <input
+                  type="text"
+                  id="reg-last-name"
+                  name="lastName"
+                  placeholder="Last Name"
+                  aria-label="Last Name"
+                  required
+                >
+              </div>
+            </div>
+
+            <div class="login-pill-field">
+              <input
+                type="email"
+                id="reg-email"
+                name="email"
+                placeholder="Student Email"
+                aria-label="Student Email"
+                autocomplete="email"
+                required
+              >
+            </div>
+
+            <div class="login-pill-row-2">
+              <div class="login-pill-field">
+                <select id="reg-class-select" name="requestedClassId" aria-label="Requested Class">
+                  <option value="">Select Class</option>
+                </select>
+              </div>
+              <div class="login-pill-field">
+                <select id="reg-gender" name="gender" aria-label="Gender">
+                  <option value="">Gender</option>
+                  <option value="Female">Female</option>
+                  <option value="Male">Male</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="login-pill-field">
+              <input
+                type="text"
+                id="reg-guardian-phone"
+                name="guardianPhone"
+                placeholder="Guardian / Contact Phone"
+                aria-label="Guardian or Contact Phone"
+              >
+            </div>
+
+            <div class="login-pill-field">
+              <input
+                type="password"
+                id="reg-password"
+                name="password"
+                minlength="8"
+                placeholder="Password (8+ chars, upper, num, symbol)"
+                aria-label="Create Password"
+                autocomplete="new-password"
+                required
+              >
+            </div>
+
+            <div class="login-submit-row" style="margin-top:2px;">
+              <button type="submit" id="register-submit-btn" class="login-pill-submit">
+                CREATE ACCOUNT
+              </button>
+            </div>
+
+            <div class="login-bottom-prompt">
+              Already have an account?
+              <button type="button" id="back-to-signin-from-reg-btn" class="login-inline-link">sign in</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Password Reset View -->
+        <div id="reset-panel" class="hidden">
+          <h2 class="login-welcome-heading" style="font-size:26px;">reset</h2>
+          <p class="login-welcome-sub">Recover access to your school account</p>
+
+          <div id="reset-feedback" class="alert alert-info hidden" style="text-align:left;"></div>
+
+          <form id="reset-request-form" class="login-pill-form">
+            <div class="login-pill-field">
+              <input
+                type="email"
+                id="reset-email"
+                placeholder="Registered School Email"
+                aria-label="Registered School Email"
+                autocomplete="email"
+                required
+              >
+            </div>
+            <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px;">
+              <button type="submit" class="login-pill-submit" style="min-width:150px;height:40px;font-size:11.5px;">
+                SEND CODE
+              </button>
+              <button type="button" id="have-code-btn" class="btn btn-secondary btn-sm" style="border-radius:999px;padding:0 16px;">
+                Have Code
+              </button>
+            </div>
+          </form>
+
+          <form id="reset-confirm-form" class="login-pill-form hidden" style="margin-top:14px;">
+            <div class="login-pill-field">
+              <input
+                type="text"
+                id="reset-code"
+                placeholder="One-Time Reset Code"
+                aria-label="One-Time Reset Code"
+                autocomplete="one-time-code"
+                required
+              >
+            </div>
+            <div class="login-pill-field">
+              <input
+                type="password"
+                id="reset-new-password"
+                minlength="8"
+                placeholder="New Strong Password"
+                aria-label="New Strong Password"
+                autocomplete="new-password"
+                required
+              >
+            </div>
+            <div class="login-submit-row">
+              <button type="submit" class="login-pill-submit" style="min-width:180px;">
+                UPDATE PASSWORD
+              </button>
+            </div>
+          </form>
+
+          <div class="login-bottom-prompt" style="margin-top:18px;">
+            <button type="button" id="back-to-login-btn" class="login-inline-link">
+              Back to sign in
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/login.js"></script>
+</body>
+</html>

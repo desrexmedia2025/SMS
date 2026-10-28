@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Teachers Dashboard - School Management System</title>
+  <link rel="stylesheet" href="/css/styles.css?v=2.3">
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title" id="sb-school-name">School Management System</div>
+        <span class="sidebar-role-tag" style="background:rgba(16,185,129,0.22);color:#6ee7b7;">2 · Teachers</span>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Teaching Workspace</div>
+        <button class="nav-btn active" data-section="overview">Overview</button>
+        <button class="nav-btn" data-section="classes">My Classes &amp; Subjects</button>
+        <button class="nav-btn" data-section="classlists">Class Lists</button>
+        <button class="nav-btn" data-section="timetable">My Timetable</button>
+
+        <div class="nav-section-label">Classroom Records</div>
+        <button class="nav-btn" data-section="attendance">Record Attendance</button>
+        <button class="nav-btn" data-section="marks">Assessments &amp; Enter Marks</button>
+        <button class="nav-btn" data-section="reports">Results &amp; Class Reports</button>
+
+        <div class="nav-section-label">Notices &amp; Account</div>
+        <button class="nav-btn" data-section="announcements">Announcements</button>
+        <button class="nav-btn" data-section="profile">My Profile &amp; Security</button>
+      </nav>
+      <div class="sidebar-footer" id="sb-user-info">Signed in as Teacher</div>
+    </aside>
+
+    <div class="main-area">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-btn" id="mobile-menu-btn">Menu</button>
+          <h1 class="topbar-title" id="topbar-title">Overview</h1>
+          <span class="badge badge-primary" id="active-period-badge">Academic Period</span>
+        </div>
+        <div class="topbar-right">
+          <a href="/auth/google?mode=link" class="btn btn-secondary btn-sm hidden" id="google-link-btn">Link Google</a>
+          <button class="btn btn-secondary btn-sm" id="logout-btn">Sign Out</button>
+        </div>
+      </header>
+
+      <main class="content-body">
+        <!-- OVERVIEW -->
+        <section id="sec-overview" class="module-panel">
+          <div class="kpi-grid" id="tc-kpis"></div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header"><h2 class="card-title">My Assigned Teaching Responsibilities</h2></div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Class / Stream</th><th>Subject</th><th>Room</th></tr></thead>
+                  <tbody id="tc-ov-assignments"></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header"><h2 class="card-title">Recent Attendance Roll Calls</h2></div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Date</th><th>Class</th><th>Subject</th><th class="num">Present</th><th class="num">Absent</th></tr></thead>
+                  <tbody id="tc-ov-sessions"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- MY CLASSES & SUBJECTS -->
+        <section id="sec-classes" class="module-panel hidden">
+          <div class="card">
+            <div class="card-header"><h2 class="card-title">Assigned Classes &amp; Subjects</h2></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Class</th><th>Stream</th><th>Room</th><th>Subject Code</th><th>Subject Name</th><th class="num">Pass Mark</th></tr></thead>
+                <tbody id="tc-assignments-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- CLASS LISTS -->
+        <section id="sec-classlists" class="module-panel hidden">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Class Learner Roster (Assigned Classes Only)</h2>
+              <div class="toolbar" style="margin:0;">
+                <select id="roster-assignment-select"></select>
+                <button class="btn btn-primary btn-sm" id="load-roster-btn">Load Class List</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Roll #</th><th>Admission #</th><th>Learner Name</th><th>Gender</th><th>Date of Birth</th><th>Guardian Contact</th></tr></thead>
+                <tbody id="roster-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- TIMETABLE -->
+        <section id="sec-timetable" class="module-panel hidden">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Personal Weekly Teaching Timetable</h2>
+                <div class="card-subtitle">Tabular schedule grid organized by lesson time and weekday</div>
+              </div>
+            </div>
+            <div id="tc-tt-matrix"></div>
+          </div>
+        </section>
+
+        <!-- RECORD ATTENDANCE -->
+        <section id="sec-attendance" class="module-panel hidden">
+          <div class="card">
+            <div class="card-header"><h2 class="card-title">Record Class / Subject Attendance</h2></div>
+            <div class="toolbar">
+              <select id="att-assignment-select"></select>
+              <input type="date" id="att-date-input">
+              <button class="btn btn-secondary btn-sm" id="load-att-btn">Load Roll Call</button>
+            </div>
+            <form id="submit-att-form">
+              <div class="form-group">
+                <label>Session Notes (Optional)</label>
+                <input type="text" id="att-notes" placeholder="e.g. Morning roll call / Lab attendance">
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Admission #</th><th>Learner Name</th><th>Status</th><th>Remarks</th></tr></thead>
+                  <tbody id="att-roster-tbody"></tbody>
+                </table>
+              </div>
+              <div style="margin-top:14px;">
+                <button class="btn btn-primary" type="submit">Submit Attendance Session</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <!-- ASSESSMENTS & ENTER MARKS -->
+        <section id="sec-marks" class="module-panel hidden">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header"><h2 class="card-title">Create New Assessment</h2></div>
+              <form id="create-assess-form" class="form-grid">
+                <div class="form-group"><label>Assigned Class &amp; Subject</label><select id="new-assess-assignment" required></select></div>
+                <div class="form-group"><label>Assessment Title</label><input type="text" name="title" placeholder="Term 1 Quiz 2" required></div>
+                <div class="form-group">
+                  <label>Type</label>
+                  <select name="assessmentType">
+                    <option value="class_test">Class Test</option>
+                    <option value="midterm">Midterm</option>
+                    <option value="project">Project / Practical</option>
+                    <option value="final_exam">Final Exam</option>
+                  </select>
+                </div>
+                <div class="form-group"><label>Max Score</label><input type="number" name="maxScore" value="100" min="1" required></div>
+                <div class="form-group"><label>Weight %</label><input type="number" name="weightPercent" value="30" min="1" max="100" required></div>
+                <div class="form-group"><label>Date</label><input type="date" name="scheduledDate"></div>
+                <div class="form-group" style="justify-content:flex-end;"><button class="btn btn-primary" type="submit">Create Assessment</button></div>
+              </form>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><h2 class="card-title">My Mark Correction Requests</h2></div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Student</th><th>Assessment</th><th>Score Change</th><th>Status</th></tr></thead>
+                  <tbody id="tc-corr-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Enter / Review Student Marks</h2>
+              <div class="toolbar" style="margin:0;">
+                <select id="select-assessment"></select>
+                <button class="btn btn-secondary btn-sm" id="load-marksheet-btn">Open Marksheet</button>
+              </div>
+            </div>
+            <div id="marksheet-lock-banner" class="alert alert-info hidden"></div>
+            <form id="submit-marks-form">
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Admission #</th><th>Learner Name</th><th class="num">Score</th><th class="num">%</th><th>Grade</th><th>Remark / Correction</th></tr></thead>
+                  <tbody id="marksheet-tbody"></tbody>
+                </table>
+              </div>
+              <div style="margin-top:14px;">
+                <button class="btn btn-primary" type="submit" id="save-marks-btn">Save Validated Marks</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <!-- REPORTS -->
+        <section id="sec-reports" class="module-panel hidden">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Subject Performance &amp; Class Progress Summary</h2>
+              <button class="btn btn-secondary btn-sm" id="export-tc-report-btn">Export CSV</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Class / Stream</th><th>Subject</th><th class="num">Entries</th><th class="num">Average %</th><th class="num">Highest %</th><th class="num">Lowest %</th><th class="num">Passed</th></tr></thead>
+                <tbody id="tc-reports-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ANNOUNCEMENTS -->
+        <section id="sec-announcements" class="module-panel hidden">
+          <div class="card">
+            <div class="card-header"><h2 class="card-title">School &amp; Staff Announcements</h2></div>
+            <div id="tc-announcements"></div>
+          </div>
+        </section>
+
+        <!-- PROFILE -->
+        <section id="sec-profile" class="module-panel hidden">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header"><h2 class="card-title">My Staff Profile</h2></div>
+              <form id="tc-profile-form">
+                <div class="form-group"><label>Staff Number</label><input type="text" id="prof-staff-no" disabled></div>
+                <div class="form-group"><label>Phone</label><input type="text" name="phone" id="prof-phone"></div>
+                <div class="form-group"><label>Qualification</label><input type="text" name="qualification" id="prof-qual"></div>
+                <div class="form-group"><label>Specialization</label><input type="text" name="specialization" id="prof-spec"></div>
+                <button class="btn btn-primary" type="submit">Update Profile</button>
+              </form>
+            </div>
+            <div class="card">
+              <div class="card-header"><h2 class="card-title">Change Password</h2></div>
+              <form id="tc-pw-form">
+                <div class="form-group"><label>Current Password</label><input type="password" name="currentPassword" required></div>
+                <div class="form-group"><label>New Password (min 8 chars)</label><input type="password" name="newPassword" minlength="8" required></div>
+                <button class="btn btn-secondary" type="submit">Update Password</button>
+              </form>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script src="/js/common.js?v=2.3"></script>
+  <script src="/js/teacher.js?v=2.3"></script>
+</body>
+</html>

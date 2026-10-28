@@ -1,0 +1,31 @@
+{
+  "name": "school-management-system",
+  "version": "2.1.0",
+  "description": "Four-Dashboard School Management System (Superadmin, Teachers, Students, Financial) — Node.js + Express + MySQL/MariaDB + Google OAuth 2.0",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node --no-warnings src/server.js",
+    "dev": "node --no-warnings --watch src/server.js",
+    "db:migrate": "node --no-warnings database/migrate.js",
+    "db:seed": "node --no-warnings database/seeds/seed.js",
+    "test": "node --no-warnings --test tests/*.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/desrexmedia2025/SMS.git"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "express-session": "^1.18.2",
+    "helmet": "^8.1.0",
+    "mysql2": "^3.15.3",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0"
+  }
+}

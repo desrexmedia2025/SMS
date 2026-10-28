@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Environment & Secrets (NEVER commit real .env files)
+.env
+.env.*
+!.env.example
+
+# Local SQLite development database & runtime backups
+data/
+backups/
+logs/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+coverage/

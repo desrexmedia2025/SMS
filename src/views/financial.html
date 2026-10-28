@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Financial Dashboard - School Management System</title>
+  <link rel="stylesheet" href="/css/styles.css?v=2.3">
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title" id="sb-school-name">School Management System</div>
+        <span class="sidebar-role-tag">4 - Financial</span>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Treasury &amp; Paystack</div>
+        <button class="nav-btn active" data-section="overview">Financial Overview</button>
+        <button class="nav-btn" data-section="categories">Fee Categories</button>
+        <button class="nav-btn" data-section="assignments">Fee Assignments</button>
+        <button class="nav-btn" data-section="payment">Paystack Payments</button>
+        <button class="nav-btn" data-section="receipts">Official Receipts</button>
+
+        <div class="nav-section-label">Accounts &amp; Controls</div>
+        <button class="nav-btn" data-section="accounts">Student Accounts &amp; Arrears</button>
+        <button class="nav-btn" data-section="adjustments">Discounts / Adjustments</button>
+        <button class="nav-btn" data-section="reports">Collection Reports</button>
+        <button class="nav-btn" data-section="reconciliation">Reconciliation</button>
+        <button class="nav-btn" data-section="timetable">School Timetable</button>
+        <button class="nav-btn" data-section="audit">Financial Audit Log</button>
+      </nav>
+      <div class="sidebar-footer" id="sb-user-info">Signed in as Finance Officer</div>
+    </aside>
+
+    <div class="main-area">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-btn" id="mobile-menu-btn">Menu</button>
+          <h1 class="topbar-title" id="topbar-title">Financial Overview</h1>
+          <span class="badge badge-primary" id="active-period-badge">Term</span>
+          <span class="badge badge-neutral" id="paystack-mode-badge">Paystack</span>
+        </div>
+        <div class="topbar-right">
+          <div class="currency-switcher" title="Switch school display &amp; receipt currency">
+            <select id="fin-currency-select" aria-label="Currency"></select>
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" id="privacy-toggle-btn">Hide Figures</button>
+          <a href="/auth/google?mode=link" class="btn btn-secondary btn-sm hidden" id="google-link-btn">Link Google</a>
+          <span class="topbar-divider" aria-hidden="true"></span>
+          <button class="btn btn-secondary btn-sm" id="logout-btn">Sign Out</button>
+        </div>
+      </header>
+
+      <main class="content-body">
+        <!-- OVERVIEW -->
+        <section id="sec-overview" class="module-panel">
+          <div class="kpi-grid" id="fin-kpis"></div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header"><h2 class="card-title">Recent Paystack &amp; Fee Payments</h2></div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Date</th><th>Student</th><th>Method / Ref</th><th>Receipt #</th><th class="num">Amount</th></tr></thead>
+                  <tbody id="fin-recent-payments"></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header"><h2 class="card-title">Collections Breakdown by Payment Channel</h2></div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Channel</th><th class="num">Transactions</th><th class="num">Total Collected</th></tr></thead>
+                  <tbody id="fin-by-method"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- FEE CATEGORIES -->
+        <section id="sec-categories" class="module-panel hidden">
+          <div class="card">
+            <div class="card-header"><h2 class="card-title">Create Fee Category</h2></div>
+            <form id="create-cat-form" class="form-grid">
+              <div class="form-group"><label>Code</label><input type="text" name="code" placeholder="TRAN-04" required></div>
+              <div class="form-group"><label>Fee Name</label><input type="text" name="name" placeholder="School Bus Levy" required></div>
+              <div class="form-group"><label>Default Amount</label><input type="number" step="0.01" min="0.01" name="defaultAmount" required></div>
+              <div class="form-group">
+                <label>Frequency</label>
+                <select name="frequency"><option value="termly">Termly</option><option value="annual">Annual</option><option value="one_time">One-Time</option></select>
+              </div>
+              <div class="form-group"><label>Description</label><input type="text" name="description"></div>
+              <div class="form-group" style="justify-content:flex-end;"><button class="btn btn-primary" type="submit">Add Category</button></div>
+            </form>
+          </div>
+          <div class="card">
+            <div class="card-header"><h2 class="card-title">Configured Fee Categories</h2></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Code</th><th>Fee Category</th><th>Frequency</th><th class="num">Default Amount</th><th>Status</th></tr></thead>
+                <tbody id="cat-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- FEE ASSIGNMENTS -->
+        <section id="sec-assignments" class="module-panel hidden">
+          <div class="card">
+            <div class="card-header"><h2 class="card-title">Assign Fee to Class or Individual Student</h2></div>
+            <form id="assign-fee-form" class="form-grid">
+              <div class="form-group"><label>Fee Category</label><select name="feeCategoryId" id="fa-cat-select" required></select></div>
+              <div class="form-group"><label>Target Class (Bulk)</label><select name="classId" id="fa-class-select"><option value="">-- Select Class --</option></select></div>
+              <div class="form-group"><label>Or Specific Student</label><select name="studentId" id="fa-student-select"><option value="">-- Entire Selected Class --</option></select></div>
+              <div class="form-group"><label>Custom Amount (Optional)</label><input type="number" step="0.01" min="0.01" name="amountDue" placeholder="Uses category default"></div>
+              <div class="form-group"><label>Due Date</label><input type="date" name="dueDate" value="2026-11-30"></div>
+              <div class="form-group" style="justify-content:flex-end;"><button class="btn btn-primary" type="submit">Assign Fee</button></div>
+            </form>
+          </div>
+        </section>
+
+        <!-- PAYSTACK PAYMENTS -->
+        <section id="sec-payment" class="module-panel hidden">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header"><h2 class="card-title">Initialize Paystack Fee Payment</h2></div>
+              <form id="paystack-init-form">
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label>Student Account</label>
+                    <select name="studentId" id="pay-student-select" required></select>
+                  </div>
+                  <div class="form-group">
+                    <label>Amount to Charge</label>
+                    <input type="number" step="0.01" min="0.01" name="amount" id="pay-amount-input" required>
+                  </div>
+                  <div class="form-group">
+                    <label>Paystack Channel</label>
+                    <select name="channel" required>
+                      <option value="mobile_money">Paystack Mobile Money (MTN / Telecel / AT)</option>
+                      <option value="card">Paystack Card (Visa / Mastercard)</option>
+                      <option value="bank_transfer">Paystack Bank Transfer</option>
+                      <option value="ussd">Paystack USSD</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Payer / Guardian Email</label>
+                    <input type="email" name="payerEmail" id="pay-email-input" placeholder="parent@example.com">
+                  </div>
+                </div>
+                <button class="btn btn-paystack" type="submit">Pay with Paystack &amp; Issue Receipt</button>
+              </form>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><h2 class="card-title">Verify Paystack Reference &amp; Counter Cash</h2></div>
+              <form id="paystack-verify-form" style="margin-bottom:16px;">
+                <div class="form-group">
+                  <label>Verify Existing Paystack Reference</label>
+                  <div style="display:flex;gap:8px;">
+                    <input type="text" name="reference" placeholder="PSK-2026-..." required>
+                    <button class="btn btn-primary btn-sm" type="submit">Verify Reference</button>
+                  </div>
+                </div>
+              </form>
+              <hr style="border:none;border-top:1px solid var(--border);margin:14px 0;">
+              <details>
+                <summary style="cursor:pointer;font-weight:600;font-size:13px;color:var(--text-muted);">Record Walk-In Counter Cash / Cheque (Offline)</summary>
+                <form id="offline-payment-form" style="margin-top:12px;">
+                  <div class="form-grid">
+                    <div class="form-group"><label>Student</label><select name="studentId" id="off-student-select" required></select></div>
+                    <div class="form-group"><label>Amount</label><input type="number" step="0.01" min="0.01" name="amount" required></div>
+                    <div class="form-group"><label>Method</label><select name="paymentMethod"><option value="cash">Cash</option><option value="cheque">Cheque</option></select></div>
+                    <div class="form-group"><label>Reference</label><input type="text" name="referenceNumber" placeholder="Slip #"></div>
+                  </div>
+                  <button class="btn btn-secondary btn-sm" type="submit">Post Counter Receipt</button>
+                </form>
+              </details>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><h2 class="card-title">Paystack Gateway Transactions Ledger (Receive &amp; Reverse)</h2></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Reference</th><th>Student</th><th>Payer Email</th><th>Channel</th><th class="num">Amount</th><th>Gateway Status</th><th>Receipt / Reversal</th></tr></thead>
+                <tbody id="paystack-tx-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Send Outbound Paystack Transfer</h2>
+                <div class="card-subtitle">Disburse funds to Mobile Money or Bank Accounts using the school's Paystack keys</div>
+              </div>
+            </div>
+            <form id="fin-psk-transfer-form">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Recipient Full Name</label>
+                  <input type="text" name="recipientName" placeholder="e.g. Kwame Boateng / Supplier Ltd" required>
+                </div>
+                <div class="form-group">
+                  <label>Transfer Channel</label>
+                  <select name="channel">
+                    <option value="mobile_money">Mobile Money Wallet</option>
+                    <option value="bank_account">Bank Account</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Bank / Mobile Network Code</label>
+                  <input type="text" name="bankOrNetwork" placeholder="e.g. MTN, VOD, TGO, GCB, 044" required>
+                </div>
+                <div class="form-group">
+                  <label>Account or Mobile Wallet Number</label>
+                  <input type="text" name="recipientAccount" placeholder="e.g. 0240000000 or 0123456789" required>
+                </div>
+                <div class="form-group">
+                  <label>Amount to Send</label>
+                  <input type="number" step="0.01" min="0.01" name="amount" placeholder="0.00" required>
+                </div>
+                <div class="form-group">
+                  <label>Reason / Narration</label>
+                  <input type="text" name="reason" placeholder="e.g. Bursary Stipend, Fee Refund, Vendor Payout">
+                </div>
+              </div>
+              <button class="btn btn-paystack" type="submit">Send Paystack Transfer</button>
+            </form>
+            <div class="table-wrap" style="margin-top:16px;">
+              <table>
+                <thead><tr><th>Date</th><th>Reference</th><th>Recipient</th><th>Channel / Bank</th><th class="num">Amount</th><th>Mode</th><th>Status</th></tr></thead>
+                <tbody id="fin-psk-transfers-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- OFFICIAL RECEIPTS -->
+        <section id="sec-receipts" class="module-panel hidden">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Issued Official Receipts Register</h2>
+              <div class="toolbar" style="margin:0;">
+                <input type="text" id="rcp-lookup-input" placeholder="Lookup RCP-2026-00001...">
+                <button class="btn btn-secondary btn-sm" id="rcp-lookup-btn">Open Receipt</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Receipt #</th><th>Date</th><th>Student</th><th>Channel / Reference</th><th class="num">Amount</th><th>Action</th></tr></thead>
+                <tbody id="receipts-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- STUDENT ACCOUNTS & ARREARS -->
+        <section id="sec-accounts" class="module-panel hidden">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Student Fee Accounts &amp; Arrears Ledger</h2>
+              <div class="toolbar" style="margin:0;">
+                <input type="text" id="acc-search" placeholder="Search admission / name...">
+                <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;">
+                  <input type="checkbox" id="acc-arrears-only"> Arrears Only
+                </label>
+                <button class="btn btn-secondary btn-sm" id="acc-filter-btn">Filter</button>
+                <button class="btn btn-secondary btn-sm" id="acc-export-btn">Export CSV</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Admission #</th><th>Student</th><th>Class</th><th class="num">Gross Billed</th><th class="num">Discount</th><th class="num">Paid</th><th class="num">Outstanding</th><th>Pay / Statement</th></tr></thead>
+                <tbody id="accounts-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card hidden" id="student-ledger-drawer">
+            <div class="card-header">
+              <h2 class="card-title" id="drawer-student-title">Student Statement</h2>
+              <button class="btn btn-secondary btn-sm" id="close-drawer-btn">Close</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Fee Item</th><th>Term</th><th class="num">Billed</th><th class="num">Discount</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th><th>ID</th></tr></thead>
+                <tbody id="drawer-assignments-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- DISCOUNTS / ADJUSTMENTS -->
+        <section id="sec-adjustments" class="module-panel hidden">
+          <div class="card">
+            <div class="card-header"><h2 class="card-title">Apply Authorized Scholarship / Fee Adjustment</h2></div>
+            <div class="alert alert-info">Tip: Open a student's statement in "Student Accounts &amp; Arrears" to view exact Fee Assignment IDs, or pick from the active student fee list below.</div>
+            <form id="adjustment-form" class="form-grid">
+              <div class="form-group"><label>Student</label><select id="adj-student-select" required></select></div>
+              <div class="form-group"><label>Fee Assignment Item</label><select name="feeAssignmentId" id="adj-fa-select" required></select></div>
+              <div class="form-group">
+                <label>Adjustment Type</label>
+                <select name="adjustmentType"><option value="discount">Discount</option><option value="scholarship">Scholarship</option><option value="waiver">Fee Waiver</option><option value="debit_adjustment">Debit Surcharge</option></select>
+              </div>
+              <div class="form-group"><label>Amount</label><input type="number" step="0.01" min="0.01" name="amount" required></div>
+              <div class="form-group"><label>Mandatory Audit Reason</label><input type="text" name="reason" placeholder="Academic merit bursary approval #..." required></div>
+              <div class="form-group" style="justify-content:flex-end;"><button class="btn btn-primary" type="submit">Apply Adjustment</button></div>
+            </form>
+          </div>
+        </section>
+
+        <!-- COLLECTION REPORTS -->
+        <section id="sec-reports" class="module-panel hidden">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Daily Collections &amp; Class Arrears Report</h2>
+              <button class="btn btn-secondary btn-sm" id="export-fin-report-btn">Export Daily Collections CSV</button>
+            </div>
+            <div class="grid-2">
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Collection Date</th><th>Method</th><th class="num">Payments</th><th class="num">Total Collected</th></tr></thead>
+                  <tbody id="rep-daily-tbody"></tbody>
+                </table>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Class</th><th class="num">Students</th><th class="num">Net Billed</th><th class="num">Collected</th><th class="num">Arrears</th></tr></thead>
+                  <tbody id="rep-class-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- RECONCILIATION -->
+        <section id="sec-reconciliation" class="module-panel hidden">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header"><h2 class="card-title">Submit Daily Treasury &amp; Paystack Reconciliation</h2></div>
+              <form id="reconcile-form">
+                <div class="form-group"><label>Reconciliation Date</label><input type="date" name="reconciliationDate" id="rec-date" required></div>
+                <div class="form-group"><label>Declared Actual Bank + Paystack Settlement + Cash Total</label><input type="number" step="0.01" min="0" name="declaredTotal" required></div>
+                <div class="form-group"><label>Notes / Paystack Settlement Ref</label><textarea name="notes" rows="2" placeholder="Verified against Paystack settlement report &amp; bank statement"></textarea></div>
+                <button class="btn btn-primary" type="submit">Verify &amp; Log Reconciliation</button>
+              </form>
+            </div>
+            <div class="card">
+              <div class="card-header"><h2 class="card-title">Reconciliation History</h2></div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Date</th><th class="num">System</th><th class="num">Declared</th><th class="num">Variance</th><th>Status</th></tr></thead>
+                  <tbody id="rec-history-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SCHOOL TIMETABLE -->
+        <section id="sec-timetable" class="module-panel hidden">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Master Weekly School Timetable</h2>
+                <div class="card-subtitle">Tabular weekly lesson schedule across classes and teachers</div>
+              </div>
+              <div class="toolbar" style="margin:0;">
+                <select id="fin-tt-filter-class">
+                  <option value="">All Classes</option>
+                </select>
+              </div>
+            </div>
+            <div id="fin-tt-matrix"></div>
+          </div>
+        </section>
+
+        <!-- FINANCIAL AUDIT LOG -->
+        <section id="sec-audit" class="module-panel hidden">
+          <div class="card">
+            <div class="card-header"><h2 class="card-title">Immutable Financial Audit Trail</h2></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Timestamp</th><th>Officer</th><th>Action</th><th>Entity</th><th>Details</th></tr></thead>
+                <tbody id="fin-audit-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Printable Official Receipt Modal -->
+  <div class="modal-backdrop" id="receipt-modal">
+    <div class="modal-box">
+      <div class="receipt-sheet" id="receipt-printable"></div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;" class="no-print">
+        <button class="btn btn-secondary" id="close-rcp-modal">Close</button>
+        <button class="btn btn-primary" id="print-rcp-btn">Print Official Receipt</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/common.js?v=2.3"></script>
+  <script src="/js/financial.js?v=2.3"></script>
+</body>
+</html>
