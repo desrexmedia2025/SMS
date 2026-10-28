@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Superadmin Dashboard - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=2.4">
+  <link rel="stylesheet" href="/css/styles.css?v=2.5">
 </head>
 <body>
   <div class="app-layout sa-layout">
@@ -490,19 +490,56 @@
                   <div class="form-group"><label>Initial Password (Optional)</label><input type="password" name="password" placeholder="Auto-generated if blank" autocomplete="new-password"></div>
                 </div>
 
-                <div class="form-section-divider">Subjects Taught (Select or Add 1 or More Subjects)</div>
+                <div class="form-section-divider">Subjects Taught (Teachers Can Teach 1 or More Subjects)</div>
+                <datalist id="subject-suggestions-list">
+                  <option value="Mathematics"></option>
+                  <option value="Further Mathematics"></option>
+                  <option value="English Language"></option>
+                  <option value="Literature in English"></option>
+                  <option value="Integrated Science"></option>
+                  <option value="Physics"></option>
+                  <option value="Chemistry"></option>
+                  <option value="Biology"></option>
+                  <option value="Social Studies"></option>
+                  <option value="Computing / ICT"></option>
+                  <option value="Economics"></option>
+                  <option value="Geography"></option>
+                  <option value="History"></option>
+                  <option value="Government"></option>
+                  <option value="French"></option>
+                  <option value="Financial Accounting"></option>
+                  <option value="Business Management"></option>
+                  <option value="Creative Arts &amp; Design"></option>
+                  <option value="Physical Education"></option>
+                </datalist>
                 <div class="multi-subject-box">
                   <div class="multi-subject-head">
                     <div>
-                      <div class="multi-subject-title">Select from School Subject Catalogue or Add Multiple Subjects Below</div>
-                      <div class="multi-subject-hint">Check all subjects this teacher teaches, or type new subject names (comma-separated or one by one) to add and link them automatically.</div>
+                      <div class="multi-subject-title">Assign One or Multiple Teaching Subjects</div>
+                      <div class="multi-subject-hint">Check existing subjects from the catalogue or enter Subject 1, Subject 2, Subject 3... below for teachers who teach more than one subject.</div>
                     </div>
                     <span class="badge badge-info" id="tch-selected-subjects-count">0 subjects selected</span>
                   </div>
                   <div id="tch-reg-subject-checkboxes" class="multi-check-grid"></div>
-                  <div class="subject-inline-adder">
-                    <input type="text" id="tch-custom-subject-input" placeholder="Add subject(s), e.g. Mathematics, Physics, Further Maths">
-                    <button type="button" class="btn btn-secondary btn-sm" id="btn-add-tch-subject">+ Add Subject</button>
+
+                  <div id="tch-subject-rows-list" class="subject-rows-stack">
+                    <div class="subject-row-item" data-subject-row>
+                      <span class="subject-row-label">Subject 1</span>
+                      <input type="text" class="tch-subject-row-input" list="subject-suggestions-list" placeholder="e.g. Mathematics">
+                    </div>
+                    <div class="subject-row-item" data-subject-row>
+                      <span class="subject-row-label">Subject 2</span>
+                      <input type="text" class="tch-subject-row-input" list="subject-suggestions-list" placeholder="e.g. Physics (optional — leave blank if 1 subject)">
+                      <button type="button" class="btn btn-secondary btn-sm" data-remove-subject-row>Remove</button>
+                    </div>
+                  </div>
+
+                  <div class="subject-add-row-bar">
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-add-tch-subject-row">+ Add Another Subject</button>
+                    <div class="subject-inline-adder" style="margin-top:0;">
+                      <input type="text" id="tch-custom-subject-input" list="subject-suggestions-list" placeholder="Or quick-add comma-separated subjects...">
+                      <button type="button" class="btn btn-secondary btn-sm" id="btn-add-tch-subject">+ Add Tag</button>
+                    </div>
                   </div>
                   <div id="tch-custom-subject-chips" class="subject-chip-list"></div>
                 </div>
@@ -1052,7 +1089,7 @@
                   <div class="form-group"><label>Phone</label><input type="text" name="phone"></div>
                   <div class="form-group">
                     <label>Approved Role</label>
-                    <select name="role" required>
+                    <select name="role" id="usr-provision-role" required>
                       <option value="financial">Financial Officer (Admin-Issued Login)</option>
                       <option value="teacher">Teacher (Admin-Issued Login)</option>
                       <option value="superadmin">Superadmin</option>
@@ -1063,6 +1100,40 @@
                     <input type="password" name="password" minlength="8" placeholder="Auto-generated if blank" autocomplete="new-password">
                   </div>
                 </div>
+
+                <div id="usr-teacher-extra-fields" class="hidden" style="margin-top:12px;">
+                  <div class="form-section-divider" style="margin-top:4px;">Teacher Staff Details &amp; Multiple Subjects Taught</div>
+                  <div class="form-grid" style="margin-bottom:12px;">
+                    <div class="form-group"><label>Staff Number (Optional)</label><input type="text" name="staffNumber" placeholder="Auto-generated if blank"></div>
+                    <div class="form-group"><label>Department (Optional)</label><input type="text" name="department" placeholder="e.g. Sciences"></div>
+                    <div class="form-group"><label>Qualification (Optional)</label><input type="text" name="qualification" placeholder="e.g. B.Ed, M.Sc"></div>
+                  </div>
+                  <div class="multi-subject-box">
+                    <div class="multi-subject-head">
+                      <div>
+                        <div class="multi-subject-title">Subjects Taught (1 or More Subjects)</div>
+                        <div class="multi-subject-hint">Check catalogue subjects or enter Subject 1, Subject 2, Subject 3... for multi-subject teachers.</div>
+                      </div>
+                      <span class="badge badge-info" id="usr-tch-subjects-count">0 subjects selected</span>
+                    </div>
+                    <div id="usr-tch-subject-checkboxes" class="multi-check-grid"></div>
+                    <div id="usr-tch-subject-rows" class="subject-rows-stack">
+                      <div class="subject-row-item" data-subject-row>
+                        <span class="subject-row-label">Subject 1</span>
+                        <input type="text" class="usr-tch-subject-row-input" list="subject-suggestions-list" placeholder="e.g. Mathematics">
+                      </div>
+                      <div class="subject-row-item" data-subject-row>
+                        <span class="subject-row-label">Subject 2</span>
+                        <input type="text" class="usr-tch-subject-row-input" list="subject-suggestions-list" placeholder="e.g. Physics (optional)">
+                        <button type="button" class="btn btn-secondary btn-sm" data-remove-usr-subject-row>Remove</button>
+                      </div>
+                    </div>
+                    <div class="subject-add-row-bar">
+                      <button type="button" class="btn btn-secondary btn-sm" id="btn-add-usr-subject-row">+ Add Another Subject</button>
+                    </div>
+                  </div>
+                </div>
+
                 <div class="form-actions-end"><button class="btn btn-primary" type="submit">Create &amp; Issue Login</button></div>
               </form>
             </div>
@@ -1302,7 +1373,7 @@
     </div>
   </div>
 
-  <script src="/js/common.js?v=2.4"></script>
-  <script src="/js/superadmin.js?v=2.4"></script>
+  <script src="/js/common.js?v=2.5"></script>
+  <script src="/js/superadmin.js?v=2.5"></script>
 </body>
 </html>

@@ -558,6 +558,48 @@
     };
   }
 
+  const DEFAULT_SUBJECT_SUGGESTIONS = [
+    'Mathematics',
+    'Further Mathematics',
+    'English Language',
+    'Literature in English',
+    'Integrated Science',
+    'Physics',
+    'Chemistry',
+    'Biology',
+    'Social Studies',
+    'Computing / ICT',
+    'Economics',
+    'Geography',
+    'History',
+    'Government',
+    'French',
+    'Financial Accounting',
+    'Business Management',
+    'Creative Arts & Design',
+    'Physical Education',
+  ];
+
+  function refreshSubjectSuggestionsDatalist(subjects = []) {
+    const dl = document.getElementById('subject-suggestions-list');
+    if (!dl) return;
+    const seen = new Set();
+    const merged = [];
+    for (const s of subjects) {
+      if (s?.name && !seen.has(s.name.toLowerCase())) {
+        seen.add(s.name.toLowerCase());
+        merged.push(s.name);
+      }
+    }
+    for (const def of DEFAULT_SUBJECT_SUGGESTIONS) {
+      if (!seen.has(def.toLowerCase())) {
+        seen.add(def.toLowerCase());
+        merged.push(def);
+      }
+    }
+    dl.innerHTML = merged.map((name) => `<option value="${esc(name)}"></option>`).join('');
+  }
+
   // ---------------- MULTI-SUBJECT TEACHER HELPERS ----------------
   function getCheckedValues(containerId) {
     const el = document.getElementById(containerId);
@@ -567,10 +609,83 @@
       .filter((n) => Number.isInteger(n) && n > 0);
   }
 
-  function updateSubjectCounter(checkboxContainerId, customList, badgeId) {
+  function getSubjectRowValues(rowsContainerId) {
+    const wrap = document.getElementById(rowsContainerId);
+    if (!wrap) return [];
+    const seen = new Set();
+    const out = [];
+    wrap.querySelectorAll('input[type="text"]').forEach((inp) => {
+      inp.value
+        .split(',')
+        .map((v) => v.replace(/\s+/g, ' ').trim())
+        .filter(Boolean)
+        .forEach((name) => {
+          const key = name.toLowerCase();
+          if (!seen.has(key)) {
+            seen.add(key);
+            out.push(name);
+          }
+        });
+    });
+    return out;
+  }
+
+  function renumberSubjectRows(rowsContainerId) {
+    const wrap = document.getElementById(rowsContainerId);
+    if (!wrap) return;
+    wrap.querySelectorAll('[data-subject-row]').forEach((row, idx) => {
+      const lbl = row.querySelector('.subject-row-label');
+      if (lbl) lbl.textContent = `Subject ${idx + 1}`;
+    });
+  }
+
+  function appendSubjectRow(rowsContainerId, inputClass, removeAttr) {
+    const wrap = document.getElementById(rowsContainerId);
+    if (!wrap) return;
+    const nextNum = wrap.querySelectorAll('[data-subject-row]').length + 1;
+    const row = document.createElement('div');
+    row.className = 'subject-row-item';
+    row.setAttribute('data-subject-row', '');
+    row.innerHTML = `
+      <span class="subject-row-label">Subject ${nextNum}</span>
+      <input type="text" class="${inputClass}" list="subject-suggestions-list" placeholder="Enter subject ${nextNum}...">
+      <button type="button" class="btn btn-secondary btn-sm" ${removeAttr}>Remove</button>
+    `;
+    wrap.appendChild(row);
+    row.querySelector('input')?.focus();
+  }
+
+  function resetSubjectRows(rowsContainerId, inputClass, removeAttr) {
+    const wrap = document.getElementById(rowsContainerId);
+    if (!wrap) return;
+    wrap.innerHTML = `
+      <div class="subject-row-item" data-subject-row>
+        <span class="subject-row-label">Subject 1</span>
+        <input type="text" class="${inputClass}" list="subject-suggestions-list" placeholder="e.g. Mathematics">
+      </div>
+      <div class="subject-row-item" data-subject-row>
+        <span class="subject-row-label">Subject 2</span>
+        <input type="text" class="${inputClass}" list="subject-suggestions-list" placeholder="e.g. Physics (optional — leave blank if 1 subject)">
+        <button type="button" class="btn btn-secondary btn-sm" ${removeAttr}>Remove</button>
+      </div>
+    `;
+  }
+
+  function updateSubjectCounter(checkboxContainerId, customList, badgeId, rowsContainerId) {
     const badge = document.getElementById(badgeId);
     if (!badge) return;
-    const total = getCheckedValues(checkboxContainerId).length + (customList ? customList.length : 0);
+    const checkedIds = getCheckedValues(checkboxContainerId);
+    const catalogue = state.academic?.subjects || [];
+    const selectedNames = new Set();
+    checkedIds.forEach((id) => {
+      const found = catalogue.find((s) => Number(s.id) === Number(id));
+      selectedNames.add(found ? found.name.toLowerCase() : `id:${id}`);
+    });
+    (customList || []).forEach((n) => selectedNames.add(String(n).toLowerCase()));
+    if (rowsContainerId) {
+      getSubjectRowValues(rowsContainerId).forEach((n) => selectedNames.add(n.toLowerCase()));
+    }
+    const total = selectedNames.size;
     badge.textContent = `${total} ${total === 1 ? 'subject' : 'subjects'} selected`;
   }
 
@@ -733,10 +848,20 @@
       if (el) el.innerHTML = teacherOpts;
     });
 
-    // Populate multi-subject checkboxes on Register Teacher form (preserving any checked items)
+    // Populate multi-subject checkboxes on Register Teacher & User Provision forms
+    refreshSubjectSuggestionsDatalist(acad.subjects);
     const prevRegChecked = getCheckedValues('tch-reg-subject-checkboxes');
     renderSubjectCheckPills('tch-reg-subject-checkboxes', acad.subjects, prevRegChecked);
-    updateSubjectCounter('tch-reg-subject-checkboxes', state.regCustomSubjects, 'tch-selected-subjects-count');
+    updateSubjectCounter(
+      'tch-reg-subject-checkboxes',
+      state.regCustomSubjects,
+      'tch-selected-subjects-count',
+      'tch-subject-rows-list'
+    );
+
+    const prevUsrChecked = getCheckedValues('usr-tch-subject-checkboxes');
+    renderSubjectCheckPills('usr-tch-subject-checkboxes', acad.subjects, prevUsrChecked);
+    updateSubjectCounter('usr-tch-subject-checkboxes', [], 'usr-tch-subjects-count', 'usr-tch-subject-rows');
 
     // Optional immediate class checkboxes on Register Teacher form
     const regClassesWrap = document.getElementById('tch-reg-class-checkboxes');
@@ -1429,15 +1554,50 @@
     }
   });
 
+  // Toggle teacher multi-subject fields on Provision Staff & Portal Account form
+  const usrRoleSelect = document.getElementById('usr-provision-role');
+  const usrTeacherExtra = document.getElementById('usr-teacher-extra-fields');
+  usrRoleSelect?.addEventListener('change', () => {
+    usrTeacherExtra?.classList.toggle('hidden', usrRoleSelect.value !== 'teacher');
+  });
+
+  document.getElementById('btn-add-usr-subject-row')?.addEventListener('click', () => {
+    appendSubjectRow('usr-tch-subject-rows', 'usr-tch-subject-row-input', 'data-remove-usr-subject-row');
+  });
+
+  document.getElementById('usr-tch-subject-rows')?.addEventListener('input', () => {
+    updateSubjectCounter('usr-tch-subject-checkboxes', [], 'usr-tch-subjects-count', 'usr-tch-subject-rows');
+  });
+
+  document.getElementById('usr-tch-subject-checkboxes')?.addEventListener('change', () => {
+    updateSubjectCounter('usr-tch-subject-checkboxes', [], 'usr-tch-subjects-count', 'usr-tch-subject-rows');
+  });
+
+  document.getElementById('usr-tch-subject-rows')?.addEventListener('click', (e) => {
+    const rmBtn = e.target.closest('[data-remove-usr-subject-row]');
+    if (rmBtn) {
+      rmBtn.closest('[data-subject-row]')?.remove();
+      renumberSubjectRows('usr-tch-subject-rows');
+      updateSubjectCounter('usr-tch-subject-checkboxes', [], 'usr-tch-subjects-count', 'usr-tch-subject-rows');
+    }
+  });
+
   document.getElementById('create-user-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target).entries());
+    if (fd.role === 'teacher') {
+      fd.subjectIds = getCheckedValues('usr-tch-subject-checkboxes');
+      fd.customSubjects = getSubjectRowValues('usr-tch-subject-rows');
+    }
     try {
       const res = await api('/api/superadmin/users', { method: 'POST', body: fd });
       e.target.reset();
+      usrTeacherExtra?.classList.add('hidden');
+      resetSubjectRows('usr-tch-subject-rows', 'usr-tch-subject-row-input', 'data-remove-usr-subject-row');
       renderIssuedCredentials('issued-user-creds-box', res.issuedCredentials);
       toast('Account created. Copy and share the issued login credentials.', 'success');
       await loadUsers();
+      await loadAcademicAndSelectors();
       await loadOverview();
     } catch (err) {
       toast(err.message, 'error');
@@ -1503,7 +1663,25 @@
 
   // Multi-subject interactive listeners (Register Teacher, Edit Subjects, Assign Teacher)
   document.getElementById('tch-reg-subject-checkboxes')?.addEventListener('change', () => {
-    updateSubjectCounter('tch-reg-subject-checkboxes', state.regCustomSubjects, 'tch-selected-subjects-count');
+    updateSubjectCounter(
+      'tch-reg-subject-checkboxes',
+      state.regCustomSubjects,
+      'tch-selected-subjects-count',
+      'tch-subject-rows-list'
+    );
+  });
+
+  document.getElementById('tch-subject-rows-list')?.addEventListener('input', () => {
+    updateSubjectCounter(
+      'tch-reg-subject-checkboxes',
+      state.regCustomSubjects,
+      'tch-selected-subjects-count',
+      'tch-subject-rows-list'
+    );
+  });
+
+  document.getElementById('btn-add-tch-subject-row')?.addEventListener('click', () => {
+    appendSubjectRow('tch-subject-rows-list', 'tch-subject-row-input', 'data-remove-subject-row');
   });
 
   document.getElementById('btn-add-tch-subject')?.addEventListener('click', () => {
@@ -1514,6 +1692,12 @@
       'tch-custom-subject-chips',
       'tch-selected-subjects-count',
       'reg'
+    );
+    updateSubjectCounter(
+      'tch-reg-subject-checkboxes',
+      state.regCustomSubjects,
+      'tch-selected-subjects-count',
+      'tch-subject-rows-list'
     );
   });
 
@@ -1527,6 +1711,12 @@
         'tch-custom-subject-chips',
         'tch-selected-subjects-count',
         'reg'
+      );
+      updateSubjectCounter(
+        'tch-reg-subject-checkboxes',
+        state.regCustomSubjects,
+        'tch-selected-subjects-count',
+        'tch-subject-rows-list'
       );
     }
   });
@@ -1569,13 +1759,31 @@
   });
 
   document.getElementById('sec-teachers')?.addEventListener('click', (e) => {
+    const rmRowBtn = e.target.closest('[data-remove-subject-row]');
+    if (rmRowBtn) {
+      rmRowBtn.closest('[data-subject-row]')?.remove();
+      renumberSubjectRows('tch-subject-rows-list');
+      updateSubjectCounter(
+        'tch-reg-subject-checkboxes',
+        state.regCustomSubjects,
+        'tch-selected-subjects-count',
+        'tch-subject-rows-list'
+      );
+      return;
+    }
+
     const rmChip = e.target.closest('[data-remove-chip]');
     if (rmChip) {
       const idx = Number(rmChip.dataset.chipIdx);
       if (rmChip.dataset.removeChip === 'reg') {
         state.regCustomSubjects.splice(idx, 1);
         renderCustomChips('tch-custom-subject-chips', state.regCustomSubjects, 'reg');
-        updateSubjectCounter('tch-reg-subject-checkboxes', state.regCustomSubjects, 'tch-selected-subjects-count');
+        updateSubjectCounter(
+          'tch-reg-subject-checkboxes',
+          state.regCustomSubjects,
+          'tch-selected-subjects-count',
+          'tch-subject-rows-list'
+        );
       } else if (rmChip.dataset.removeChip === 'edit') {
         state.editCustomSubjects.splice(idx, 1);
         renderCustomChips('edit-tch-custom-subject-chips', state.editCustomSubjects, 'edit');
@@ -1641,7 +1849,7 @@
 
   document.getElementById('create-teacher-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    // Capture any typed subjects still sitting in the text box
+    // Capture any typed subjects still sitting in the quick-add box or Subject 1..N rows
     addCustomSubjectsFromInput(
       'tch-custom-subject-input',
       state.regCustomSubjects,
@@ -1651,13 +1859,16 @@
       'reg'
     );
     const fd = Object.fromEntries(new FormData(e.target).entries());
+    const rowSubjects = getSubjectRowValues('tch-subject-rows-list');
+    const mergedCustom = Array.from(new Set([...rowSubjects, ...state.regCustomSubjects]));
     fd.subjectIds = getCheckedValues('tch-reg-subject-checkboxes');
-    fd.customSubjects = [...state.regCustomSubjects];
+    fd.customSubjects = mergedCustom;
     fd.classIds = getCheckedValues('tch-reg-class-checkboxes');
     try {
       const res = await api('/api/superadmin/teachers', { method: 'POST', body: fd });
       e.target.reset();
       state.regCustomSubjects = [];
+      resetSubjectRows('tch-subject-rows-list', 'tch-subject-row-input', 'data-remove-subject-row');
       renderCustomChips('tch-custom-subject-chips', state.regCustomSubjects, 'reg');
       renderIssuedCredentials('issued-teacher-creds-box', res.issuedCredentials);
       const subCount = Array.isArray(res.subjects) ? res.subjects.length : 0;

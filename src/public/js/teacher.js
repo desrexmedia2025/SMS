@@ -35,18 +35,21 @@
       <div class="kpi-card"><div class="kpi-label">Assessments</div><div class="kpi-value">${m.assessmentsCount}</div><div class="kpi-sub">Created for assigned subjects</div></div>
     `;
 
-    // Registered Subjects badges in My Classes & Subjects + Profile
+    // Registered Subjects badges in Overview, My Classes & Subjects, and Profile
+    const subjectBadgesMarkup = regSubjects.length
+      ? `<div class="subject-badges-wrap">${regSubjects
+          .map(
+            (s) =>
+              `<span class="subject-badge-tag"><strong>${esc(s.code)}</strong> &middot; ${esc(s.name)}${s.department ? ' (' + esc(s.department) + ')' : ''}</span>`
+          )
+          .join('')}</div>`
+      : '<div class="empty-state" style="padding:14px 0;">No teaching subjects linked to your profile yet.</div>';
+
+    const ovSubjectsEl = document.getElementById('tc-ov-subjects-wrap');
+    if (ovSubjectsEl) ovSubjectsEl.innerHTML = subjectBadgesMarkup;
+
     const regSubjectsEl = document.getElementById('tc-registered-subjects-wrap');
-    if (regSubjectsEl) {
-      regSubjectsEl.innerHTML = regSubjects.length
-        ? `<div class="subject-badges-wrap">${regSubjects
-            .map(
-              (s) =>
-                `<span class="subject-badge-tag"><strong>${esc(s.code)}</strong> &middot; ${esc(s.name)}${s.department ? ' (' + esc(s.department) + ')' : ''}</span>`
-            )
-            .join('')}</div>`
-        : '<div class="empty-state" style="padding:14px 0;">No teaching subjects linked to your profile yet.</div>';
-    }
+    if (regSubjectsEl) regSubjectsEl.innerHTML = subjectBadgesMarkup;
 
     const profBadgesEl = document.getElementById('prof-subjects-badges');
     if (profBadgesEl) {

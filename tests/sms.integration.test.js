@@ -1451,6 +1451,39 @@ test('18. Multi-Subject Teacher Registration, Subject Updates, Bulk Class Assign
   assert.equal(ovAfterAssign.json.metrics.assignedClasses, 1);
   assert.equal(ovAfterAssign.json.metrics.assignedSubjects, 4);
   assert.equal(ovAfterAssign.json.assignments.length, 4);
+
+  // 18g. Provisioning a Teacher via Users & Roles (/api/superadmin/users) also links multiple subjects & creates teacher staff profile
+  const usrTeacherRes = await admin.request('/api/superadmin/users', {
+    method: 'POST',
+    body: {
+      fullName: 'Esi Mensah',
+      username: 'esi.mensah.multi',
+      email: 'esi.mensah.multi@school.edu.gh',
+      role: 'teacher',
+      department: 'Languages & Humanities',
+      customSubjects: ['English Language', 'Literature in English', 'French'],
+    },
+  });
+  assert.equal(usrTeacherRes.status, 201);
+  assert.ok(usrTeacherRes.json.teacherId);
+  assert.equal(usrTeacherRes.json.subjects.length, 3);
+
+  const usrTeacherClient = new SessionClient();
+  const usrTcLogin = await usrTeacherClient.login(
+    usrTeacherRes.json.issuedCredentials.email,
+    usrTeacherRes.json.issuedCredentials.initialPassword
+  );
+  assert.equal(usrTcLogin.status, 200);
+
+  const usrTcOv = await usrTeacherClient.request('/api/teacher/overview');
+  assert.equal(usrTcOv.status, 200);
+  assert.equal(usrTcOv.json.metrics.assignedSubjects, 3);
+  assert.equal(usrTcOv.json.registeredSubjects.length, 3);
+
+  const saHtmlAfter = await (await admin.request('/dashboard/superadmin')).text;
+  assert.match(saHtmlAfter, /id="tch-subject-rows-list"/);
+  assert.match(saHtmlAfter, /id="btn-add-tch-subject-row"/);
+  assert.match(saHtmlAfter, /id="usr-teacher-extra-fields"/);
 });
 
 

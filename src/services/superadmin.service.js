@@ -139,7 +139,21 @@ async function listUsers(query = {}) {
   };
 }
 
-async function createUserAccount({ username, email, fullName, phone, password, roleSlug, actor, ipAddress }) {
+async function createUserAccount({
+  username,
+  email,
+  fullName,
+  phone,
+  password,
+  roleSlug,
+  staffNumber,
+  department,
+  qualification,
+  subjectIds,
+  customSubjects,
+  actor,
+  ipAddress,
+}) {
   const role = await db.get('SELECT id, slug FROM roles WHERE slug = ?', [roleSlug]);
   if (!role) throw new AppError(400, 'Invalid role selected.');
 
@@ -150,7 +164,7 @@ async function createUserAccount({ username, email, fullName, phone, password, r
   if (existing) throw new AppError(409, 'A user with that email or username already exists.');
 
   const hash = await bcrypt.hash(password, 10);
-  const userId = await db.withTransaction(async (tx) => {
+  const result = await db.withTransaction(async (tx) => {
     const ins = await tx.run(
       `INSERT INTO users (username, email, password_hash, full_name, phone, status, email_verified, auth_provider)
        VALUES (?, ?, ?, ?, ?, 'active', 1, 'local')`,
@@ -161,6 +175,54 @@ async function createUserAccount({ username, email, fullName, phone, password, r
       role.id,
       actor.id,
     ]);
+
+    let teacherId = null;
+    let resolvedSubjects = [];
+    if (roleSlug === 'teacher') {
+      const nameParts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
+      const firstName = nameParts[0] || 'Teacher';
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Staff';
+      let resolvedStaffNo = staffNumber && String(staffNumber).trim();
+      if (!resolvedStaffNo) {
+        resolvedStaffNo = `STF-${new Date().getFullYear()}-${String(ins.insertId).padStart(3, '0')}`;
+        while (await tx.get('SELECT id FROM teachers WHERE staff_number = ?', [resolvedStaffNo])) {
+          resolvedStaffNo = `STF-${new Date().getFullYear()}-${ins.insertId}${Math.floor(10 + Math.random() * 89)}`;
+        }
+      } else {
+        const dupStaff = await tx.get('SELECT id FROM teachers WHERE staff_number = ?', [resolvedStaffNo]);
+        if (dupStaff) throw new AppError(409, 'Staff number already exists.');
+      }
+
+      resolvedSubjects = await resolveOrCreateSubjects(tx, {
+        subjectIds,
+        customSubjects,
+        department: department || '',
+      });
+      const specSummary = resolvedSubjects.map((s) => s.name).join(', ').slice(0, 255);
+
+      const tIns = await tx.run(
+        `INSERT INTO teachers (user_id, staff_number, first_name, last_name, qualification, specialization, department, hire_date, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
+        [
+          ins.insertId,
+          resolvedStaffNo,
+          firstName,
+          lastName,
+          qualification || '',
+          specSummary,
+          department || '',
+          new Date().toISOString().slice(0, 10),
+        ]
+      );
+      teacherId = tIns.insertId;
+      for (const sub of resolvedSubjects) {
+        await tx.run('INSERT INTO teacher_subjects (teacher_id, subject_id) VALUES (?, ?)', [
+          teacherId,
+          sub.id,
+        ]);
+      }
+    }
+
     await recordAudit(
       {
         actorUserId: actor.id,
@@ -169,15 +231,21 @@ async function createUserAccount({ username, email, fullName, phone, password, r
         targetType: 'user',
         targetId: String(ins.insertId),
         ipAddress,
-        metadata: { email: email.toLowerCase(), role: roleSlug },
+        metadata: {
+          email: email.toLowerCase(),
+          role: roleSlug,
+          ...(roleSlug === 'teacher' ? { teacherId, subjects: resolvedSubjects.map((s) => s.name) } : {}),
+        },
       },
       tx
     );
-    return ins.insertId;
+    return { userId: ins.insertId, teacherId, subjects: resolvedSubjects };
   });
 
   return {
-    id: userId,
+    id: result.userId,
+    teacherId: result.teacherId || undefined,
+    subjects: result.roleSlug === 'teacher' || result.subjects.length ? result.subjects : undefined,
     username: username.toLowerCase(),
     email: email.toLowerCase(),
     role: roleSlug,

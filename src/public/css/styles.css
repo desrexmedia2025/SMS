@@ -1803,6 +1803,39 @@ table.timetable-matrix tbody tr:last-child td {
   white-space: nowrap;
 }
 
+.subject-rows-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.subject-row-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.subject-row-label {
+  min-width: 78px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.subject-row-item input[type="text"] {
+  flex: 1 1 auto;
+}
+
+.subject-add-row-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
 @media print {
   .sidebar, .topbar, .no-print, .toast-container {
     display: none !important;

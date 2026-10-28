@@ -48,6 +48,11 @@ async function createUser(req, res) {
     phone,
     password,
     roleSlug,
+    staffNumber: optionalString(req.body.staffNumber, 40),
+    department: optionalString(req.body.department, 100),
+    qualification: optionalString(req.body.qualification, 120),
+    subjectIds: req.body.subjectIds,
+    customSubjects: req.body.customSubjects,
     actor: req.user,
     ipAddress: req.ip,
   });
