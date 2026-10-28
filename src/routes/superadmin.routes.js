@@ -24,6 +24,7 @@ router.post('/academic/subjects', verifyCsrfToken, ctrl.createSubject);
 
 router.get('/teachers', ctrl.listTeachers);
 router.post('/teachers', verifyCsrfToken, ctrl.createTeacher);
+router.put('/teachers/:id/subjects', verifyCsrfToken, ctrl.updateTeacherSubjects);
 router.post('/teachers/assign', verifyCsrfToken, ctrl.assignTeacher);
 
 router.get('/students', ctrl.listStudents);

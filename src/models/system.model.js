@@ -14,6 +14,7 @@ const BACKUP_TABLES = [
   'academic_years',
   'terms',
   'teachers',
+  'teacher_subjects',
   'classes',
   'streams',
   'subjects',

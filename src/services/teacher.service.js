@@ -23,10 +23,15 @@ async function getOverview(user) {
   const context = await systemModel.getPublicSchoolContext();
   const assignments = await academicModel.getTeacherAssignments(teacher.id, context.activeYear?.id);
 
-  const uniqueClasses = new Set(assignments.map((a) => `${a.class_id}:${a.stream_id || 0}`)).size;
-  const uniqueSubjects = new Set(assignments.map((a) => a.subject_id)).size;
-
-  const [timetable, assessments, recentSessions, announcements, myCorrectionRequests] = await Promise.all([
+  const [registeredSubjects, timetable, assessments, recentSessions, announcements, myCorrectionRequests] = await Promise.all([
+    db.query(
+      `SELECT s.id, s.code, s.name, s.department
+       FROM teacher_subjects ts
+       INNER JOIN subjects s ON s.id = ts.subject_id
+       WHERE ts.teacher_id = ?
+       ORDER BY s.code ASC, s.name ASC`,
+      [teacher.id]
+    ),
     db.query(
       `SELECT tt.*, c.name AS class_name, st.name AS stream_name, sub.code AS subject_code, sub.name AS subject_name
        FROM timetables tt
@@ -87,10 +92,30 @@ async function getOverview(user) {
     ),
   ]);
 
+  const subjectMap = new Map();
+  for (const sub of registeredSubjects) {
+    subjectMap.set(Number(sub.id), sub);
+  }
+  for (const a of assignments) {
+    const sid = Number(a.subject_id);
+    if (!subjectMap.has(sid)) {
+      subjectMap.set(sid, {
+        id: sid,
+        code: a.subject_code,
+        name: a.subject_name,
+        department: '',
+      });
+    }
+  }
+  const allSubjects = Array.from(subjectMap.values());
+  const uniqueClasses = new Set(assignments.map((a) => `${a.class_id}:${a.stream_id || 0}`)).size;
+  const uniqueSubjects = allSubjects.length;
+
   return {
     ...context,
     teacher: {
       ...teacher,
+      subjects: allSubjects,
       googleLinked: Boolean(teacher.google_subject_id),
       google_subject_id: undefined,
     },
@@ -100,6 +125,7 @@ async function getOverview(user) {
       weeklyLessons: timetable.length,
       assessmentsCount: assessments.length,
     },
+    registeredSubjects: allSubjects,
     assignments,
     timetable,
     assessments,

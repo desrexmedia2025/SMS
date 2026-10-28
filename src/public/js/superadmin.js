@@ -8,6 +8,9 @@
     teachersData: null,
     reportsData: null,
     financeStats: null,
+    regCustomSubjects: [],
+    editCustomSubjects: [],
+    editingTeacherId: null,
   };
 
   await SMS.initSession();
@@ -555,6 +558,97 @@
     };
   }
 
+  // ---------------- MULTI-SUBJECT TEACHER HELPERS ----------------
+  function getCheckedValues(containerId) {
+    const el = document.getElementById(containerId);
+    if (!el) return [];
+    return Array.from(el.querySelectorAll('input[type="checkbox"]:checked'))
+      .map((cb) => Number(cb.value))
+      .filter((n) => Number.isInteger(n) && n > 0);
+  }
+
+  function updateSubjectCounter(checkboxContainerId, customList, badgeId) {
+    const badge = document.getElementById(badgeId);
+    if (!badge) return;
+    const total = getCheckedValues(checkboxContainerId).length + (customList ? customList.length : 0);
+    badge.textContent = `${total} ${total === 1 ? 'subject' : 'subjects'} selected`;
+  }
+
+  function renderSubjectCheckPills(containerId, subjects, checkedIds = []) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    const checkedSet = new Set(checkedIds.map((v) => Number(v)));
+    if (!subjects || !subjects.length) {
+      el.innerHTML =
+        '<span class="multi-subject-hint">No subjects in school catalogue yet — type subject names below to add and assign them automatically.</span>';
+      return;
+    }
+    el.innerHTML = subjects
+      .map(
+        (s) => `<label class="subject-check-pill">
+          <input type="checkbox" value="${s.id}" ${checkedSet.has(Number(s.id)) ? 'checked' : ''}>
+          <span><strong>${esc(s.code)}</strong> &middot; ${esc(s.name)}</span>
+        </label>`
+      )
+      .join('');
+  }
+
+  function renderCustomChips(chipsContainerId, customList, chipType) {
+    const el = document.getElementById(chipsContainerId);
+    if (!el) return;
+    el.innerHTML = customList
+      .map(
+        (name, idx) => `<span class="subject-chip">
+          <span>${esc(name)}</span>
+          <button type="button" class="subject-chip-remove" data-remove-chip="${chipType}" data-chip-idx="${idx}" aria-label="Remove ${esc(name)}">&times;</button>
+        </span>`
+      )
+      .join('');
+  }
+
+  function addCustomSubjectsFromInput(inputId, customList, checkboxContainerId, chipsContainerId, badgeId, chipType) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const raw = input.value.trim();
+    if (!raw) return;
+
+    const catalogue = state.academic?.subjects || [];
+    const parts = raw
+      .split(',')
+      .map((p) => p.replace(/\s+/g, ' ').trim())
+      .filter(Boolean);
+
+    const cbContainer = document.getElementById(checkboxContainerId);
+    for (const part of parts) {
+      const lower = part.toLowerCase();
+      const match = catalogue.find(
+        (s) => s.name.toLowerCase() === lower || s.code.toLowerCase() === lower
+      );
+      if (match && cbContainer) {
+        const cb = cbContainer.querySelector(`input[type="checkbox"][value="${match.id}"]`);
+        if (cb) cb.checked = true;
+        continue;
+      }
+      if (!customList.some((c) => c.toLowerCase() === lower)) {
+        customList.push(part);
+      }
+    }
+
+    input.value = '';
+    renderCustomChips(chipsContainerId, customList, chipType);
+    updateSubjectCounter(checkboxContainerId, customList, badgeId);
+  }
+
+  function syncAssignTeacherSubjectPreselection() {
+    const teacherSel = document.getElementById('asg-teacher');
+    const teacherId = Number(teacherSel?.value || 0);
+    const teachers = state.teachersData?.teachers || [];
+    const found = teachers.find((t) => Number(t.id) === teacherId);
+    const prechecked = found?.subjectIds?.length ? found.subjectIds : [];
+    renderSubjectCheckPills('asg-subjects-checkboxes', state.academic?.subjects || [], prechecked);
+    updateSubjectCounter('asg-subjects-checkboxes', [], 'asg-selected-subjects-count');
+  }
+
   // ---------------- ACADEMIC STRUCTURE & TEACHERS ----------------
   async function loadAcademicAndSelectors() {
     const [acad, tData] = await Promise.all([
@@ -630,7 +724,7 @@
       const el = document.getElementById(id);
       if (el) el.innerHTML = streamOpts;
     });
-    ['asg-subject', 'tt-subject'].forEach((id) => {
+    ['tt-subject'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = subOpts;
     });
@@ -638,6 +732,36 @@
       const el = document.getElementById(id);
       if (el) el.innerHTML = teacherOpts;
     });
+
+    // Populate multi-subject checkboxes on Register Teacher form (preserving any checked items)
+    const prevRegChecked = getCheckedValues('tch-reg-subject-checkboxes');
+    renderSubjectCheckPills('tch-reg-subject-checkboxes', acad.subjects, prevRegChecked);
+    updateSubjectCounter('tch-reg-subject-checkboxes', state.regCustomSubjects, 'tch-selected-subjects-count');
+
+    // Optional immediate class checkboxes on Register Teacher form
+    const regClassesWrap = document.getElementById('tch-reg-class-checkboxes');
+    const regClassesGroup = document.getElementById('tch-reg-classes-group');
+    if (regClassesWrap) {
+      if (acad.classes.length > 0) {
+        if (regClassesGroup) regClassesGroup.classList.remove('hidden');
+        const prevCls = getCheckedValues('tch-reg-class-checkboxes');
+        const clsSet = new Set(prevCls);
+        regClassesWrap.innerHTML = acad.classes
+          .map(
+            (c) => `<label class="subject-check-pill">
+              <input type="checkbox" value="${c.id}" ${clsSet.has(Number(c.id)) ? 'checked' : ''}>
+              <span>${esc(c.name)}</span>
+            </label>`
+          )
+          .join('');
+      } else {
+        regClassesWrap.innerHTML =
+          '<span class="multi-subject-hint">No classes created yet — you can assign classes later under Class &amp; Subject Assignments.</span>';
+      }
+    }
+
+    // Populate multi-subject checkboxes on Assign Teacher form
+    syncAssignTeacherSubjectPreselection();
     ['act-year-select', 'term-year-select'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = yearOpts;
@@ -715,16 +839,31 @@
     if (teachersListBody) {
       teachersListBody.innerHTML =
         tData.teachers
-          .map(
-            (t) => `<tr>
+          .map((t) => {
+            const subBadges =
+              t.subjects && t.subjects.length
+                ? `<div class="subject-badges-wrap">${t.subjects
+                    .map(
+                      (s) =>
+                        `<span class="subject-badge-tag"><strong>${esc(s.code)}</strong> &middot; ${esc(s.name)}</span>`
+                    )
+                    .join('')}</div>`
+                : t.specialization
+                  ? `<span style="color:var(--text-muted);font-size:12.5px;">${esc(t.specialization)}</span>`
+                  : '<span class="multi-subject-hint">No subjects linked</span>';
+            return `<tr>
               <td><code>${esc(t.staff_number)}</code></td>
               <td><strong>${esc(t.first_name)} ${esc(t.last_name)}</strong><br><small style="color:var(--text-light);">${esc(t.qualification || '')}</small></td>
               <td>${esc(t.email)}</td>
-              <td>${esc(t.department || t.specialization || '-')}</td>
+              <td>${esc(t.department || '-')}</td>
+              <td>${subBadges}</td>
               <td>${statusBadge(t.user_status || t.status)}</td>
-            </tr>`
-          )
-          .join('') || '<tr><td colspan="5" class="empty-state">No teachers registered yet.</td></tr>';
+              <td>
+                <button type="button" class="btn btn-secondary btn-sm" data-edit-tch-subjects="${t.id}">Edit Subjects</button>
+              </td>
+            </tr>`;
+          })
+          .join('') || '<tr><td colspan="7" class="empty-state">No teachers registered yet.</td></tr>';
     }
 
     // Teacher Subject Assignments
@@ -1362,14 +1501,172 @@
     }
   });
 
+  // Multi-subject interactive listeners (Register Teacher, Edit Subjects, Assign Teacher)
+  document.getElementById('tch-reg-subject-checkboxes')?.addEventListener('change', () => {
+    updateSubjectCounter('tch-reg-subject-checkboxes', state.regCustomSubjects, 'tch-selected-subjects-count');
+  });
+
+  document.getElementById('btn-add-tch-subject')?.addEventListener('click', () => {
+    addCustomSubjectsFromInput(
+      'tch-custom-subject-input',
+      state.regCustomSubjects,
+      'tch-reg-subject-checkboxes',
+      'tch-custom-subject-chips',
+      'tch-selected-subjects-count',
+      'reg'
+    );
+  });
+
+  document.getElementById('tch-custom-subject-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addCustomSubjectsFromInput(
+        'tch-custom-subject-input',
+        state.regCustomSubjects,
+        'tch-reg-subject-checkboxes',
+        'tch-custom-subject-chips',
+        'tch-selected-subjects-count',
+        'reg'
+      );
+    }
+  });
+
+  document.getElementById('edit-tch-subject-checkboxes')?.addEventListener('change', () => {
+    updateSubjectCounter('edit-tch-subject-checkboxes', state.editCustomSubjects, 'edit-tch-subjects-count');
+  });
+
+  document.getElementById('btn-add-edit-tch-subject')?.addEventListener('click', () => {
+    addCustomSubjectsFromInput(
+      'edit-tch-custom-subject-input',
+      state.editCustomSubjects,
+      'edit-tch-subject-checkboxes',
+      'edit-tch-custom-subject-chips',
+      'edit-tch-subjects-count',
+      'edit'
+    );
+  });
+
+  document.getElementById('edit-tch-custom-subject-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addCustomSubjectsFromInput(
+        'edit-tch-custom-subject-input',
+        state.editCustomSubjects,
+        'edit-tch-subject-checkboxes',
+        'edit-tch-custom-subject-chips',
+        'edit-tch-subjects-count',
+        'edit'
+      );
+    }
+  });
+
+  document.getElementById('asg-teacher')?.addEventListener('change', () => {
+    syncAssignTeacherSubjectPreselection();
+  });
+
+  document.getElementById('asg-subjects-checkboxes')?.addEventListener('change', () => {
+    updateSubjectCounter('asg-subjects-checkboxes', [], 'asg-selected-subjects-count');
+  });
+
+  document.getElementById('sec-teachers')?.addEventListener('click', (e) => {
+    const rmChip = e.target.closest('[data-remove-chip]');
+    if (rmChip) {
+      const idx = Number(rmChip.dataset.chipIdx);
+      if (rmChip.dataset.removeChip === 'reg') {
+        state.regCustomSubjects.splice(idx, 1);
+        renderCustomChips('tch-custom-subject-chips', state.regCustomSubjects, 'reg');
+        updateSubjectCounter('tch-reg-subject-checkboxes', state.regCustomSubjects, 'tch-selected-subjects-count');
+      } else if (rmChip.dataset.removeChip === 'edit') {
+        state.editCustomSubjects.splice(idx, 1);
+        renderCustomChips('edit-tch-custom-subject-chips', state.editCustomSubjects, 'edit');
+        updateSubjectCounter('edit-tch-subject-checkboxes', state.editCustomSubjects, 'edit-tch-subjects-count');
+      }
+      return;
+    }
+
+    const editBtn = e.target.closest('[data-edit-tch-subjects]');
+    if (editBtn) {
+      const tid = Number(editBtn.dataset.editTchSubjects);
+      const teacher = (state.teachersData?.teachers || []).find((t) => Number(t.id) === tid);
+      if (!teacher) return;
+      state.editingTeacherId = tid;
+      state.editCustomSubjects = [];
+      document.getElementById('edit-tch-id').value = String(tid);
+      document.getElementById('edit-teacher-subjects-title').textContent = `Update Subjects Taught — ${teacher.first_name} ${teacher.last_name} (${teacher.staff_number})`;
+      renderSubjectCheckPills(
+        'edit-tch-subject-checkboxes',
+        state.academic?.subjects || [],
+        teacher.subjectIds || []
+      );
+      renderCustomChips('edit-tch-custom-subject-chips', state.editCustomSubjects, 'edit');
+      updateSubjectCounter('edit-tch-subject-checkboxes', state.editCustomSubjects, 'edit-tch-subjects-count');
+      const card = document.getElementById('edit-teacher-subjects-card');
+      card.classList.remove('hidden');
+      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  });
+
+  document.getElementById('btn-cancel-edit-teacher-subjects')?.addEventListener('click', () => {
+    document.getElementById('edit-teacher-subjects-card')?.classList.add('hidden');
+    state.editingTeacherId = null;
+    state.editCustomSubjects = [];
+  });
+
+  document.getElementById('edit-teacher-subjects-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    addCustomSubjectsFromInput(
+      'edit-tch-custom-subject-input',
+      state.editCustomSubjects,
+      'edit-tch-subject-checkboxes',
+      'edit-tch-custom-subject-chips',
+      'edit-tch-subjects-count',
+      'edit'
+    );
+    const tid = Number(document.getElementById('edit-tch-id').value);
+    const subjectIds = getCheckedValues('edit-tch-subject-checkboxes');
+    const customSubjects = [...state.editCustomSubjects];
+    try {
+      await api(`/api/superadmin/teachers/${tid}/subjects`, {
+        method: 'PUT',
+        body: { subjectIds, customSubjects },
+      });
+      state.editCustomSubjects = [];
+      document.getElementById('edit-teacher-subjects-card')?.classList.add('hidden');
+      toast('Teacher subjects updated.', 'success');
+      await loadAcademicAndSelectors();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+
   document.getElementById('create-teacher-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    // Capture any typed subjects still sitting in the text box
+    addCustomSubjectsFromInput(
+      'tch-custom-subject-input',
+      state.regCustomSubjects,
+      'tch-reg-subject-checkboxes',
+      'tch-custom-subject-chips',
+      'tch-selected-subjects-count',
+      'reg'
+    );
     const fd = Object.fromEntries(new FormData(e.target).entries());
+    fd.subjectIds = getCheckedValues('tch-reg-subject-checkboxes');
+    fd.customSubjects = [...state.regCustomSubjects];
+    fd.classIds = getCheckedValues('tch-reg-class-checkboxes');
     try {
       const res = await api('/api/superadmin/teachers', { method: 'POST', body: fd });
       e.target.reset();
+      state.regCustomSubjects = [];
+      renderCustomChips('tch-custom-subject-chips', state.regCustomSubjects, 'reg');
       renderIssuedCredentials('issued-teacher-creds-box', res.issuedCredentials);
-      toast('Teacher registered. Copy and share the issued login credentials.', 'success');
+      const subCount = Array.isArray(res.subjects) ? res.subjects.length : 0;
+      toast(
+        subCount > 0
+          ? `Teacher registered with ${subCount} ${subCount === 1 ? 'subject' : 'subjects'}. Share the issued login credentials.`
+          : 'Teacher registered. Copy and share the issued login credentials.',
+        'success'
+      );
       await loadAcademicAndSelectors();
       await loadOverview();
     } catch (err) {
@@ -1380,11 +1677,21 @@
   document.getElementById('assign-teacher-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target).entries());
+    const subjectIds = getCheckedValues('asg-subjects-checkboxes');
+    if (!subjectIds.length) {
+      toast('Please select at least one subject to assign.', 'error');
+      return;
+    }
+    fd.subjectIds = subjectIds;
     fd.academicYearId = state.overview?.activeYear?.id;
     fd.termId = state.overview?.activeTerm?.id;
     try {
-      await api('/api/superadmin/teachers/assign', { method: 'POST', body: fd });
-      toast('Teacher assigned to class & subject.', 'success');
+      const res = await api('/api/superadmin/teachers/assign', { method: 'POST', body: fd });
+      const count = res.assignedCount || subjectIds.length;
+      toast(
+        `Assigned ${count} ${count === 1 ? 'subject' : 'subjects'} to teacher for the selected class.`,
+        'success'
+      );
       await loadAcademicAndSelectors();
     } catch (err) {
       toast(err.message, 'error');

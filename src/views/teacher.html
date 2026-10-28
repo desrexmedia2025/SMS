@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Teachers Dashboard - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=2.3">
+  <link rel="stylesheet" href="/css/styles.css?v=2.4">
 </head>
 <body>
   <div class="app-layout">
@@ -74,7 +74,22 @@
         <!-- MY CLASSES & SUBJECTS -->
         <section id="sec-classes" class="module-panel hidden">
           <div class="card">
-            <div class="card-header"><h2 class="card-title">Assigned Classes &amp; Subjects</h2></div>
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">My Registered Teaching Subjects</h2>
+                <div class="card-subtitle">All subjects assigned to your teaching profile at registration or by the Superadmin</div>
+              </div>
+            </div>
+            <div id="tc-registered-subjects-wrap"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Assigned Classes &amp; Subjects</h2>
+                <div class="card-subtitle">Active classroom teaching groups where you record attendance and enter marks</div>
+              </div>
+            </div>
             <div class="table-wrap">
               <table>
                 <thead><tr><th>Class</th><th>Stream</th><th>Room</th><th>Subject Code</th><th>Subject Name</th><th class="num">Pass Mark</th></tr></thead>
@@ -232,9 +247,13 @@
               <div class="card-header"><h2 class="card-title">My Staff Profile</h2></div>
               <form id="tc-profile-form">
                 <div class="form-group"><label>Staff Number</label><input type="text" id="prof-staff-no" disabled></div>
+                <div class="form-group">
+                  <label>Subjects Taught (Managed by Superadmin)</label>
+                  <div id="prof-subjects-badges" class="multi-subject-box" style="padding:10px 12px;"></div>
+                </div>
                 <div class="form-group"><label>Phone</label><input type="text" name="phone" id="prof-phone"></div>
                 <div class="form-group"><label>Qualification</label><input type="text" name="qualification" id="prof-qual"></div>
-                <div class="form-group"><label>Specialization</label><input type="text" name="specialization" id="prof-spec"></div>
+                <div class="form-group"><label>Specialization Notes</label><input type="text" name="specialization" id="prof-spec"></div>
                 <button class="btn btn-primary" type="submit">Update Profile</button>
               </form>
             </div>
@@ -252,7 +271,7 @@
     </div>
   </div>
 
-  <script src="/js/common.js?v=2.3"></script>
-  <script src="/js/teacher.js?v=2.3"></script>
+  <script src="/js/common.js?v=2.4"></script>
+  <script src="/js/teacher.js?v=2.4"></script>
 </body>
 </html>

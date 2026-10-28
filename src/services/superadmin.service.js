@@ -395,32 +395,179 @@ async function createSubject({ code, name, department, isElective, passMark, max
 }
 
 // ---------------- TEACHERS & ASSIGNMENTS ----------------
+function parseSubjectIdList(raw) {
+  if (Array.isArray(raw)) {
+    return Array.from(new Set(raw.map((v) => Number(v)).filter((n) => Number.isInteger(n) && n > 0)));
+  }
+  if (typeof raw === 'string' && raw.trim()) {
+    return Array.from(
+      new Set(
+        raw
+          .split(',')
+          .map((v) => Number(v.trim()))
+          .filter((n) => Number.isInteger(n) && n > 0)
+      )
+    );
+  }
+  if (Number.isInteger(Number(raw)) && Number(raw) > 0) {
+    return [Number(raw)];
+  }
+  return [];
+}
+
+function parseCustomSubjectNames(raw) {
+  const items = Array.isArray(raw)
+    ? raw
+    : typeof raw === 'string'
+      ? raw.split(',')
+      : [];
+  const seen = new Set();
+  const out = [];
+  for (const item of items) {
+    const cleaned = String(item || '').replace(/\s+/g, ' ').trim().slice(0, 100);
+    if (!cleaned) continue;
+    const key = cleaned.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(cleaned);
+  }
+  return out;
+}
+
+async function generateUniqueSubjectCode(tx, subjectName) {
+  const words = String(subjectName || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9\s]/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  let prefix = 'SUB';
+  if (words.length === 1) {
+    prefix = words[0].slice(0, 4).padEnd(3, 'X');
+  } else if (words.length >= 2) {
+    prefix = words.map((w) => w[0]).join('').slice(0, 4);
+    if (prefix.length < 3) {
+      prefix = (words[0].slice(0, 2) + words[1].slice(0, 2)).slice(0, 4);
+    }
+  }
+  let candidate = `${prefix}101`;
+  let suffix = 101;
+  while (await tx.get('SELECT id FROM subjects WHERE UPPER(code) = ?', [candidate])) {
+    suffix += 1;
+    candidate = `${prefix}${suffix}`;
+  }
+  return candidate;
+}
+
+async function resolveOrCreateSubjects(tx, { subjectIds = [], customSubjects = [], department = '' }) {
+  const parsedIds = parseSubjectIdList(subjectIds);
+  const parsedNames = parseCustomSubjectNames(customSubjects);
+  const resolvedMap = new Map();
+
+  for (const sid of parsedIds) {
+    const row = await tx.get('SELECT id, code, name, department FROM subjects WHERE id = ?', [sid]);
+    if (!row) throw new AppError(400, `Selected subject (#${sid}) was not found.`);
+    resolvedMap.set(Number(row.id), row);
+  }
+
+  for (const customName of parsedNames) {
+    const existing = await tx.get(
+      'SELECT id, code, name, department FROM subjects WHERE LOWER(name) = ? OR LOWER(code) = ? LIMIT 1',
+      [customName.toLowerCase(), customName.toLowerCase()]
+    );
+    if (existing) {
+      resolvedMap.set(Number(existing.id), existing);
+      continue;
+    }
+    const autoCode = await generateUniqueSubjectCode(tx, customName);
+    const ins = await tx.run(
+      `INSERT INTO subjects (code, name, department, is_elective, pass_mark, max_mark, status)
+       VALUES (?, ?, ?, 0, 50, 100, 'active')`,
+      [autoCode, customName, department || '']
+    );
+    resolvedMap.set(Number(ins.insertId), {
+      id: Number(ins.insertId),
+      code: autoCode,
+      name: customName,
+      department: department || '',
+    });
+  }
+
+  return Array.from(resolvedMap.values());
+}
+
 async function listTeachers() {
-  const teachers = await db.query(
-    `SELECT
-       t.*,
-       u.username, u.email, u.phone, u.status AS user_status
-     FROM teachers t
-     INNER JOIN users u ON u.id = t.user_id
-     ORDER BY t.id DESC`
-  );
-  const assignments = await db.query(
-    `SELECT
-       ta.*,
-       t.first_name, t.last_name, t.staff_number,
-       c.name AS class_name,
-       st.name AS stream_name,
-       sub.code AS subject_code, sub.name AS subject_name,
-       ay.name AS academic_year_name
-     FROM teacher_assignments ta
-     INNER JOIN teachers t ON t.id = ta.teacher_id
-     INNER JOIN classes c ON c.id = ta.class_id
-     LEFT JOIN streams st ON st.id = ta.stream_id
-     INNER JOIN subjects sub ON sub.id = ta.subject_id
-     INNER JOIN academic_years ay ON ay.id = ta.academic_year_id
-     ORDER BY ta.id DESC`
-  );
-  return { teachers, assignments };
+  const [teachers, teacherSubjectRows, assignments] = await Promise.all([
+    db.query(
+      `SELECT
+         t.*,
+         u.username, u.email, u.phone, u.status AS user_status
+       FROM teachers t
+       INNER JOIN users u ON u.id = t.user_id
+       ORDER BY t.id DESC`
+    ),
+    db.query(
+      `SELECT
+         ts.teacher_id,
+         s.id, s.code, s.name, s.department
+       FROM teacher_subjects ts
+       INNER JOIN subjects s ON s.id = ts.subject_id
+       ORDER BY s.code ASC, s.name ASC`
+    ),
+    db.query(
+      `SELECT
+         ta.*,
+         t.first_name, t.last_name, t.staff_number,
+         c.name AS class_name,
+         st.name AS stream_name,
+         sub.code AS subject_code, sub.name AS subject_name,
+         ay.name AS academic_year_name
+       FROM teacher_assignments ta
+       INNER JOIN teachers t ON t.id = ta.teacher_id
+       INNER JOIN classes c ON c.id = ta.class_id
+       LEFT JOIN streams st ON st.id = ta.stream_id
+       INNER JOIN subjects sub ON sub.id = ta.subject_id
+       INNER JOIN academic_years ay ON ay.id = ta.academic_year_id
+       ORDER BY ta.id DESC`
+    ),
+  ]);
+
+  const byTeacher = new Map();
+  for (const row of teacherSubjectRows) {
+    const tid = Number(row.teacher_id);
+    if (!byTeacher.has(tid)) byTeacher.set(tid, new Map());
+    byTeacher.get(tid).set(Number(row.id), {
+      id: Number(row.id),
+      code: row.code,
+      name: row.name,
+      department: row.department || '',
+    });
+  }
+  for (const asg of assignments) {
+    const tid = Number(asg.teacher_id);
+    if (!byTeacher.has(tid)) byTeacher.set(tid, new Map());
+    const sid = Number(asg.subject_id);
+    if (!byTeacher.get(tid).has(sid)) {
+      byTeacher.get(tid).set(sid, {
+        id: sid,
+        code: asg.subject_code,
+        name: asg.subject_name,
+        department: '',
+      });
+    }
+  }
+
+  const enrichedTeachers = teachers.map((t) => {
+    const subMap = byTeacher.get(Number(t.id));
+    const subjects = subMap ? Array.from(subMap.values()) : [];
+    return {
+      ...t,
+      subjects,
+      subjectIds: subjects.map((s) => s.id),
+    };
+  });
+
+  return { teachers: enrichedTeachers, assignments };
 }
 
 async function createTeacher({
@@ -434,6 +581,9 @@ async function createTeacher({
   specialization,
   department,
   hireDate,
+  subjectIds,
+  customSubjects,
+  classIds,
   actor,
   ipAddress,
 }) {
@@ -447,6 +597,15 @@ async function createTeacher({
   const baseUsername = `${firstName}.${lastName}`.toLowerCase().replace(/[^a-z0-9.]/g, '') + '.' + Date.now().toString().slice(-4);
 
   return db.withTransaction(async (tx) => {
+    const resolvedSubjects = await resolveOrCreateSubjects(tx, {
+      subjectIds,
+      customSubjects,
+      department,
+    });
+    const subjectNamesSummary = resolvedSubjects.map((s) => s.name).join(', ');
+    const effectiveSpecialization =
+      (specialization && String(specialization).trim()) || subjectNamesSummary || '';
+
     const uRes = await tx.run(
       `INSERT INTO users (username, email, password_hash, full_name, phone, status, email_verified, auth_provider)
        VALUES (?, ?, ?, ?, ?, 'active', 1, 'local')`,
@@ -466,11 +625,43 @@ async function createTeacher({
         firstName,
         lastName,
         qualification || '',
-        specialization || '',
+        effectiveSpecialization.slice(0, 255),
         department || '',
         hireDate || new Date().toISOString().slice(0, 10),
       ]
     );
+
+    for (const sub of resolvedSubjects) {
+      await tx.run('INSERT INTO teacher_subjects (teacher_id, subject_id) VALUES (?, ?)', [
+        tRes.insertId,
+        sub.id,
+      ]);
+    }
+
+    // Optional class auto-assignment during registration if classes were selected and an active year exists
+    const parsedClassIds = parseSubjectIdList(classIds);
+    if (parsedClassIds.length > 0 && resolvedSubjects.length > 0) {
+      const activeYr = await tx.get('SELECT id FROM academic_years WHERE is_active = 1 ORDER BY id DESC LIMIT 1');
+      if (activeYr) {
+        const activeTr = await tx.get('SELECT id FROM terms WHERE is_active = 1 ORDER BY id DESC LIMIT 1');
+        for (const cid of parsedClassIds) {
+          const clsRow = await tx.get('SELECT id FROM classes WHERE id = ?', [cid]);
+          if (!clsRow) continue;
+          for (const sub of resolvedSubjects) {
+            const key = `${tRes.insertId}:${cid}:0:${sub.id}:${activeYr.id}`;
+            const exists = await tx.get('SELECT id FROM teacher_assignments WHERE assignment_key = ?', [key]);
+            if (!exists) {
+              await tx.run(
+                `INSERT INTO teacher_assignments (teacher_id, class_id, stream_id, subject_id, academic_year_id, term_id, assignment_key)
+                 VALUES (?, ?, NULL, ?, ?, ?, ?)`,
+                [tRes.insertId, cid, sub.id, activeYr.id, activeTr ? activeTr.id : null, key]
+              );
+            }
+          }
+        }
+      }
+    }
+
     await recordAudit(
       {
         actorUserId: actor.id,
@@ -479,7 +670,11 @@ async function createTeacher({
         targetType: 'teacher',
         targetId: String(tRes.insertId),
         ipAddress,
-        metadata: { staffNumber, email: email.toLowerCase() },
+        metadata: {
+          staffNumber,
+          email: email.toLowerCase(),
+          subjects: resolvedSubjects.map((s) => s.name),
+        },
       },
       tx
     );
@@ -489,11 +684,63 @@ async function createTeacher({
       username: baseUsername,
       email: email.toLowerCase(),
       role: 'teacher',
+      subjects: resolvedSubjects,
     };
   });
 }
 
-async function assignTeacher({ teacherId, classId, streamId, subjectId, academicYearId, termId, actor, ipAddress }) {
+async function updateTeacherSubjects({ teacherId, subjectIds, customSubjects, specialization, actor, ipAddress }) {
+  const teacher = await db.get('SELECT * FROM teachers WHERE id = ?', [teacherId]);
+  if (!teacher) throw new AppError(404, 'Teacher record not found.');
+
+  return db.withTransaction(async (tx) => {
+    const resolvedSubjects = await resolveOrCreateSubjects(tx, {
+      subjectIds,
+      customSubjects,
+      department: teacher.department || '',
+    });
+
+    await tx.run('DELETE FROM teacher_subjects WHERE teacher_id = ?', [teacherId]);
+    for (const sub of resolvedSubjects) {
+      await tx.run('INSERT INTO teacher_subjects (teacher_id, subject_id) VALUES (?, ?)', [
+        teacherId,
+        sub.id,
+      ]);
+    }
+
+    const summary = resolvedSubjects.map((s) => s.name).join(', ');
+    const nextSpecialization =
+      specialization !== undefined && String(specialization).trim()
+        ? String(specialization).trim().slice(0, 255)
+        : summary.slice(0, 255);
+
+    await tx.run('UPDATE teachers SET specialization = ? WHERE id = ?', [nextSpecialization, teacherId]);
+
+    await recordAudit(
+      {
+        actorUserId: actor.id,
+        actorRole: actor.role,
+        action: 'TEACHER_SUBJECTS_UPDATED',
+        targetType: 'teacher',
+        targetId: String(teacherId),
+        ipAddress,
+        metadata: {
+          staffNumber: teacher.staff_number,
+          subjects: resolvedSubjects.map((s) => s.name),
+        },
+      },
+      tx
+    );
+
+    return {
+      teacherId: Number(teacherId),
+      subjects: resolvedSubjects,
+      specialization: nextSpecialization,
+    };
+  });
+}
+
+async function assignTeacher({ teacherId, classId, streamId, subjectId, subjectIds, academicYearId, termId, actor, ipAddress }) {
   let resolvedYearId = academicYearId;
   let resolvedTermId = termId;
   if (!resolvedYearId) {
@@ -508,26 +755,76 @@ async function assignTeacher({ teacherId, classId, streamId, subjectId, academic
     resolvedTermId = activeTr ? activeTr.id : null;
   }
 
-  const key = `${teacherId}:${classId}:${streamId || 0}:${subjectId}:${resolvedYearId}`;
-  const existing = await db.get('SELECT id FROM teacher_assignments WHERE assignment_key = ?', [key]);
-  if (existing) throw new AppError(409, 'This teacher is already assigned to that class/stream/subject.');
-
-  const ins = await db.run(
-    `INSERT INTO teacher_assignments (teacher_id, class_id, stream_id, subject_id, academic_year_id, term_id, assignment_key)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [teacherId, classId, streamId || null, subjectId, resolvedYearId, resolvedTermId || null, key]
+  const targetSubjectIds = parseSubjectIdList(
+    Array.isArray(subjectIds) && subjectIds.length > 0 ? subjectIds : subjectId
   );
+  if (!targetSubjectIds.length) {
+    throw new AppError(400, 'Please select at least one subject to assign.');
+  }
 
-  await recordAudit({
-    actorUserId: actor.id,
-    actorRole: actor.role,
-    action: 'TEACHER_ASSIGNED',
-    targetType: 'teacher_assignment',
-    targetId: String(ins.insertId),
-    ipAddress,
-    metadata: { teacherId, classId, streamId, subjectId },
+  return db.withTransaction(async (tx) => {
+    const createdIds = [];
+    let skippedCount = 0;
+
+    for (const sid of targetSubjectIds) {
+      const subRow = await tx.get('SELECT id FROM subjects WHERE id = ?', [sid]);
+      if (!subRow) throw new AppError(400, `Subject #${sid} not found.`);
+
+      const linked = await tx.get(
+        'SELECT id FROM teacher_subjects WHERE teacher_id = ? AND subject_id = ?',
+        [teacherId, sid]
+      );
+      if (!linked) {
+        await tx.run('INSERT INTO teacher_subjects (teacher_id, subject_id) VALUES (?, ?)', [
+          teacherId,
+          sid,
+        ]);
+      }
+
+      const key = `${teacherId}:${classId}:${streamId || 0}:${sid}:${resolvedYearId}`;
+      const existing = await tx.get('SELECT id FROM teacher_assignments WHERE assignment_key = ?', [key]);
+      if (existing) {
+        skippedCount += 1;
+        continue;
+      }
+
+      const ins = await tx.run(
+        `INSERT INTO teacher_assignments (teacher_id, class_id, stream_id, subject_id, academic_year_id, term_id, assignment_key)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [teacherId, classId, streamId || null, sid, resolvedYearId, resolvedTermId || null, key]
+      );
+      createdIds.push(ins.insertId);
+    }
+
+    if (createdIds.length === 0) {
+      throw new AppError(
+        409,
+        targetSubjectIds.length === 1
+          ? 'This teacher is already assigned to that class/stream/subject.'
+          : 'This teacher is already assigned to all selected subjects for that class/stream.'
+      );
+    }
+
+    await recordAudit(
+      {
+        actorUserId: actor.id,
+        actorRole: actor.role,
+        action: 'TEACHER_ASSIGNED',
+        targetType: 'teacher_assignment',
+        targetId: String(createdIds[0]),
+        ipAddress,
+        metadata: { teacherId, classId, streamId, subjectIds: targetSubjectIds, createdIds },
+      },
+      tx
+    );
+
+    return {
+      id: createdIds[0],
+      ids: createdIds,
+      assignedCount: createdIds.length,
+      skippedCount,
+    };
   });
-  return { id: ins.insertId };
 }
 
 // ---------------- STUDENTS & ENROLMENTS ----------------
@@ -1510,6 +1807,7 @@ module.exports = {
   createSubject,
   listTeachers,
   createTeacher,
+  updateTeacherSubjects,
   assignTeacher,
   listStudents,
   enrolStudent,

@@ -1657,6 +1657,152 @@ table.timetable-matrix tbody tr:last-child td {
   justify-content: flex-end;
 }
 
+/* Multi-Subject Selector & Subject Badges */
+.multi-subject-box {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.multi-subject-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.multi-subject-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.multi-subject-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.multi-check-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.subject-check-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.subject-check-pill:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.subject-check-pill input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+.subject-check-pill:has(input[type="checkbox"]:checked) {
+  border-color: #2563eb;
+  background: #dbeafe;
+  color: #1e3a8a;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.12);
+}
+
+.subject-inline-adder {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.subject-inline-adder input[type="text"] {
+  flex: 1 1 260px;
+  min-width: 200px;
+}
+
+.subject-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.subject-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #1d4ed8;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.subject-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.subject-chip-remove:hover {
+  background: rgba(255, 255, 255, 0.38);
+}
+
+.subject-badges-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
+.subject-badge-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 @media print {
   .sidebar, .topbar, .no-print, .toast-container {
     display: none !important;

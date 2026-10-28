@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Superadmin Dashboard - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=2.3">
+  <link rel="stylesheet" href="/css/styles.css?v=2.4">
 </head>
 <body>
   <div class="app-layout sa-layout">
@@ -469,38 +469,100 @@
 
           <!-- Subtab: Teaching Staff -->
           <div id="subtab-tch-staff" class="subtab-pane" data-tab-pane="teachers">
-            <div class="grid-2">
-              <div class="card">
-                <div class="card-header">
-                  <div>
-                    <h2 class="card-title">Register Teacher</h2>
-                    <div class="card-subtitle">Provisioned solely by the Superadmin — share the issued login with the teacher</div>
-                  </div>
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Register Teacher</h2>
+                  <div class="card-subtitle">Provisioned solely by the Superadmin — assign one or multiple subjects and share the issued login credentials with the teacher</div>
                 </div>
-                <div id="issued-teacher-creds-box" class="alert alert-info hidden"></div>
-                <form id="create-teacher-form">
-                  <div class="form-grid">
-                    <div class="form-group"><label>Staff Number</label><input type="text" name="staffNumber" placeholder="e.g. STF-2026-001" required></div>
-                    <div class="form-group"><label>First Name</label><input type="text" name="firstName" required></div>
-                    <div class="form-group"><label>Last Name</label><input type="text" name="lastName" required></div>
-                    <div class="form-group"><label>Email</label><input type="email" name="email" required></div>
-                    <div class="form-group"><label>Department</label><input type="text" name="department" placeholder="e.g. Sciences"></div>
-                    <div class="form-group"><label>Specialization</label><input type="text" name="specialization" placeholder="e.g. Physics"></div>
-                    <div class="form-group"><label>Qualification</label><input type="text" name="qualification" placeholder="e.g. B.Ed"></div>
-                    <div class="form-group"><label>Initial Password (Optional)</label><input type="password" name="password" placeholder="Auto-generated if blank" autocomplete="new-password"></div>
-                  </div>
-                  <div class="form-actions-end"><button class="btn btn-primary" type="submit">Register Teacher</button></div>
-                </form>
               </div>
-
-              <div class="card">
-                <div class="card-header"><h2 class="card-title">Registered Teachers Directory</h2></div>
-                <div class="table-wrap">
-                  <table>
-                    <thead><tr><th>Staff #</th><th>Teacher</th><th>Email</th><th>Department</th><th>Status</th></tr></thead>
-                    <tbody id="teachers-list-tbody"></tbody>
-                  </table>
+              <div id="issued-teacher-creds-box" class="alert alert-info hidden"></div>
+              <form id="create-teacher-form">
+                <div class="form-section-divider" style="margin-top:0;">Teacher Identity &amp; Portal Login</div>
+                <div class="form-grid">
+                  <div class="form-group"><label>Staff Number</label><input type="text" name="staffNumber" placeholder="e.g. STF-2026-001" required></div>
+                  <div class="form-group"><label>First Name</label><input type="text" name="firstName" required></div>
+                  <div class="form-group"><label>Last Name</label><input type="text" name="lastName" required></div>
+                  <div class="form-group"><label>Portal Email</label><input type="email" name="email" placeholder="teacher@school.edu" required></div>
+                  <div class="form-group"><label>Phone (Optional)</label><input type="text" name="phone" placeholder="e.g. +233 24 000 0000"></div>
+                  <div class="form-group"><label>Department</label><input type="text" name="department" placeholder="e.g. Sciences &amp; Mathematics"></div>
+                  <div class="form-group"><label>Qualification</label><input type="text" name="qualification" placeholder="e.g. B.Ed, M.Sc"></div>
+                  <div class="form-group"><label>Initial Password (Optional)</label><input type="password" name="password" placeholder="Auto-generated if blank" autocomplete="new-password"></div>
                 </div>
+
+                <div class="form-section-divider">Subjects Taught (Select or Add 1 or More Subjects)</div>
+                <div class="multi-subject-box">
+                  <div class="multi-subject-head">
+                    <div>
+                      <div class="multi-subject-title">Select from School Subject Catalogue or Add Multiple Subjects Below</div>
+                      <div class="multi-subject-hint">Check all subjects this teacher teaches, or type new subject names (comma-separated or one by one) to add and link them automatically.</div>
+                    </div>
+                    <span class="badge badge-info" id="tch-selected-subjects-count">0 subjects selected</span>
+                  </div>
+                  <div id="tch-reg-subject-checkboxes" class="multi-check-grid"></div>
+                  <div class="subject-inline-adder">
+                    <input type="text" id="tch-custom-subject-input" placeholder="Add subject(s), e.g. Mathematics, Physics, Further Maths">
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-add-tch-subject">+ Add Subject</button>
+                  </div>
+                  <div id="tch-custom-subject-chips" class="subject-chip-list"></div>
+                </div>
+
+                <div class="form-grid" style="margin-top:12px;">
+                  <div class="form-group" id="tch-reg-classes-group">
+                    <label>Assign Classes Immediately (Optional)</label>
+                    <div id="tch-reg-class-checkboxes" class="multi-check-grid" style="margin-bottom:0;"></div>
+                  </div>
+                  <div class="form-group">
+                    <label>Additional Specialization Notes (Optional)</label>
+                    <input type="text" name="specialization" placeholder="Auto-filled from selected subjects if left blank">
+                  </div>
+                </div>
+
+                <div class="form-actions-end"><button class="btn btn-primary" type="submit">Register Teacher &amp; Issue Login</button></div>
+              </form>
+            </div>
+
+            <!-- Inline Edit Teacher Subjects Card -->
+            <div class="card hidden" id="edit-teacher-subjects-card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title" id="edit-teacher-subjects-title">Update Teacher Subjects</h2>
+                  <div class="card-subtitle">Check or uncheck subjects taught by this teacher, or add new subjects below</div>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-cancel-edit-teacher-subjects">Close</button>
+              </div>
+              <form id="edit-teacher-subjects-form">
+                <input type="hidden" name="teacherId" id="edit-tch-id">
+                <div class="multi-subject-box">
+                  <div class="multi-subject-head">
+                    <div class="multi-subject-title">Subjects Taught</div>
+                    <span class="badge badge-info" id="edit-tch-subjects-count">0 subjects selected</span>
+                  </div>
+                  <div id="edit-tch-subject-checkboxes" class="multi-check-grid"></div>
+                  <div class="subject-inline-adder">
+                    <input type="text" id="edit-tch-custom-subject-input" placeholder="Add additional subject(s), e.g. Chemistry, Biology">
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-add-edit-tch-subject">+ Add Subject</button>
+                  </div>
+                  <div id="edit-tch-custom-subject-chips" class="subject-chip-list"></div>
+                </div>
+                <div class="form-actions-end" style="margin-top:12px;">
+                  <button type="submit" class="btn btn-primary">Save Teacher Subjects</button>
+                </div>
+              </form>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Registered Teachers Directory</h2>
+                  <div class="card-subtitle">All registered teaching staff and their assigned teaching subjects</div>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Staff #</th><th>Teacher</th><th>Email</th><th>Department</th><th>Subjects Taught</th><th>Status</th><th>Actions</th></tr></thead>
+                  <tbody id="teachers-list-tbody"></tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -510,16 +572,27 @@
             <div class="card">
               <div class="card-header">
                 <div>
-                  <h2 class="card-title">Assign Teacher to Class &amp; Subject</h2>
-                  <div class="card-subtitle">Grants the teacher attendance and mark-entry access for that class and subject</div>
+                  <h2 class="card-title">Assign Teacher to Class &amp; Subjects</h2>
+                  <div class="card-subtitle">Select one or multiple subjects at once to grant attendance and mark-entry access for a class</div>
                 </div>
               </div>
-              <form id="assign-teacher-form" class="form-grid">
-                <div class="form-group"><label>Teacher</label><select name="teacherId" id="asg-teacher" required></select></div>
-                <div class="form-group"><label>Class</label><select name="classId" id="asg-class" required></select></div>
-                <div class="form-group"><label>Stream (Optional)</label><select name="streamId" id="asg-stream"><option value="">All Streams</option></select></div>
-                <div class="form-group"><label>Subject</label><select name="subjectId" id="asg-subject" required></select></div>
-                <div class="form-actions-end" style="grid-column:1 / -1;"><button class="btn btn-primary" type="submit">Assign Responsibility</button></div>
+              <form id="assign-teacher-form">
+                <div class="form-grid">
+                  <div class="form-group"><label>Teacher</label><select name="teacherId" id="asg-teacher" required></select></div>
+                  <div class="form-group"><label>Class</label><select name="classId" id="asg-class" required></select></div>
+                  <div class="form-group"><label>Stream (Optional)</label><select name="streamId" id="asg-stream"><option value="">All Streams</option></select></div>
+                </div>
+                <div class="multi-subject-box" style="margin-top:12px;">
+                  <div class="multi-subject-head">
+                    <div>
+                      <div class="multi-subject-title">Subjects to Assign (Select 1 or More)</div>
+                      <div class="multi-subject-hint">Selecting a teacher automatically highlights their registered subjects — check all subjects they teach in this class.</div>
+                    </div>
+                    <span class="badge badge-info" id="asg-selected-subjects-count">0 subjects selected</span>
+                  </div>
+                  <div id="asg-subjects-checkboxes" class="multi-check-grid" style="margin-bottom:0;"></div>
+                </div>
+                <div class="form-actions-end"><button class="btn btn-primary" type="submit">Assign Selected Subjects</button></div>
               </form>
             </div>
 
@@ -1229,7 +1302,7 @@
     </div>
   </div>
 
-  <script src="/js/common.js?v=2.3"></script>
-  <script src="/js/superadmin.js?v=2.3"></script>
+  <script src="/js/common.js?v=2.4"></script>
+  <script src="/js/superadmin.js?v=2.4"></script>
 </body>
 </html>

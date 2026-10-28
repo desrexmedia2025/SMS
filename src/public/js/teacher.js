@@ -13,45 +13,78 @@
     const data = await api('/api/teacher/overview');
     overviewData = data;
     document.getElementById('sb-school-name').textContent = data.settings?.school_name || 'SMS';
-    document.getElementById('active-period-badge').textContent =
-      `${data.activeYear?.name || ''} · ${data.activeTerm?.name || ''}`;
+    const periodLabel = [data.activeYear?.name, data.activeTerm?.name].filter(Boolean).join(' - ');
+    document.getElementById('active-period-badge').textContent = periodLabel || 'No Active Period Set';
     document.getElementById('sb-user-info').textContent =
-      `${data.teacher.full_name} · ${data.teacher.staff_number}`;
+      `${data.teacher.full_name} | ${data.teacher.staff_number}`;
 
     if (data.teacher.googleLinked) {
       document.getElementById('google-link-btn').textContent = 'Google Linked';
     }
 
+    const regSubjects = data.registeredSubjects || data.teacher.subjects || [];
+    const subjectsSummary = regSubjects.length
+      ? regSubjects.map((s) => s.name).join(', ')
+      : data.teacher.department || 'Academic Staff';
+
     const m = data.metrics;
     document.getElementById('tc-kpis').innerHTML = `
       <div class="kpi-card"><div class="kpi-label">Assigned Classes</div><div class="kpi-value">${m.assignedClasses}</div><div class="kpi-sub">Active teaching groups</div></div>
-      <div class="kpi-card"><div class="kpi-label">Subjects Taught</div><div class="kpi-value">${m.assignedSubjects}</div><div class="kpi-sub">${esc(data.teacher.department || 'Academic Staff')}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Subjects Taught</div><div class="kpi-value">${m.assignedSubjects}</div><div class="kpi-sub">${esc(subjectsSummary)}</div></div>
       <div class="kpi-card"><div class="kpi-label">Weekly Timetable Slots</div><div class="kpi-value">${m.weeklyLessons}</div><div class="kpi-sub">Scheduled periods</div></div>
       <div class="kpi-card"><div class="kpi-label">Assessments</div><div class="kpi-value">${m.assessmentsCount}</div><div class="kpi-sub">Created for assigned subjects</div></div>
     `;
 
-    document.getElementById('tc-ov-assignments').innerHTML = data.assignments
-      .map(
-        (a) => `<tr>
-          <td><strong>${esc(a.class_name)}</strong>${a.stream_name ? ' · ' + esc(a.stream_name) : ''}</td>
-          <td>${esc(a.subject_code)} — ${esc(a.subject_name)}</td>
-          <td>${esc(a.room_number || '-')}</td>
-        </tr>`
-      )
-      .join('');
+    // Registered Subjects badges in My Classes & Subjects + Profile
+    const regSubjectsEl = document.getElementById('tc-registered-subjects-wrap');
+    if (regSubjectsEl) {
+      regSubjectsEl.innerHTML = regSubjects.length
+        ? `<div class="subject-badges-wrap">${regSubjects
+            .map(
+              (s) =>
+                `<span class="subject-badge-tag"><strong>${esc(s.code)}</strong> &middot; ${esc(s.name)}${s.department ? ' (' + esc(s.department) + ')' : ''}</span>`
+            )
+            .join('')}</div>`
+        : '<div class="empty-state" style="padding:14px 0;">No teaching subjects linked to your profile yet.</div>';
+    }
 
-    document.getElementById('tc-assignments-tbody').innerHTML = data.assignments
-      .map(
-        (a) => `<tr>
-          <td><strong>${esc(a.class_name)}</strong></td>
-          <td>${esc(a.stream_name || 'All')}</td>
-          <td>${esc(a.room_number || '-')}</td>
-          <td><code>${esc(a.subject_code)}</code></td>
-          <td>${esc(a.subject_name)}</td>
-          <td class="num">${a.pass_mark}%</td>
-        </tr>`
-      )
-      .join('');
+    const profBadgesEl = document.getElementById('prof-subjects-badges');
+    if (profBadgesEl) {
+      profBadgesEl.innerHTML = regSubjects.length
+        ? `<div class="subject-badges-wrap">${regSubjects
+            .map((s) => `<span class="subject-badge-tag"><strong>${esc(s.code)}</strong> &middot; ${esc(s.name)}</span>`)
+            .join('')}</div>`
+        : '<span class="multi-subject-hint">No subjects linked yet.</span>';
+    }
+
+    document.getElementById('tc-ov-assignments').innerHTML = data.assignments.length
+      ? data.assignments
+          .map(
+            (a) => `<tr>
+              <td><strong>${esc(a.class_name)}</strong>${a.stream_name ? ' - ' + esc(a.stream_name) : ''}</td>
+              <td>${esc(a.subject_code)} - ${esc(a.subject_name)}</td>
+              <td>${esc(a.room_number || '-')}</td>
+            </tr>`
+          )
+          .join('')
+      : regSubjects.length
+        ? `<tr><td colspan="3" class="empty-state">Registered to teach <strong>${esc(regSubjects.map((s) => s.name).join(', '))}</strong> — awaiting class assignment from Superadmin.</td></tr>`
+        : '<tr><td colspan="3" class="empty-state">No class assignments yet.</td></tr>';
+
+    document.getElementById('tc-assignments-tbody').innerHTML = data.assignments.length
+      ? data.assignments
+          .map(
+            (a) => `<tr>
+              <td><strong>${esc(a.class_name)}</strong></td>
+              <td>${esc(a.stream_name || 'All')}</td>
+              <td>${esc(a.room_number || '-')}</td>
+              <td><code>${esc(a.subject_code)}</code></td>
+              <td>${esc(a.subject_name)}</td>
+              <td class="num">${a.pass_mark}%</td>
+            </tr>`
+          )
+          .join('')
+      : '<tr><td colspan="6" class="empty-state">No class groups assigned yet.</td></tr>';
 
     document.getElementById('tc-ov-sessions').innerHTML =
       data.recentSessions

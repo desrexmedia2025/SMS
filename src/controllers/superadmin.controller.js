@@ -192,9 +192,12 @@ async function createTeacher(req, res) {
     phone: optionalString(req.body.phone, 50),
     password,
     qualification: optionalString(req.body.qualification, 120),
-    specialization: optionalString(req.body.specialization, 120),
+    specialization: optionalString(req.body.specialization, 250),
     department: optionalString(req.body.department, 100),
     hireDate: optionalString(req.body.hireDate, 20),
+    subjectIds: req.body.subjectIds,
+    customSubjects: req.body.customSubjects,
+    classIds: req.body.classIds,
     actor: req.user,
     ipAddress: req.ip,
   });
@@ -211,12 +214,29 @@ async function createTeacher(req, res) {
   });
 }
 
+async function updateTeacherSubjects(req, res) {
+  const updated = await superadminService.updateTeacherSubjects({
+    teacherId: requirePositiveInt(req.params.id, 'Teacher'),
+    subjectIds: req.body.subjectIds,
+    customSubjects: req.body.customSubjects,
+    specialization:
+      req.body.specialization !== undefined
+        ? optionalString(req.body.specialization, 250)
+        : undefined,
+    actor: req.user,
+    ipAddress: req.ip,
+  });
+  return res.json({ ok: true, ...updated });
+}
+
 async function assignTeacher(req, res) {
+  const hasSubjectIds = Array.isArray(req.body.subjectIds) && req.body.subjectIds.length > 0;
   const created = await superadminService.assignTeacher({
     teacherId: requirePositiveInt(req.body.teacherId, 'Teacher'),
     classId: requirePositiveInt(req.body.classId, 'Class'),
     streamId: optionalPositiveInt(req.body.streamId),
-    subjectId: requirePositiveInt(req.body.subjectId, 'Subject'),
+    subjectId: !hasSubjectIds ? requirePositiveInt(req.body.subjectId, 'Subject') : null,
+    subjectIds: hasSubjectIds ? req.body.subjectIds : undefined,
     academicYearId: optionalPositiveInt(req.body.academicYearId),
     termId: optionalPositiveInt(req.body.termId),
     actor: req.user,
@@ -585,6 +605,7 @@ module.exports = {
   createSubject,
   listTeachers,
   createTeacher,
+  updateTeacherSubjects,
   assignTeacher,
   listStudents,
   enrolStudent,

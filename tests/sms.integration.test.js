@@ -1366,7 +1366,93 @@ test('17. Show/Hide Menu, Settings Paystack Keys (Receive, Send, Reverse), and T
   assert.match(saHtml, /id="mobile-menu-btn"/);
   assert.match(saHtml, /id="tt-matrix-container"/);
   assert.match(saHtml, /id="set-paystack-secret-key"/);
+  assert.match(saHtml, /id="tch-reg-subject-checkboxes"/);
+  assert.match(saHtml, /id="tch-custom-subject-input"/);
+  assert.match(saHtml, /id="asg-subjects-checkboxes"/);
 });
+
+test('18. Multi-Subject Teacher Registration, Subject Updates, Bulk Class Assignment & Teachers Dashboard Sync', async () => {
+  const admin = new SessionClient();
+  await admin.login('admin@school.edu.gh', 'Admin@2026!');
+
+  const acadRes = await admin.request('/api/superadmin/academic');
+  assert.equal(acadRes.status, 200);
+  const existingSubjectId = acadRes.json.subjects[0].id;
+  const targetClassId = acadRes.json.classes[0].id;
+
+  // 18a. Register a teacher teaching 3 subjects (1 existing catalogue subject + 2 new inline subjects)
+  const regRes = await admin.request('/api/superadmin/teachers', {
+    method: 'POST',
+    body: {
+      staffNumber: 'STF-MULTI-2026',
+      firstName: 'Kwabena',
+      lastName: 'Ofori',
+      email: 'kwabena.ofori@school.edu.gh',
+      department: 'Sciences & Mathematics',
+      qualification: 'M.Sc, B.Ed',
+      subjectIds: [existingSubjectId],
+      customSubjects: ['Further Mathematics', 'Applied Physics'],
+    },
+  });
+  assert.equal(regRes.status, 201);
+  assert.equal(regRes.json.subjects.length, 3);
+  assert.ok(regRes.json.issuedCredentials?.initialPassword);
+
+  const teacherId = regRes.json.teacherId;
+
+  // 18b. Verify Superadmin Teachers Directory returns all 3 subjects on the teacher record
+  const listRes = await admin.request('/api/superadmin/teachers');
+  assert.equal(listRes.status, 200);
+  const createdTeacher = listRes.json.teachers.find((t) => Number(t.id) === Number(teacherId));
+  assert.ok(createdTeacher);
+  assert.equal(createdTeacher.subjects.length, 3);
+  assert.match(createdTeacher.specialization, /Further Mathematics/);
+  assert.match(createdTeacher.specialization, /Applied Physics/);
+
+  // 18c. Teacher signs into Teachers Dashboard immediately (even before class assignments) and sees all 3 subjects
+  const multiTeacherClient = new SessionClient();
+  const loginRes = await multiTeacherClient.login(
+    regRes.json.issuedCredentials.email,
+    regRes.json.issuedCredentials.initialPassword
+  );
+  assert.equal(loginRes.status, 200);
+
+  const ovBeforeAssign = await multiTeacherClient.request('/api/teacher/overview');
+  assert.equal(ovBeforeAssign.status, 200);
+  assert.equal(ovBeforeAssign.json.metrics.assignedSubjects, 3);
+  assert.equal(ovBeforeAssign.json.registeredSubjects.length, 3);
+
+  // 18d. Update teacher subjects via PUT /api/superadmin/teachers/:id/subjects to add a 4th subject
+  const updRes = await admin.request(`/api/superadmin/teachers/${teacherId}/subjects`, {
+    method: 'PUT',
+    body: {
+      subjectIds: createdTeacher.subjectIds,
+      customSubjects: ['Organic Chemistry'],
+    },
+  });
+  assert.equal(updRes.status, 200);
+  assert.equal(updRes.json.subjects.length, 4);
+
+  // 18e. Bulk-assign multiple subjects to a class in a single request
+  const bulkAssignRes = await admin.request('/api/superadmin/teachers/assign', {
+    method: 'POST',
+    body: {
+      teacherId,
+      classId: targetClassId,
+      subjectIds: updRes.json.subjects.map((s) => s.id),
+    },
+  });
+  assert.equal(bulkAssignRes.status, 201);
+  assert.equal(bulkAssignRes.json.assignedCount, 4);
+
+  // 18f. Verify Teachers Dashboard now reflects 1 assigned class and 4 taught subjects
+  const ovAfterAssign = await multiTeacherClient.request('/api/teacher/overview');
+  assert.equal(ovAfterAssign.status, 200);
+  assert.equal(ovAfterAssign.json.metrics.assignedClasses, 1);
+  assert.equal(ovAfterAssign.json.metrics.assignedSubjects, 4);
+  assert.equal(ovAfterAssign.json.assignments.length, 4);
+});
+
 
 
 
