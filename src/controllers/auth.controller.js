@@ -586,7 +586,18 @@ async function handleGoogleCallback(req, res, next) {
     return passport.authenticate('google', { session: false }, async (err, googleProfile) => {
       try {
         if (err || !googleProfile) {
-          return finishOAuthRedirect(res, '/login?error=oauth_failed', stateRec.usePopup);
+          const msg = String(err?.message || err?.code || '').toLowerCase();
+          const isNetBlocked =
+            msg.includes('enotfound') ||
+            msg.includes('eai_again') ||
+            msg.includes('econnrefused') ||
+            msg.includes('etimedout') ||
+            msg.includes('failed to obtain access token');
+          return finishOAuthRedirect(
+            res,
+            `/login?error=${isNetBlocked ? 'oauth_network_restricted' : 'oauth_failed'}`,
+            stateRec.usePopup
+          );
         }
 
         return await completeGoogleIdentityFlow({

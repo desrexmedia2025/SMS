@@ -33,6 +33,8 @@
     google_already_linked: 'That Google account is already linked to another school user.',
     google_not_configured:
       'Google Sign-In is currently disabled in School Settings. Please sign in with your password.',
+    oauth_network_restricted:
+      'Google redirected back, but this cloud preview sandbox blocks outbound calls to oauth2.googleapis.com. Deploy to Vercel or run locally (or clear the Google Secret in Settings to use Sandbox mode here).',
     oauth_failed: 'Unable to complete Google Sign-In right now. Please try again or use your password.',
   };
 

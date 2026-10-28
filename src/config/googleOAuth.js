@@ -25,6 +25,9 @@ function deriveCallbackUrl(req) {
           : req.protocol || 'http';
       return `${proto}://${rawHost}/auth/google/callback`;
     }
+    if (process.env.E2B_SANDBOX_ID && !String(process.env.SQLITE_PATH || '').startsWith('/tmp/')) {
+      return `https://${env.port}-${process.env.E2B_SANDBOX_ID}.e2b.app/auth/google/callback`;
+    }
     if (rawHost) {
       const proto =
         req.secure || String(req.headers?.['x-forwarded-proto'] || '').includes('https')
