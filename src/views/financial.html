@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Financial Dashboard - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=3.2">
+  <link rel="stylesheet" href="/css/styles.css?v=3.3">
 </head>
 <body>
   <div class="app-layout">
@@ -45,6 +45,57 @@
         <!-- 1. OVERVIEW -->
         <section id="sec-overview" class="module-panel">
           <div class="kpi-grid" id="fin-kpis"></div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Shortcuts</h2>
+            </div>
+            <div class="action-tile-grid">
+              <button type="button" class="action-tile" data-nav-jump="billing">
+                <span class="action-tile-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                </span>
+                <span class="action-tile-copy">
+                  <span class="action-tile-title">Fees &amp; Billing</span>
+                  <span class="action-tile-desc">Create &amp; assign fee items</span>
+                </span>
+                <span class="action-tile-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </button>
+
+              <button type="button" class="action-tile" data-nav-jump="payments">
+                <span class="action-tile-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+                </span>
+                <span class="action-tile-copy">
+                  <span class="action-tile-title">Payments &amp; Paystack</span>
+                  <span class="action-tile-desc">Collect, transfer &amp; receipts</span>
+                </span>
+                <span class="action-tile-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </button>
+
+              <button type="button" class="action-tile" data-nav-jump="accounts">
+                <span class="action-tile-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </span>
+                <span class="action-tile-copy">
+                  <span class="action-tile-title">Student Balances</span>
+                  <span class="action-tile-desc">Track billed &amp; due balances</span>
+                </span>
+                <span class="action-tile-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </button>
+
+              <button type="button" class="action-tile" data-nav-jump="timetable">
+                <span class="action-tile-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </span>
+                <span class="action-tile-copy">
+                  <span class="action-tile-title">School Timetable</span>
+                  <span class="action-tile-desc">Weekly schedule by class</span>
+                </span>
+                <span class="action-tile-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </button>
+            </div>
+          </div>
 
           <div class="card">
             <div class="card-header"><h2 class="card-title">Recent Payments</h2></div>
@@ -206,7 +257,7 @@
     </div>
   </div>
 
-  <script src="/js/common.js?v=3.2"></script>
-  <script src="/js/financial.js?v=3.2"></script>
+  <script src="/js/common.js?v=3.3"></script>
+  <script src="/js/financial.js?v=3.3"></script>
 </body>
 </html>

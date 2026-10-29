@@ -51,12 +51,36 @@
     }
 
     const m = data.metrics;
-    document.getElementById('fin-kpis').innerHTML = `
-      <div class="kpi-card"><div class="kpi-label">Total Billed</div><div class="kpi-value">${money(m.netBilled)}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Total Collected</div><div class="kpi-value">${money(m.totalCollected)}</div><div class="kpi-sub">${m.collectionRate}% collected</div></div>
-      <div class="kpi-card"><div class="kpi-label">Paystack Collected</div><div class="kpi-value">${money(m.paystackCollected || 0)}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Outstanding Balance</div><div class="kpi-value">${money(m.totalOutstanding)}</div></div>
-    `;
+    document.getElementById('fin-kpis').innerHTML = [
+      SMS.kpiCard({
+        label: 'Total Billed',
+        value: money(m.netBilled),
+        sub: 'Net billed fees',
+        icon: 'layers',
+        tone: 'blue',
+      }),
+      SMS.kpiCard({
+        label: 'Total Collected',
+        value: money(m.totalCollected),
+        sub: `${m.collectionRate}% collected`,
+        icon: 'check',
+        tone: 'teal',
+      }),
+      SMS.kpiCard({
+        label: 'Paystack Collected',
+        value: money(m.paystackCollected || 0),
+        sub: 'Online gateway receipts',
+        icon: 'trending',
+        tone: 'indigo',
+      }),
+      SMS.kpiCard({
+        label: 'Outstanding Balance',
+        value: money(m.totalOutstanding),
+        sub: 'Unpaid student fees',
+        icon: 'wallet',
+        tone: 'sky',
+      }),
+    ].join('');
 
     const rowsHtml = renderPaymentRows(data.recentPayments || []);
     document.getElementById('fin-ov-payments-tbody').innerHTML = rowsHtml;

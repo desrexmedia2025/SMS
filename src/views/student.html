@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Students Dashboard - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=3.2">
+  <link rel="stylesheet" href="/css/styles.css?v=3.3">
 </head>
 <body>
   <div class="app-layout">
@@ -51,11 +51,61 @@
         <section id="sec-overview" class="module-panel">
           <div class="kpi-grid" id="st-kpis"></div>
 
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Shortcuts</h2>
+            </div>
+            <div class="action-tile-grid">
+              <button type="button" class="action-tile" id="st-open-coursework-btn">
+                <span class="action-tile-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 12h6"/><path d="M9 16h6"/></svg>
+                </span>
+                <span class="action-tile-copy">
+                  <span class="action-tile-title">Classwork &amp; Exams</span>
+                  <span class="action-tile-desc">Answer works &amp; upload files</span>
+                </span>
+                <span class="action-tile-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </button>
+
+              <button type="button" class="action-tile" data-nav-jump="results">
+                <span class="action-tile-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                </span>
+                <span class="action-tile-copy">
+                  <span class="action-tile-title">My Scores</span>
+                  <span class="action-tile-desc">Grades &amp; teacher feedback</span>
+                </span>
+                <span class="action-tile-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </button>
+
+              <button type="button" class="action-tile" data-nav-jump="timetable">
+                <span class="action-tile-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </span>
+                <span class="action-tile-copy">
+                  <span class="action-tile-title">Timetable</span>
+                  <span class="action-tile-desc">Weekly class schedule</span>
+                </span>
+                <span class="action-tile-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </button>
+
+              <button type="button" class="action-tile" data-nav-jump="announcements">
+                <span class="action-tile-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                </span>
+                <span class="action-tile-copy">
+                  <span class="action-tile-title">Announcements</span>
+                  <span class="action-tile-desc">Class &amp; school updates</span>
+                </span>
+                <span class="action-tile-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </button>
+            </div>
+          </div>
+
           <div class="grid-2">
             <div class="card">
               <div class="card-header">
                 <h2 class="card-title">My Subjects</h2>
-                <button type="button" class="btn btn-primary btn-sm" id="st-open-coursework-btn">Open Classwork &amp; Exams</button>
               </div>
               <div class="table-wrap">
                 <table>
@@ -215,7 +265,7 @@
     </div>
   </div>
 
-  <script src="/js/common.js?v=3.2"></script>
-  <script src="/js/student.js?v=3.2"></script>
+  <script src="/js/common.js?v=3.3"></script>
+  <script src="/js/student.js?v=3.3"></script>
 </body>
 </html>

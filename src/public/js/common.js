@@ -473,9 +473,68 @@ window.SMS = (() => {
       syncSidebarToggleLabel();
     }
 
+    const topbar = document.querySelector('.topbar');
+    if (topbar && !topbar.querySelector('.topbar-date-chip')) {
+      const chip = document.createElement('div');
+      chip.className = 'topbar-date-chip';
+      const formattedDate = new Intl.DateTimeFormat('en-GB', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      }).format(new Date());
+      chip.innerHTML = `<span class="topbar-live-dot" aria-hidden="true"></span><span>${esc(formattedDate)}</span>`;
+      topbar.appendChild(chip);
+    }
+
     navBtns.forEach((btn) => {
       btn.addEventListener('click', () => activateSection(btn.dataset.section, onSectionChange));
     });
+
+    document.addEventListener('click', (e) => {
+      const jumpTile = e.target.closest('[data-nav-jump]');
+      if (!jumpTile) return;
+      const targetSec = jumpTile.dataset.navJump;
+      const matchingNav = document.querySelector(`.nav-btn[data-section="${targetSec}"]`);
+      if (matchingNav) {
+        matchingNav.click();
+      } else {
+        activateSection(targetSec, onSectionChange);
+      }
+    });
+  }
+
+  const KPI_ICONS = {
+    layers:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>',
+    users:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    graduation:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>',
+    wallet:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>',
+    book:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+    clipboard:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 12h6"/><path d="M9 16h6"/></svg>',
+    trending:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
+    check:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+    alert:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+  };
+
+  function kpiCard({ label, value, sub = '', icon = 'layers', tone = 'blue', valueStyle = '' }) {
+    const svg = KPI_ICONS[icon] || KPI_ICONS.layers;
+    return `<div class="kpi-card kpi-tone-${esc(tone)}">
+      <div class="kpi-head">
+        <div class="kpi-label">${label}</div>
+        <span class="kpi-icon-box" aria-hidden="true">${svg}</span>
+      </div>
+      <div class="kpi-value"${valueStyle ? ` style="${valueStyle}"` : ''}>${value}</div>
+      ${sub ? `<div class="kpi-sub">${sub}</div>` : '<div class="kpi-sub kpi-sub-spacer">&nbsp;</div>'}
+    </div>`;
   }
 
   function renderTimetableMatrix(targetOrId, items = [], options = {}) {
@@ -905,6 +964,7 @@ window.SMS = (() => {
     logout,
     activateSection,
     initNavigation,
+    kpiCard,
     renderTimetableMatrix,
     formatBytes,
     renderMediaAttachments,

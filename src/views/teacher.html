@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Teachers Dashboard - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=3.2">
+  <link rel="stylesheet" href="/css/styles.css?v=3.3">
 </head>
 <body>
   <div class="app-layout">
@@ -52,11 +52,58 @@
 
           <div class="card">
             <div class="card-header">
+              <h2 class="card-title">Shortcuts</h2>
+            </div>
+            <div class="action-tile-grid">
+              <button type="button" class="action-tile" id="ov-quick-coursework-btn">
+                <span class="action-tile-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 12h6"/><path d="M9 16h6"/></svg>
+                </span>
+                <span class="action-tile-copy">
+                  <span class="action-tile-title">Give Work or Exam</span>
+                  <span class="action-tile-desc">Classwork, homework &amp; tests</span>
+                </span>
+                <span class="action-tile-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </button>
+
+              <button type="button" class="action-tile" id="ov-quick-announce-btn">
+                <span class="action-tile-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                </span>
+                <span class="action-tile-copy">
+                  <span class="action-tile-title">Class Announcement</span>
+                  <span class="action-tile-desc">Notify assigned classes</span>
+                </span>
+                <span class="action-tile-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </button>
+
+              <button type="button" class="action-tile" data-nav-jump="classes">
+                <span class="action-tile-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </span>
+                <span class="action-tile-copy">
+                  <span class="action-tile-title">Class Roster</span>
+                  <span class="action-tile-desc">View enrolled students</span>
+                </span>
+                <span class="action-tile-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </button>
+
+              <button type="button" class="action-tile" data-nav-jump="timetable">
+                <span class="action-tile-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </span>
+                <span class="action-tile-copy">
+                  <span class="action-tile-title">My Timetable</span>
+                  <span class="action-tile-desc">Weekly lesson schedule</span>
+                </span>
+                <span class="action-tile-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
               <h2 class="card-title">Subjects I Teach</h2>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <button type="button" class="btn btn-primary btn-sm" id="ov-quick-coursework-btn">Give Work or Exam</button>
-                <button type="button" class="btn btn-secondary btn-sm" id="ov-quick-announce-btn">Class Announcement</button>
-              </div>
             </div>
             <div id="tc-ov-subjects-wrap"></div>
           </div>
@@ -278,7 +325,7 @@
     </div>
   </div>
 
-  <script src="/js/common.js?v=3.2"></script>
-  <script src="/js/teacher.js?v=3.2"></script>
+  <script src="/js/common.js?v=3.3"></script>
+  <script src="/js/teacher.js?v=3.3"></script>
 </body>
 </html>

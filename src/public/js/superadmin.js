@@ -236,22 +236,46 @@
       pendingBanner.classList.add('hidden');
     }
 
-    document.getElementById('ov-kpis').innerHTML = `
-      <div class="kpi-card"><div class="kpi-label">Classes</div><div class="kpi-value">${m.activeClasses || 0}</div><div class="kpi-sub">Active classes</div></div>
-      <div class="kpi-card"><div class="kpi-label">Teachers</div><div class="kpi-value">${m.activeTeachers || 0}</div><div class="kpi-sub">${m.activeUsers || 0} active accounts</div></div>
-      <div class="kpi-card"><div class="kpi-label">Students</div><div class="kpi-value">${m.activeStudents || 0}</div><div class="kpi-sub">${pendingCount} pending proposal(s)</div></div>
-      <div class="kpi-card"><div class="kpi-label">Fees Collected</div><div class="kpi-value">${money(m.finance?.collected || 0)}</div><div class="kpi-sub">Balance: ${money(m.finance?.outstanding || 0)}</div></div>
-    `;
+    document.getElementById('ov-kpis').innerHTML = [
+      SMS.kpiCard({
+        label: 'Classes',
+        value: m.activeClasses || 0,
+        sub: 'Active classes',
+        icon: 'layers',
+        tone: 'blue',
+      }),
+      SMS.kpiCard({
+        label: 'Teachers',
+        value: m.activeTeachers || 0,
+        sub: `${m.activeUsers || 0} active accounts`,
+        icon: 'users',
+        tone: 'indigo',
+      }),
+      SMS.kpiCard({
+        label: 'Students',
+        value: m.activeStudents || 0,
+        sub: `${pendingCount} pending proposal(s)`,
+        icon: 'graduation',
+        tone: 'sky',
+      }),
+      SMS.kpiCard({
+        label: 'Fees Collected',
+        value: money(m.finance?.collected || 0),
+        sub: `Balance: ${money(m.finance?.outstanding || 0)}`,
+        icon: 'wallet',
+        tone: 'teal',
+      }),
+    ].join('');
 
     const annHtml =
       (data.announcements || [])
         .map(
-          (a) => `<div style="padding:10px 0;border-bottom:1px solid var(--border);">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          (a) => `<div class="feed-item">
+            <div class="feed-item-head">
               <strong>${esc(a.title)}</strong>
               ${statusBadge(a.priority)}
             </div>
-            <div style="font-size:13px;color:var(--text-muted);margin-top:4px;white-space:pre-wrap;">${esc(a.body)}</div>
+            <div class="feed-item-body">${esc(a.body)}</div>
           </div>`
         )
         .join('') || '<div class="empty-state">No announcements published yet.</div>';
@@ -502,12 +526,36 @@
       api('/api/financial/paystack/transfers'),
     ]);
     const m = fin.metrics;
-    document.getElementById('sa-fin-kpis').innerHTML = `
-      <div class="kpi-card"><div class="kpi-label">Total Billed</div><div class="kpi-value">${money(m.netBilled)}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Total Collected</div><div class="kpi-value">${money(m.totalCollected)}</div><div class="kpi-sub">${m.collectionRate}% collected</div></div>
-      <div class="kpi-card"><div class="kpi-label">Paystack Collected</div><div class="kpi-value">${money(m.paystackCollected || 0)}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Outstanding Balance</div><div class="kpi-value">${money(m.totalOutstanding)}</div></div>
-    `;
+    document.getElementById('sa-fin-kpis').innerHTML = [
+      SMS.kpiCard({
+        label: 'Total Billed',
+        value: money(m.netBilled),
+        sub: 'Net billed fees',
+        icon: 'layers',
+        tone: 'blue',
+      }),
+      SMS.kpiCard({
+        label: 'Total Collected',
+        value: money(m.totalCollected),
+        sub: `${m.collectionRate}% collected`,
+        icon: 'check',
+        tone: 'teal',
+      }),
+      SMS.kpiCard({
+        label: 'Paystack Collected',
+        value: money(m.paystackCollected || 0),
+        sub: 'Online gateway receipts',
+        icon: 'trending',
+        tone: 'indigo',
+      }),
+      SMS.kpiCard({
+        label: 'Outstanding Balance',
+        value: money(m.totalOutstanding),
+        sub: 'Unpaid student fees',
+        icon: 'wallet',
+        tone: 'sky',
+      }),
+    ].join('');
 
     const cats = fin.feeCategories || [];
     document.getElementById('sa-fin-cats-tbody').innerHTML =

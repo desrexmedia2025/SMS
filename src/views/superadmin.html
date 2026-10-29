@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Superadmin - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=3.2">
+  <link rel="stylesheet" href="/css/styles.css?v=3.3">
 </head>
 <body>
   <div class="app-layout">
@@ -92,12 +92,61 @@
             <div class="card-header">
               <h2 class="card-title">Shortcuts</h2>
             </div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;">
-              <button type="button" class="btn btn-primary btn-sm" data-jump-section="academic">Add Class or Subject</button>
-              <button type="button" class="btn btn-secondary btn-sm" data-jump-section="teachers">Register Teacher</button>
-              <button type="button" class="btn btn-secondary btn-sm" data-jump-section="students">Enrol Student</button>
-              <button type="button" class="btn btn-secondary btn-sm" data-jump-section="timetables">Schedule Timetable</button>
-              <button type="button" class="btn btn-secondary btn-sm" data-jump-section="announcements">Post Announcement</button>
+            <div class="action-tile-grid">
+              <button type="button" class="action-tile" data-jump-section="academic">
+                <span class="action-tile-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                </span>
+                <span class="action-tile-copy">
+                  <span class="action-tile-title">Add Class or Subject</span>
+                  <span class="action-tile-desc">Classes &amp; curriculum</span>
+                </span>
+                <span class="action-tile-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </button>
+
+              <button type="button" class="action-tile" data-jump-section="teachers">
+                <span class="action-tile-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                </span>
+                <span class="action-tile-copy">
+                  <span class="action-tile-title">Register Teacher</span>
+                  <span class="action-tile-desc">Staff &amp; subjects</span>
+                </span>
+                <span class="action-tile-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </button>
+
+              <button type="button" class="action-tile" data-jump-section="students">
+                <span class="action-tile-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>
+                </span>
+                <span class="action-tile-copy">
+                  <span class="action-tile-title">Enrol Student</span>
+                  <span class="action-tile-desc">Admissions &amp; proposals</span>
+                </span>
+                <span class="action-tile-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </button>
+
+              <button type="button" class="action-tile" data-jump-section="timetables">
+                <span class="action-tile-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </span>
+                <span class="action-tile-copy">
+                  <span class="action-tile-title">Schedule Timetable</span>
+                  <span class="action-tile-desc">Weekly class grid</span>
+                </span>
+                <span class="action-tile-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </button>
+
+              <button type="button" class="action-tile" data-jump-section="announcements">
+                <span class="action-tile-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                </span>
+                <span class="action-tile-copy">
+                  <span class="action-tile-title">Post Announcement</span>
+                  <span class="action-tile-desc">School-wide notices</span>
+                </span>
+                <span class="action-tile-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </button>
             </div>
           </div>
 
@@ -753,7 +802,7 @@
     </div>
   </div>
 
-  <script src="/js/common.js?v=3.2"></script>
-  <script src="/js/superadmin.js?v=3.2"></script>
+  <script src="/js/common.js?v=3.3"></script>
+  <script src="/js/superadmin.js?v=3.3"></script>
 </body>
 </html>

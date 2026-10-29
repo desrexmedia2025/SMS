@@ -1788,10 +1788,11 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
     finance.request('/dashboard/financial').then((r) => r.text),
   ]);
 
-  // Every dashboard includes Show/Hide Menu button & clean v3.x assets with unneeded bloat removed
+  // Every dashboard includes Show/Hide Menu button, modern action tiles & clean v3.x assets
   for (const html of [saHtml, tcHtml, stHtml, fnHtml]) {
     assert.match(html, /id="mobile-menu-btn"/);
-    assert.match(html, /\?v=3\.2/);
+    assert.match(html, /\?v=3\.3/);
+    assert.match(html, /class="action-tile-grid"/);
     assert.doesNotMatch(html, /Hide Figures/i);
     assert.doesNotMatch(html, /Audit Log/i);
     assert.doesNotMatch(html, /Database Backups/i);
@@ -1855,6 +1856,9 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
   assert.equal(cssSrc.includes('--sidebar-top: #163f8c'), true);
   assert.equal(cssSrc.includes('.sidebar-bottom'), true);
   assert.equal(cssSrc.includes('.sidebar-logout-btn'), true);
+  assert.equal(cssSrc.includes('.kpi-icon-box'), true);
+  assert.equal(cssSrc.includes('.action-tile-grid'), true);
+  assert.equal(cssSrc.includes('.topbar-date-chip'), true);
 
   // Simulate a fresh school with no active academic year/term and verify auto-bootstrap
   await db.run('UPDATE academic_years SET is_active = 0');

@@ -70,11 +70,11 @@
                 .join('')}</div>`
             : `<div style="margin-top:4px;"><span class="badge badge-neutral">Audience: ${esc(a.audience)}</span></div>`;
         const isOwn = currentUserId > 0 && Number(a.author_user_id) === currentUserId;
-        return `<div style="padding:14px 0;border-bottom:1px solid var(--border);">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        return `<div class="feed-item">
+          <div class="feed-item-head">
             <div>
               <strong>${esc(a.title)}</strong>
-              ${a.author_name ? `<small style="color:var(--text-light);margin-left:8px;">by ${esc(a.author_name)}</small>` : ''}
+              ${a.author_name ? `<small class="feed-item-meta">by ${esc(a.author_name)}</small>` : ''}
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
               ${statusBadge(a.priority)}
@@ -82,7 +82,7 @@
             </div>
           </div>
           ${classPills}
-          <p style="margin:8px 0 0;color:var(--text-muted);white-space:pre-wrap;">${esc(a.body)}</p>
+          <div class="feed-item-body">${esc(a.body)}</div>
         </div>`;
       })
       .join('');
@@ -241,11 +241,29 @@
       : 'No subjects linked yet';
 
     const m = data.metrics;
-    document.getElementById('tc-kpis').innerHTML = `
-      <div class="kpi-card"><div class="kpi-label">Assigned Classes</div><div class="kpi-value">${m.assignedClasses}</div><div class="kpi-sub">Active teaching classes</div></div>
-      <div class="kpi-card"><div class="kpi-label">Subjects I Teach</div><div class="kpi-value">${m.assignedSubjects}</div><div class="kpi-sub">${esc(subjectsSummary)}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Published Works &amp; Exams</div><div class="kpi-value">${m.courseworkCount || 0}</div><div class="kpi-sub">Classwork, homework, tests &amp; exams</div></div>
-    `;
+    document.getElementById('tc-kpis').innerHTML = [
+      SMS.kpiCard({
+        label: 'Assigned Classes',
+        value: m.assignedClasses,
+        sub: 'Active teaching classes',
+        icon: 'layers',
+        tone: 'blue',
+      }),
+      SMS.kpiCard({
+        label: 'Subjects I Teach',
+        value: m.assignedSubjects,
+        sub: esc(subjectsSummary),
+        icon: 'book',
+        tone: 'indigo',
+      }),
+      SMS.kpiCard({
+        label: 'Published Works & Exams',
+        value: m.courseworkCount || 0,
+        sub: 'Classwork, homework, tests & exams',
+        icon: 'clipboard',
+        tone: 'teal',
+      }),
+    ].join('');
 
     document.getElementById('tc-ov-subjects-wrap').innerHTML = regSubjects.length
       ? `<div class="subject-badges-wrap">${regSubjects

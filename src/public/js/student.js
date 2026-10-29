@@ -192,16 +192,42 @@
       document.getElementById('nav-fees-btn').classList.remove('hidden');
     }
 
-    document.getElementById('st-kpis').innerHTML = `
-      <div class="kpi-card"><div class="kpi-label">Class</div><div class="kpi-value" style="font-size:20px;">${esc(s.class_name || 'Unassigned')}</div><div class="kpi-sub">Adm #: ${esc(s.admission_number)}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Works &amp; Exams</div><div class="kpi-value">${courseworkItems.length}</div><div class="kpi-sub">${pendingCoursework} pending</div></div>
-      <div class="kpi-card"><div class="kpi-label">Subjects</div><div class="kpi-value">${data.subjects.length}</div><div class="kpi-sub">Enrolled subjects</div></div>
-      ${
-        fee
-          ? `<div class="kpi-card"><div class="kpi-label">Fee Balance</div><div class="kpi-value">${money(fee.summary.balance)}</div><div class="kpi-sub">Paid: ${money(fee.summary.totalPaid)}</div></div>`
-          : ''
-      }
-    `;
+    const stKpiCards = [
+      SMS.kpiCard({
+        label: 'Class',
+        value: esc(s.class_name || 'Unassigned'),
+        sub: `Adm #: ${esc(s.admission_number)}`,
+        icon: 'graduation',
+        tone: 'blue',
+        valueStyle: 'font-size:21px;',
+      }),
+      SMS.kpiCard({
+        label: 'Works & Exams',
+        value: courseworkItems.length,
+        sub: `${pendingCoursework} pending`,
+        icon: 'clipboard',
+        tone: 'indigo',
+      }),
+      SMS.kpiCard({
+        label: 'Subjects',
+        value: data.subjects.length,
+        sub: 'Enrolled subjects',
+        icon: 'book',
+        tone: 'sky',
+      }),
+    ];
+    if (fee) {
+      stKpiCards.push(
+        SMS.kpiCard({
+          label: 'Fee Balance',
+          value: money(fee.summary.balance),
+          sub: `Paid: ${money(fee.summary.totalPaid)}`,
+          icon: 'wallet',
+          tone: 'teal',
+        })
+      );
+    }
+    document.getElementById('st-kpis').innerHTML = stKpiCards.join('');
 
     document.getElementById('st-subjects-tbody').innerHTML =
       data.subjects
@@ -240,20 +266,20 @@
         .map((a) => {
           const classBadges =
             Array.isArray(a.target_classes) && a.target_classes.length
-              ? `<div class="subject-badges-wrap" style="margin-top:4px;">${a.target_classes
+              ? `<div class="subject-badges-wrap" style="margin-top:6px;">${a.target_classes
                   .map((c) => `<span class="subject-badge-tag">Class: ${esc(c.name)}</span>`)
                   .join('')}</div>`
               : '';
-          return `<div style="padding:12px 0;border-bottom:1px solid var(--border);">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+          return `<div class="feed-item">
+            <div class="feed-item-head">
               <div>
                 <strong>${esc(a.title)}</strong>
-                ${a.author_name ? `<small style="color:var(--text-light);margin-left:6px;">by ${esc(a.author_name)}</small>` : ''}
+                ${a.author_name ? `<small class="feed-item-meta">by ${esc(a.author_name)}</small>` : ''}
               </div>
               ${statusBadge(a.priority)}
             </div>
             ${classBadges}
-            <div style="font-size:13px;color:var(--text-muted);margin-top:6px;white-space:pre-wrap;">${esc(a.body)}</div>
+            <div class="feed-item-body">${esc(a.body)}</div>
           </div>`;
         })
         .join('') || '<div class="empty-state">No announcements posted.</div>';
@@ -261,12 +287,12 @@
     document.getElementById('st-all-announcements').innerHTML = annHtml;
 
     document.getElementById('st-profile-details').innerHTML = `
-      <div style="display:grid;gap:8px;font-size:13.5px;">
-        <div><strong>Name:</strong> ${esc(s.first_name)} ${esc(s.last_name)}</div>
-        <div><strong>Admission #:</strong> <code>${esc(s.admission_number)}</code></div>
-        <div><strong>Class:</strong> ${esc(s.class_name || '-')}</div>
-        <div><strong>Email:</strong> ${esc(s.email)}</div>
-        <div><strong>Guardian:</strong> ${esc(s.guardian_name || '-')} ${s.guardian_phone ? '(' + esc(s.guardian_phone) + ')' : ''}</div>
+      <div class="profile-kv-grid">
+        <div class="profile-kv-row"><span class="profile-kv-label">Name</span><strong>${esc(s.first_name)} ${esc(s.last_name)}</strong></div>
+        <div class="profile-kv-row"><span class="profile-kv-label">Admission #</span><code>${esc(s.admission_number)}</code></div>
+        <div class="profile-kv-row"><span class="profile-kv-label">Class</span><span>${esc(s.class_name || '-')}</span></div>
+        <div class="profile-kv-row"><span class="profile-kv-label">Email</span><span>${esc(s.email)}</span></div>
+        <div class="profile-kv-row"><span class="profile-kv-label">Guardian</span><span>${esc(s.guardian_name || '-')} ${s.guardian_phone ? '(' + esc(s.guardian_phone) + ')' : ''}</span></div>
       </div>
     `;
     document.getElementById('st-phone-input').value = s.phone || '';
@@ -278,11 +304,29 @@
     });
 
     if (fee) {
-      document.getElementById('st-fee-kpis').innerHTML = `
-        <div class="kpi-card"><div class="kpi-label">Total Billed</div><div class="kpi-value">${money(fee.summary.totalBilled)}</div></div>
-        <div class="kpi-card"><div class="kpi-label">Total Paid</div><div class="kpi-value">${money(fee.summary.totalPaid)}</div></div>
-        <div class="kpi-card"><div class="kpi-label">Balance Due</div><div class="kpi-value">${money(fee.summary.balance)}</div></div>
-      `;
+      document.getElementById('st-fee-kpis').innerHTML = [
+        SMS.kpiCard({
+          label: 'Total Billed',
+          value: money(fee.summary.totalBilled),
+          sub: 'Assigned school fees',
+          icon: 'layers',
+          tone: 'blue',
+        }),
+        SMS.kpiCard({
+          label: 'Total Paid',
+          value: money(fee.summary.totalPaid),
+          sub: 'Verified payments',
+          icon: 'check',
+          tone: 'teal',
+        }),
+        SMS.kpiCard({
+          label: 'Balance Due',
+          value: money(fee.summary.balance),
+          sub: 'Remaining balance',
+          icon: 'wallet',
+          tone: 'indigo',
+        }),
+      ].join('');
 
       const pskCard = document.getElementById('st-paystack-card');
       if (Number(fee.summary.balance) > 0 && data.school.paystack?.enabled !== false) {
