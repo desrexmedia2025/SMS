@@ -2130,6 +2130,110 @@ window.SMS = (() => {
     CAL_EVENT_CACHE.clear();
   }
 
+  // ---------------- PRINTABLE REPORT CARDS ----------------
+  function buildReportCardHtml(card, gradingScales = []) {
+    const school = card.school || {};
+    const student = card.student || {};
+    const subjects = card.subjects || [];
+    const scaleRows = (gradingScales || [])
+      .map(
+        (g) =>
+          `<span class="rc-scale-item"><strong>${esc(g.grade)}</strong> ${esc(
+            String(g.min_score)
+          )}-${esc(String(g.max_score))} &middot; ${esc(g.remark || '')}</span>`
+      )
+      .join('');
+
+    const subjectRows = subjects.length
+      ? subjects
+          .map(
+            (sub) => `<tr>
+              <td>${esc(sub.subjectName || '')}</td>
+              <td class="rc-num">${esc(String(sub.finalPercentage))}</td>
+              <td class="rc-num">${esc(sub.grade || '')}</td>
+              <td class="rc-num">${esc(String(sub.gradePoint))}</td>
+              <td>${esc(sub.remark || '')}</td>
+            </tr>`
+          )
+          .join('')
+      : '<tr><td colspan="5" class="rc-empty">No published results for this term.</td></tr>';
+
+    return `
+      <div class="rc-sheet">
+        <div class="rc-head">
+          <div class="rc-school-name">${esc(school.school_name || 'School Management System')}</div>
+          <div class="rc-school-meta">${esc(
+            [school.school_address, school.school_phone, school.school_email].filter(Boolean).join(' &middot; ')
+          )}</div>
+          <div class="rc-doc-title">End of Term Report Card</div>
+        </div>
+
+        <div class="rc-period">
+          <span><strong>Academic Year:</strong> ${esc(card.academicYear?.name || '-')}</span>
+          <span><strong>Term:</strong> ${esc(card.term?.name || '-')}</span>
+          <span><strong>Class:</strong> ${esc(card.className || student.class_name || '-')}</span>
+        </div>
+
+        <div class="rc-student-grid">
+          <div><span>Student</span><strong>${esc(
+            `${student.first_name || ''} ${student.last_name || ''}`.trim()
+          )}</strong></div>
+          <div><span>Admission No.</span><strong>${esc(student.admission_number || '-')}</strong></div>
+          <div><span>Position in Class</span><strong>${
+            card.classPosition ? `${esc(String(card.classPosition))} of ${esc(String(card.classSize))}` : '-'
+          }</strong></div>
+          <div><span>Attendance</span><strong>${esc(card.attendanceSummary || '-')}</strong></div>
+        </div>
+
+        <table class="rc-table">
+          <thead>
+            <tr><th>Subject</th><th class="rc-num">Final %</th><th class="rc-num">Grade</th><th class="rc-num">Points</th><th>Remark</th></tr>
+          </thead>
+          <tbody>${subjectRows}</tbody>
+        </table>
+
+        <div class="rc-summary">
+          <div><span>Overall Average</span><strong>${esc(String(card.overallAverage || 0))}%</strong></div>
+          <div><span>Overall Grade</span><strong>${esc(card.overallGrade || '-')}</strong></div>
+          <div><span>GPA</span><strong>${esc(String(card.gpa || 0))}</strong></div>
+          <div><span>Position</span><strong>${
+            card.classPosition ? `${esc(String(card.classPosition))} / ${esc(String(card.classSize))}` : '-'
+          }</strong></div>
+        </div>
+
+        <div class="rc-scale">${scaleRows || ''}</div>
+
+        <div class="rc-remarks">
+          <div class="rc-remark">
+            <span>Class Teacher's Remark</span>
+            <p>${esc(card.teacherRemark || 'No remark recorded.')}</p>
+          </div>
+          <div class="rc-remark">
+            <span>Head Teacher's Remark</span>
+            <p>${esc(card.headteacherRemark || 'No remark recorded.')}</p>
+          </div>
+        </div>
+
+        <div class="rc-signatures">
+          <div class="rc-sign-line"><span>Class Teacher</span></div>
+          <div class="rc-sign-line"><span>Head Teacher</span></div>
+          <div class="rc-sign-line"><span>Parent / Guardian</span></div>
+        </div>
+      </div>`;
+  }
+
+  function printReportCardHtml(html) {
+    let container = document.getElementById('print-report-card');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'print-report-card';
+      container.className = 'print-only-sheet';
+      document.body.appendChild(container);
+    }
+    container.innerHTML = html;
+    window.print();
+  }
+
   // ---------------- NOTIFICATION BELL & INTERNAL MESSAGING ----------------
   let msgBellState = { unreadThreads: 0, items: [] };
   let msgBellTimer = null;
@@ -2462,6 +2566,8 @@ window.SMS = (() => {
     clearCalendarCache,
     initMessageBell,
     initMessaging,
+    buildReportCardHtml,
+    printReportCardHtml,
     refreshMessageBell,
     refreshMessages,
     initProfileAvatar,

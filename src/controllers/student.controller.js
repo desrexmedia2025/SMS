@@ -2,6 +2,7 @@ const studentService = require('../services/student.service');
 const courseworkService = require('../services/coursework.service');
 const paystackService = require('../services/paystack.service');
 const financialService = require('../services/financial.service');
+const reportCardService = require('../services/reportCard.service');
 const db = require('../config/database');
 const { AppError } = require('../middleware/errorHandler');
 const {
@@ -115,6 +116,27 @@ async function submitCoursework(req, res) {
   });
 }
 
+
+// ---------------- REPORT CARDS (own, per term, printable) ----------------
+async function listOwnReportCards(req, res) {
+  const student = await db.get('SELECT id FROM students WHERE user_id = ?', [req.user.id]);
+  if (!student) throw new AppError(404, 'No student record is linked to your account.');
+  const data = await reportCardService.listStudentReportCards({ studentId: student.id });
+  return res.json({ ok: true, ...data });
+}
+
+async function getOwnReportCard(req, res) {
+  const student = await db.get('SELECT id FROM students WHERE user_id = ?', [req.user.id]);
+  if (!student) throw new AppError(404, 'No student record is linked to your account.');
+  const data = await reportCardService.getStudentReportCard({
+    studentId: student.id,
+    academicYearId: req.query.academicYearId,
+    termId: req.query.termId,
+    viewer: req.user,
+  });
+  return res.json({ ok: true, ...data });
+}
+
 module.exports = {
   getOverview,
   getSpecificStudentGuard,
@@ -125,4 +147,6 @@ module.exports = {
   initializeOwnPaystackPayment,
   verifyOwnPaystackPayment,
   getOwnReceipt,
+  listOwnReportCards,
+  getOwnReportCard,
 };

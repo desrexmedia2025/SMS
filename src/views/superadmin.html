@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Superadmin - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=3.18">
+  <link rel="stylesheet" href="/css/styles.css?v=3.19">
 </head>
 <body>
   <div class="app-layout">
@@ -37,6 +37,9 @@
         <button class="nav-btn" data-section="students" data-title="Students">
           <span class="nav-item-label">Students</span>
           <span class="nav-count-pill hidden" id="nav-pending-proposals-pill">0</span>
+        </button>
+        <button class="nav-btn" data-section="report-cards" data-title="Report Cards">
+          <span class="nav-item-label">Report Cards</span>
         </button>
         <button class="nav-btn" data-section="events" data-title="School Events">
           <span class="nav-item-label">School Events</span>
@@ -1168,6 +1171,69 @@
           </div>
         </section>
 
+
+        <!-- REPORT CARDS & ROLLOVER -->
+        <section id="sec-report-cards" class="module-panel hidden">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Generate Report Cards</h2>
+                <div class="card-subtitle">Computes weighted subject averages, GPA, grading and class position for every student in the class</div>
+              </div>
+            </div>
+            <form id="rc-generate-form" class="form-grid">
+              <div class="form-group"><label>Class</label><select id="rc-gen-class" required></select></div>
+              <div class="form-group"><label>Academic Year</label><select id="rc-gen-year" required></select></div>
+              <div class="form-group"><label>Term</label><select id="rc-gen-term" required></select></div>
+              <div class="form-actions-end" style="margin-top:24px;">
+                <button type="submit" class="btn btn-primary" id="rc-generate-btn">Generate Report Cards</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Class Report Cards</h2>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                <select id="rc-list-class" style="min-width:150px;"></select>
+                <select id="rc-list-year" style="min-width:150px;"></select>
+                <select id="rc-list-term" style="min-width:150px;"></select>
+                <button type="button" class="btn btn-secondary btn-sm" id="rc-load-btn">Load</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Position</th><th>Student</th><th>Admission #</th><th>Average</th><th>Grade</th><th>GPA</th><th>Attendance</th><th>Teacher Remark</th><th>Action</th></tr></thead>
+                <tbody id="rc-list-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Promote / Roll Over a Class</h2>
+                <div class="card-subtitle">Moves every enrolled student into the selected term, optionally promoting them to the next class level</div>
+              </div>
+            </div>
+            <form id="rc-promote-form" class="form-grid">
+              <div class="form-group"><label>Class to Promote</label><select id="rc-promote-class" required></select></div>
+              <div class="form-group"><label>From Academic Year</label><select id="rc-promote-from-year" required></select></div>
+              <div class="form-group"><label>From Term</label><select id="rc-promote-from-term" required></select></div>
+              <div class="form-group"><label>Target Academic Year</label><select id="rc-promote-to-year" required></select></div>
+              <div class="form-group"><label>Target Term</label><select id="rc-promote-to-term" required></select></div>
+              <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;margin-top:24px;">
+                  <input type="checkbox" id="rc-promote-next-class" style="width:auto;"> Promote to the next class level
+                </label>
+              </div>
+              <div class="form-actions-end form-grid-full">
+                <button type="submit" class="btn btn-primary" id="rc-promote-btn">Promote Class</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
       </main>
     </div>
   </div>
@@ -1278,7 +1344,7 @@
     </div>
   </div>
 
-  <script src="/js/common.js?v=3.18"></script>
-  <script src="/js/superadmin.js?v=3.18"></script>
+  <script src="/js/common.js?v=3.19"></script>
+  <script src="/js/superadmin.js?v=3.19"></script>
 </body>
 </html>

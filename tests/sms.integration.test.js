@@ -1810,7 +1810,7 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
   // Every dashboard includes Show/Hide Menu button, modern action tiles & clean v3.x assets
   for (const html of [saHtml, tcHtml, stHtml, fnHtml]) {
     assert.match(html, /id="mobile-menu-btn"/);
-    assert.match(html, /\?v=3\.18/);
+    assert.match(html, /\?v=3\.19/);
     assert.match(html, /class="action-tile-grid"/);
     assert.doesNotMatch(html, /Hide Figures/i);
     assert.doesNotMatch(html, /Audit Log/i);
@@ -3232,4 +3232,399 @@ test('28. Messaging & notification bell: Superadmin to everyone, teacher to clas
   const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'css', 'styles.css'), 'utf8');
   assert.match(css, /\.msg-bell-btn \{/);
   assert.match(css, /\.msg-layout \{/);
+});
+
+test('29. Printable per-term report cards with class position, grading & remarks, plus one-click class rollover', async () => {
+  const admin = new SessionClient();
+  await admin.login('admin@school.edu.gh', 'Admin@2026!');
+  const teacher = new SessionClient();
+  await teacher.login('kofi.mensah@school.edu.gh', 'Teacher@2026!');
+  const student = new SessionClient();
+  await student.login('kwame.asante@student.school.edu.gh', 'Student@2026!');
+
+  const acad = (await admin.request('/api/superadmin/academic')).json;
+  const years = acad.years || [];
+  const terms = acad.terms || [];
+  const classes = acad.classes || [];
+  const activeYear = years.find((y) => y.is_active) || years[0];
+  const activeTerm = terms.find((t) => t.is_active && t.academic_year_id === activeYear.id) || terms[0];
+
+  // The seeded class that actually has students enrolled
+  let targetClass = null;
+  for (const c of classes) {
+    const list = (await admin.request(`/api/superadmin/students?classId=${c.id}`)).json;
+    if ((list.items || []).length >= 2) {
+      targetClass = c;
+      break;
+    }
+  }
+  assert.ok(targetClass, 'the demo data must include a class with at least two enrolled students');
+
+  // Publish a fresh, deterministic set of results in the active term so the report
+  // card maths does not depend on whichever term earlier tests left active.
+  const teacherOverview = (await teacher.request('/api/teacher/overview')).json;
+  const pairing = (teacherOverview.assignments || []).find(
+    (a) => Number(a.class_id) === Number(targetClass.id)
+  );
+  assert.ok(pairing, 'the demo teacher must be assigned to the target class');
+
+  const classRoster = (await admin.request(`/api/superadmin/students?classId=${targetClass.id}`)).json;
+  const roster = (classRoster.items || []).slice(0, 2);
+  assert.equal(roster.length, 2);
+
+  const assessment = await teacher.request('/api/teacher/assessments', {
+    method: 'POST',
+    body: {
+      title: 'Report Card Deterministic Exam',
+      assessmentType: 'final_exam',
+      classId: targetClass.id,
+      subjectId: pairing.subject_id,
+      maxScore: 100,
+      weightPercent: 100,
+      scheduledDate: `${new Date().getFullYear()}-01-15`,
+    },
+  });
+  assert.equal(assessment.status, 201);
+  const assessmentId = assessment.json.assessment?.id || assessment.json.id;
+
+  const marks = await teacher.request(`/api/teacher/assessments/${assessmentId}/marks`, {
+    method: 'POST',
+    body: {
+      entries: [
+        { studentId: roster[0].id, score: 92 },
+        { studentId: roster[1].id, score: 64 },
+      ],
+    },
+  });
+  assert.equal(marks.status, 200);
+
+  const published = await admin.request(`/api/superadmin/exams/assessments/${assessmentId}/publish`, {
+    method: 'PATCH',
+    body: { isPublished: true },
+  });
+  assert.equal(published.status, 200);
+
+  // ---------- GENERATE ----------
+  const generated = await admin.request('/api/superadmin/reports/report-cards/generate', {
+    method: 'POST',
+    body: { classId: targetClass.id, academicYearId: activeYear.id, termId: activeTerm.id },
+  });
+  assert.equal(generated.status, 200);
+  assert.ok(generated.json.generated >= 2, 'report cards must be generated for the whole class');
+  assert.match(generated.json.message, /report card/i);
+
+  const listed = (
+    await admin.request(
+      `/api/superadmin/reports/report-cards?classId=${targetClass.id}&academicYearId=${activeYear.id}&termId=${activeTerm.id}`
+    )
+  ).json;
+  assert.ok(listed.items.length >= 2);
+  assert.ok(listed.years.length >= 1, 'the endpoint exposes academic years for the selectors');
+  assert.ok(listed.terms.length >= 1, 'the endpoint exposes terms for the selectors');
+
+  // The two students we just marked must be ranked 1st and 2nd on their results
+  const scoredIds = new Set(roster.map((r) => Number(r.id)));
+  const sorted = [...listed.items].sort((a, b) => a.classPosition - b.classPosition);
+  assert.equal(sorted[0].classPosition, 1);
+  assert.equal(sorted[0].classSize, listed.items.length);
+  assert.ok(
+    sorted[0].overallAverage >= sorted[1].overallAverage,
+    'position 1 must hold the highest average'
+  );
+  for (const card of sorted) {
+    assert.ok(card.overallGrade, 'a card must carry an overall grade');
+    assert.ok(card.studentName && card.admissionNumber);
+    if (card.subjectsCount >= 1) {
+      assert.ok(card.overallAverage > 0, 'a card with results must carry a computed average');
+    }
+  }
+  const scored = sorted.filter((c) => c.subjectsCount >= 1);
+  assert.ok(scored.length >= 2, 'at least two demo students have published results');
+  assert.ok(
+    scored.every((c) => c.overallAverage > 0 && c.gpa > 0),
+    'scored cards carry an average and a GPA'
+  );
+  assert.ok(
+    scored.slice(0, 2).every((c) => scoredIds.has(Number(c.studentId))),
+    'the two marked students hold the top two positions'
+  );
+  assert.ok(
+    scored[0].overallAverage > scored[1].overallAverage,
+    'the higher mark ranks above the lower mark'
+  );
+
+  // ---------- SINGLE CARD ----------
+  const topStudentId = sorted[0].studentId;
+  const card = (
+    await admin.request(
+      `/api/superadmin/reports/report-cards/student/${topStudentId}?academicYearId=${activeYear.id}&termId=${activeTerm.id}`
+    )
+  ).json;
+  assert.equal(card.reportCard.classPosition, 1);
+  assert.equal(card.reportCard.classSize, listed.items.length);
+  assert.ok(card.reportCard.subjects.length >= 1);
+  assert.ok(card.gradingScales.length >= 1, 'the grading scale ships with the card for printing');
+  assert.equal(card.reportCard.academicYear.name, activeYear.name);
+  assert.equal(card.reportCard.term.name, activeTerm.name);
+  assert.ok(card.reportCard.student.admission_number);
+
+  // The unpublished draft assessment must not leak into a report card
+  assert.ok(
+    !card.reportCard.subjects.some((s) => /Draft/i.test(s.subjectName)),
+    'unpublished assessments are excluded from report cards'
+  );
+
+  const missingCard = await admin.request(
+    `/api/superadmin/reports/report-cards/student/${topStudentId}?academicYearId=${activeYear.id}&termId=999999`
+  );
+  assert.equal(missingCard.status, 404, 'an unknown period is rejected');
+
+  const missingStudentCard = await admin.request(
+    `/api/superadmin/reports/report-cards/student/987654321?academicYearId=${activeYear.id}&termId=${activeTerm.id}`
+  );
+  assert.equal(missingStudentCard.status, 404);
+
+  // ---------- REMARKS ----------
+  const remark = await admin.request('/api/superadmin/reports/report-cards/remark', {
+    method: 'POST',
+    body: {
+      studentId: topStudentId,
+      academicYearId: activeYear.id,
+      termId: activeTerm.id,
+      teacherRemark: 'Excellent result, keep it up.',
+      headteacherRemark: 'A brilliant performance this term.',
+    },
+  });
+  assert.equal(remark.status, 200);
+  assert.equal(remark.json.teacherRemark, 'Excellent result, keep it up.');
+  assert.equal(remark.json.headteacherRemark, 'A brilliant performance this term.');
+
+  const withRemark = (
+    await admin.request(
+      `/api/superadmin/reports/report-cards/student/${topStudentId}?academicYearId=${activeYear.id}&termId=${activeTerm.id}`
+    )
+  ).json;
+  assert.equal(withRemark.reportCard.teacherRemark, 'Excellent result, keep it up.');
+  assert.equal(withRemark.reportCard.headteacherRemark, 'A brilliant performance this term.');
+
+  // ---------- TEACHER ACCESS ----------
+  const teacherList = (
+    await teacher.request(
+      `/api/teacher/report-cards?classId=${targetClass.id}&academicYearId=${activeYear.id}&termId=${activeTerm.id}`
+    )
+  ).json;
+  assert.equal(teacherList.items.length, listed.items.length, 'the teacher sees their class cards');
+
+  const teacherRemark = await teacher.request('/api/teacher/report-cards/remark', {
+    method: 'POST',
+    body: {
+      studentId: topStudentId,
+      academicYearId: activeYear.id,
+      termId: activeTerm.id,
+      teacherRemark: 'Consistent hard work all term.',
+    },
+  });
+  assert.equal(teacherRemark.status, 200);
+  assert.equal(teacherRemark.json.teacherRemark, 'Consistent hard work all term.');
+
+  const headByTeacher = await teacher.request('/api/teacher/report-cards/remark', {
+    method: 'POST',
+    body: {
+      studentId: topStudentId,
+      academicYearId: activeYear.id,
+      termId: activeTerm.id,
+      headteacherRemark: 'Signed off by head teacher.',
+    },
+  });
+  assert.equal(headByTeacher.status, 403, 'only the Superadmin signs the head teacher remark');
+
+  const teacherClassIds = new Set(
+    (teacherOverview.assignments || []).map((a) => Number(a.class_id))
+  );
+  const unassignedClass = classes.find((c) => !teacherClassIds.has(Number(c.id)));
+  if (unassignedClass) {
+    const foreignList = await teacher.request(
+      `/api/teacher/report-cards?classId=${unassignedClass.id}&academicYearId=${activeYear.id}&termId=${activeTerm.id}`
+    );
+    assert.equal(foreignList.status, 403, 'teachers only see their assigned classes');
+  }
+
+  // ---------- STUDENT ACCESS ----------
+  const studentCards = (await student.request('/api/student/report-cards')).json;
+  assert.ok(
+    (studentCards.items || []).length >= 1,
+    'students can list their own published report cards'
+  );
+  const ownCard = (studentCards.items || [])[0];
+  const studentCardView = (
+    await student.request(
+      `/api/student/report-cards/view?academicYearId=${ownCard.academicYearId}&termId=${ownCard.termId}`
+    )
+  ).json;
+  assert.equal(studentCardView.reportCard.studentId, ownCard.id === undefined ? studentCardView.reportCard.studentId : studentCardView.reportCard.studentId);
+  assert.ok(studentCardView.reportCard.student.first_name);
+  assert.ok(Array.isArray(studentCardView.gradingScales));
+
+  const teacherStudentCard = await teacher.request(
+    `/api/teacher/report-cards/student/${topStudentId}?academicYearId=${activeYear.id}&termId=${activeTerm.id}`
+  );
+  assert.equal(teacherStudentCard.status, 200, 'teachers can open a card for their own students');
+
+  // ---------- SECURITY ----------
+  const noCsrf = await admin.request('/api/superadmin/reports/report-cards/generate', {
+    method: 'POST',
+    body: { classId: targetClass.id, academicYearId: activeYear.id, termId: activeTerm.id },
+    sendCsrf: false,
+  });
+  assert.equal(noCsrf.status, 403);
+
+  const teacherGenerate = await teacher.request('/api/superadmin/reports/report-cards/generate', {
+    method: 'POST',
+    body: { classId: targetClass.id, academicYearId: activeYear.id, termId: activeTerm.id },
+  });
+  assert.equal(teacherGenerate.status, 403);
+
+  const studentGenerate = await student.request('/api/superadmin/reports/report-cards/generate', {
+    method: 'POST',
+    body: { classId: targetClass.id, academicYearId: activeYear.id, termId: activeTerm.id },
+  });
+  assert.equal(studentGenerate.status, 403);
+
+  const anon = new SessionClient();
+  const anonCards = await anon.request('/api/student/report-cards');
+  assert.equal(anonCards.status, 401);
+
+  // ---------- END-OF-TERM / END-OF-YEAR ROLLOVER ----------
+  const nextYear = await admin.request('/api/superadmin/academic/years', {
+    method: 'POST',
+    body: { name: '2027/2028', startDate: '2027-09-06', endDate: '2028-07-21' },
+  });
+  assert.equal(nextYear.status, 201);
+  const nextYearId = nextYear.json.year?.id || nextYear.json.academicYear?.id || nextYear.json.id;
+  assert.ok(Number(nextYearId) > 0, 'the created academic year must expose an id');
+
+  const nextTerm = await admin.request('/api/superadmin/academic/terms', {
+    method: 'POST',
+    body: {
+      name: 'Term 1',
+      academicYearId: nextYearId,
+      startDate: '2027-09-06',
+      endDate: '2027-12-17',
+    },
+  });
+  assert.equal(nextTerm.status, 201);
+  const nextTermId = nextTerm.json.term?.id || nextTerm.json.id;
+  assert.ok(Number(nextTermId) > 0, 'the created term must expose an id');
+
+  // Roll the whole class into the new year/term, same class level
+  const rollover = await admin.request('/api/superadmin/reports/promote-class', {
+    method: 'POST',
+    body: {
+      classId: targetClass.id,
+      fromAcademicYearId: activeYear.id,
+      fromTermId: activeTerm.id,
+      toAcademicYearId: nextYearId,
+      toTermId: nextTermId,
+      promoteToNextClass: false,
+    },
+  });
+  assert.equal(rollover.status, 200);
+  assert.ok(rollover.json.moved >= 2, 'every enrolled student is rolled over');
+  assert.equal(rollover.json.toClassId, targetClass.id);
+
+  const rolledStudents = (await admin.request(`/api/superadmin/students?classId=${targetClass.id}`)).json;
+  const rolledIds = new Set(
+    (rolledStudents.items || []).map((s) => Number(s.academic_year_id)).filter((v) => Number.isInteger(v))
+  );
+  assert.ok(rolledIds.has(Number(nextYearId)), 'students are now enrolled in the target academic year');
+
+  const promoteMissing = await admin.request('/api/superadmin/reports/promote-class', {
+    method: 'POST',
+    body: {
+      classId: 987654321,
+      toAcademicYearId: nextYearId,
+      toTermId: nextTermId,
+      fromAcademicYearId: activeYear.id,
+      fromTermId: activeTerm.id,
+    },
+  });
+  assert.equal(promoteMissing.status, 404);
+
+  const promoteNoCsrf = await admin.request('/api/superadmin/reports/promote-class', {
+    method: 'POST',
+    body: {
+      classId: targetClass.id,
+      toAcademicYearId: nextYearId,
+      toTermId: nextTermId,
+      fromAcademicYearId: activeYear.id,
+      fromTermId: activeTerm.id,
+    },
+    sendCsrf: false,
+  });
+  assert.equal(promoteNoCsrf.status, 403);
+
+  // Promote to the next class level (Grade 10 -> Grade 11)
+  const nextLevel = await admin.request('/api/superadmin/reports/promote-class', {
+    method: 'POST',
+    body: {
+      classId: targetClass.id,
+      fromAcademicYearId: activeYear.id,
+      fromTermId: activeTerm.id,
+      toAcademicYearId: nextYearId,
+      toTermId: nextTermId,
+      promoteToNextClass: true,
+    },
+  });
+  assert.equal(nextLevel.status, 200);
+  assert.notEqual(nextLevel.json.toClassId, targetClass.id, 'students move up a class level');
+  assert.ok(/promoted/i.test(nextLevel.json.message));
+
+  // ---------- UI WIRING ----------
+  const adminHtml = fs.readFileSync(path.join(__dirname, '..', 'src', 'views', 'superadmin.html'), 'utf8');
+  for (const id of [
+    'sec-report-cards',
+    'rc-generate-form',
+    'rc-gen-class',
+    'rc-gen-year',
+    'rc-gen-term',
+    'rc-list-class',
+    'rc-list-year',
+    'rc-list-term',
+    'rc-list-tbody',
+    'rc-promote-form',
+    'rc-promote-class',
+    'rc-promote-to-year',
+    'rc-promote-to-term',
+    'rc-promote-next-class',
+  ]) {
+    assert.match(adminHtml, new RegExp(`id="${id}"`), `superadmin.html must contain #${id}`);
+  }
+  assert.match(adminHtml, /data-section="report-cards"/);
+
+  const teacherHtml = fs.readFileSync(path.join(__dirname, '..', 'src', 'views', 'teacher.html'), 'utf8');
+  for (const id of ['sec-report-cards', 'trc-class', 'trc-year', 'trc-term', 'trc-tbody']) {
+    assert.match(teacherHtml, new RegExp(`id="${id}"`), `teacher.html must contain #${id}`);
+  }
+  assert.match(teacherHtml, /data-section="report-cards"/);
+
+  const studentHtml = fs.readFileSync(path.join(__dirname, '..', 'src', 'views', 'student.html'), 'utf8');
+  for (const id of ['sec-report-cards', 'src-tbody', 'src-refresh-btn']) {
+    assert.match(studentHtml, new RegExp(`id="${id}"`), `student.html must contain #${id}`);
+  }
+  assert.match(studentHtml, /data-section="report-cards"/);
+
+  const common = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'js', 'common.js'), 'utf8');
+  assert.match(common, /buildReportCardHtml/);
+  assert.match(common, /printReportCardHtml/);
+  assert.match(common, /rc-sheet/);
+
+  const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'css', 'styles.css'), 'utf8');
+  assert.match(css, /\.rc-sheet \{/);
+  assert.match(css, /\.rc-table \{/);
+
+  const migration = fs.readFileSync(
+    path.join(__dirname, '..', 'database', 'migrations', '017_report_cards_and_rollover.sql'),
+    'utf8'
+  );
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS report_cards/);
 });

@@ -375,10 +375,54 @@
     }
   }
 
+
+  // ---------------- REPORT CARDS ----------------
+  async function loadStudentReportCards() {
+    const data = await api('/api/student/report-cards');
+    const items = data.items || [];
+    document.getElementById('src-tbody').innerHTML =
+      items
+        .map(
+          (r) => `<tr>
+            <td>${esc(r.academicYearName)}</td>
+            <td>${esc(r.termName)}</td>
+            <td>${esc(r.className)}</td>
+            <td>${esc(String(r.overallAverage))}%</td>
+            <td><span class="badge badge-neutral">${esc(r.overallGrade)}</span></td>
+            <td>${r.classPosition ? `${esc(String(r.classPosition))} / ${esc(String(r.classSize))}` : '-'}</td>
+            <td class="tabular">${esc(r.attendanceSummary)}</td>
+            <td><button type="button" class="btn btn-secondary btn-sm" data-src-print="${r.academicYearId}:${r.termId}">View &amp; Print</button></td>
+          </tr>`
+        )
+        .join('') ||
+      '<tr><td colspan="8" class="empty-state">No report cards have been published for you yet.</td></tr>';
+  }
+
+  document.getElementById('src-refresh-btn')?.addEventListener('click', () => {
+    loadStudentReportCards().catch((err) => toast(err.message, 'error'));
+  });
+
+  document.getElementById('src-tbody')?.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-src-print]');
+    if (!btn) return;
+    const [yearId, termId] = String(btn.dataset.srcPrint).split(':');
+    try {
+      const res = await api(
+        `/api/student/report-cards/view?academicYearId=${encodeURIComponent(yearId)}&termId=${encodeURIComponent(termId)}`
+      );
+      window.SMS.printReportCardHtml(
+        window.SMS.buildReportCardHtml(res.reportCard, res.gradingScales)
+      );
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+
   SMS.initNavigation(async (sec) => {
     try {
       if (sec === 'overview' || sec === 'results') await loadPortal();
       if (sec === 'coursework') await loadStudentCoursework();
+      if (sec === 'report-cards') await loadStudentReportCards();
     } catch (err) {
       toast(err.message, 'error');
     }

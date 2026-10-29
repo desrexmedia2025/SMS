@@ -292,6 +292,13 @@
       : '<option value="">No subjects linked yet</option>';
 
     const assignedClasses = data.assignedClasses || [];
+    trcAssignedClasses = assignedClasses;
+    const trcClassSel = document.getElementById('trc-class');
+    if (trcClassSel && !trcClassSel.value && assignedClasses.length) {
+      trcClassSel.innerHTML = assignedClasses
+        .map((c) => `<option value="${c.id}">${esc(c.name)}</option>`)
+        .join('');
+    }
     renderAssignedClassCheckboxes('cw-target-classes-grid', assignedClasses);
     renderAssignedClassCheckboxes('tc-ann-classes-grid', assignedClasses);
 
@@ -358,11 +365,116 @@
         .join('') || '<tr><td colspan="4" class="empty-state">No students enrolled in this class yet.</td></tr>';
   }
 
+
+  // ---------------- REPORT CARDS ----------------
+  let trcAssignedClasses = [];
+  let trcCards = [];
+
+  async function loadTeacherReportCards() {
+    const classSel = document.getElementById('trc-class');
+    const yearSel = document.getElementById('trc-year');
+    const termSel = document.getElementById('trc-term');
+    const qs = new URLSearchParams();
+    if (classSel.value) qs.set('classId', classSel.value);
+    if (yearSel.value) qs.set('academicYearId', yearSel.value);
+    if (termSel.value) qs.set('termId', termSel.value);
+    const data = await api(`/api/teacher/report-cards?${qs.toString()}`);
+    if (data.years) {
+      yearSel.innerHTML = (data.years || [])
+        .map((y) => `<option value="${y.id}"${y.isActive ? ' selected' : ''}>${esc(y.name)}</option>`)
+        .join('');
+    }
+    if (data.terms) {
+      const yearId = Number(yearSel.value);
+      const filtered = (data.terms || []).filter((t) => !yearId || t.academicYearId === yearId);
+      termSel.innerHTML = filtered
+        .map((t) => `<option value="${t.id}"${t.isActive ? ' selected' : ''}>${esc(t.name)}</option>`)
+        .join('');
+    }
+    trcCards = data.items || [];
+    renderTeacherReportCards();
+  }
+
+  function renderTeacherReportCards() {
+    document.getElementById('trc-tbody').innerHTML =
+      trcCards
+        .map(
+          (r) => `<tr>
+            <td>${r.classPosition ? `<strong>${esc(String(r.classPosition))}</strong> / ${esc(String(r.classSize))}` : '-'}</td>
+            <td><strong>${esc(r.studentName)}</strong><div class="muted-sm">${esc(r.admissionNumber)}</div></td>
+            <td>${esc(String(r.overallAverage))}%</td>
+            <td><span class="badge badge-neutral">${esc(r.overallGrade)}</span></td>
+            <td class="tabular">${esc(r.attendanceSummary)}</td>
+            <td>${esc(r.teacherRemark || '-')}</td>
+            <td style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button type="button" class="btn btn-secondary btn-sm" data-trc-print="${r.studentId}">Print</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-trc-remark="${r.studentId}">Remark</button>
+            </td>
+          </tr>`
+        )
+        .join('') ||
+      '<tr><td colspan="7" class="empty-state">No report cards available yet. Ask the Superadmin to generate them.</td></tr>';
+  }
+
+  document.getElementById('trc-load-btn')?.addEventListener('click', () => {
+    loadTeacherReportCards().catch((err) => toast(err.message, 'error'));
+  });
+  document.getElementById('trc-class')?.addEventListener('change', () => {
+    loadTeacherReportCards().catch((err) => toast(err.message, 'error'));
+  });
+  document.getElementById('trc-year')?.addEventListener('change', () => {
+    loadTeacherReportCards().catch((err) => toast(err.message, 'error'));
+  });
+
+  document.getElementById('trc-tbody')?.addEventListener('click', async (e) => {
+    const yearId = document.getElementById('trc-year').value;
+    const termId = document.getElementById('trc-term').value;
+
+    const printBtn = e.target.closest('[data-trc-print]');
+    if (printBtn) {
+      try {
+        const res = await api(
+          `/api/teacher/report-cards/student/${printBtn.dataset.trcPrint}?academicYearId=${encodeURIComponent(
+            yearId
+          )}&termId=${encodeURIComponent(termId)}`
+        );
+        window.SMS.printReportCardHtml(
+          window.SMS.buildReportCardHtml(res.reportCard, res.gradingScales)
+        );
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+      return;
+    }
+
+    const remarkBtn = e.target.closest('[data-trc-remark]');
+    if (remarkBtn) {
+      const studentId = remarkBtn.dataset.trcRemark;
+      const card = trcCards.find((c) => String(c.studentId) === String(studentId));
+      const remark = window.prompt(
+        `Class teacher's remark for ${card ? card.studentName : 'this student'}:`,
+        card?.teacherRemark || ''
+      );
+      if (remark === null) return;
+      try {
+        const res = await api('/api/teacher/report-cards/remark', {
+          method: 'POST',
+          body: { studentId, academicYearId: yearId, termId, teacherRemark: remark },
+        });
+        toast(res.message || 'Remark saved.', 'success');
+        await loadTeacherReportCards();
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    }
+  });
+
   SMS.initNavigation(async (sec) => {
     try {
       if (sec === 'overview') await loadOverview();
       if (sec === 'coursework') await loadCourseworkList();
       if (sec === 'classes') await loadClassRoster();
+      if (sec === 'report-cards') await loadTeacherReportCards();
     } catch (err) {
       toast(err.message, 'error');
     }

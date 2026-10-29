@@ -18,6 +18,10 @@ router.post('/profile/change-request', verifyCsrfToken, ctrl.requestProfileCorre
 router.get('/coursework', ctrl.listCoursework);
 router.post('/coursework/:id/submit', verifyCsrfToken, uploadAttachments, ctrl.submitCoursework);
 
+// Student report cards (per term, printable)
+router.get('/report-cards', ctrl.listOwnReportCards);
+router.get('/report-cards/view', ctrl.getOwnReportCard);
+
 // Student self-service Paystack fee payment & own receipt access
 router.post('/paystack/initialize', verifyCsrfToken, ctrl.initializeOwnPaystackPayment);
 router.post('/paystack/verify', verifyCsrfToken, ctrl.verifyOwnPaystackPayment);

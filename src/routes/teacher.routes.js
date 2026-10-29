@@ -31,6 +31,11 @@ router.post('/assessments/:id/marks', verifyCsrfToken, ctrl.submitMarks);
 router.post('/marks/correction-request', verifyCsrfToken, ctrl.requestMarkCorrection);
 
 router.get('/reports', ctrl.getProgressReports);
+
+// Report cards for the teacher's assigned classes (view + teacher remarks)
+router.get('/report-cards', ctrl.listReportCards);
+router.get('/report-cards/student/:studentId', ctrl.getReportCard);
+router.post('/report-cards/remark', verifyCsrfToken, ctrl.saveReportCardRemark);
 router.patch('/profile', verifyCsrfToken, ctrl.updateProfile);
 
 module.exports = router;

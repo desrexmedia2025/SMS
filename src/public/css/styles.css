@@ -3806,3 +3806,90 @@ html[dir="rtl"] .nav-btn.active {
   padding-top: 10px;
 }
 .msg-reply-form textarea { flex: 1 1 240px; min-height: 46px; }
+
+/* ------------- Printable report cards ------------- */
+.print-only-sheet { display: none; }
+
+.rc-sheet {
+  width: 100%;
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 24px 26px;
+  background: #fff;
+  color: #0f172a;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.rc-head { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 10px; }
+.rc-school-name { font-size: 1.3rem; font-weight: 800; letter-spacing: 0.01em; }
+.rc-school-meta { font-size: 0.78rem; color: #475569; margin-top: 2px; }
+.rc-doc-title { margin-top: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.82rem; }
+
+.rc-period {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid #cbd5e1;
+  font-size: 0.85rem;
+}
+
+.rc-student-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 18px;
+  padding: 12px 0;
+}
+.rc-student-grid > div { display: flex; gap: 8px; align-items: baseline; }
+.rc-student-grid span { color: #64748b; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
+
+.rc-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+.rc-table th, .rc-table td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; }
+.rc-table th { background: #f1f5f9; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.rc-table .rc-num { text-align: right; width: 78px; }
+.rc-table .rc-empty { text-align: center; color: #64748b; }
+
+.rc-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.rc-summary > div {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+}
+.rc-summary span { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
+.rc-summary strong { font-size: 1.02rem; }
+
+.rc-scale { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.rc-scale-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 0.72rem;
+  color: #334155;
+}
+
+.rc-remarks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+.rc-remark span { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
+.rc-remark p { margin: 3px 0 0; min-height: 46px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px; }
+
+.rc-signatures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 34px; }
+.rc-sign-line { border-top: 1px solid #0f172a; padding-top: 5px; font-size: 0.75rem; color: #475569; text-align: center; }
+
+@media print {
+  body * { visibility: hidden !important; }
+  .print-only-sheet, .print-only-sheet * { visibility: visible !important; }
+  .print-only-sheet {
+    display: block !important;
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+  }
+  .rc-sheet { box-shadow: none !important; border: none !important; max-width: none; padding: 0; }
+  .rc-remark p, .rc-table tr { page-break-inside: avoid; }
+}

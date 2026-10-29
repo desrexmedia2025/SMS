@@ -1403,6 +1403,172 @@
     }
   });
 
+  // ---------------- REPORT CARDS & END-OF-TERM ROLLOVER ----------------
+  let rcCache = { cards: [] };
+
+  function fillPeriodSelects() {
+    const classOpts = (acadCache.classes || [])
+      .map((c) => `<option value="${c.id}">${esc(c.name)}</option>`)
+      .join('');
+    const yearOpts = (acadCache.years || [])
+      .map((y) => `<option value="${y.id}"${y.is_active ? ' selected' : ''}>${esc(y.name)}</option>`)
+      .join('');
+    const termOpts = (acadCache.terms || [])
+      .map((t) => `<option value="${t.id}"${t.is_active ? ' selected' : ''}>${esc(t.name)}</option>`)
+      .join('');
+    ['rc-gen-class', 'rc-list-class', 'rc-promote-class'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = classOpts;
+    });
+    ['rc-gen-year', 'rc-list-year', 'rc-promote-from-year', 'rc-promote-to-year'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = yearOpts;
+    });
+    ['rc-gen-term', 'rc-list-term', 'rc-promote-from-term', 'rc-promote-to-term'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = termOpts;
+    });
+  }
+
+  async function loadReportCards() {
+    const classId = document.getElementById('rc-list-class').value;
+    const yearId = document.getElementById('rc-list-year').value;
+    const termId = document.getElementById('rc-list-term').value;
+    if (!classId) return;
+    const data = await api(
+      `/api/superadmin/reports/report-cards?classId=${encodeURIComponent(classId)}&academicYearId=${encodeURIComponent(
+        yearId
+      )}&termId=${encodeURIComponent(termId)}`
+    );
+    rcCache.cards = data.items || [];
+    renderReportCards();
+  }
+
+  function renderReportCards() {
+    const rows = rcCache.cards;
+    document.getElementById('rc-list-tbody').innerHTML =
+      rows
+        .map(
+          (r) => `<tr>
+            <td>${r.classPosition ? `<strong>${esc(String(r.classPosition))}</strong> / ${esc(String(r.classSize))}` : '-'}</td>
+            <td><strong>${esc(r.studentName)}</strong></td>
+            <td><code>${esc(r.admissionNumber)}</code></td>
+            <td>${esc(String(r.overallAverage))}%</td>
+            <td><span class="badge badge-neutral">${esc(r.overallGrade)}</span></td>
+            <td>${esc(String(r.gpa))}</td>
+            <td class="tabular">${esc(r.attendanceSummary)}</td>
+            <td>${esc(r.teacherRemark || '-')}</td>
+            <td style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button type="button" class="btn btn-secondary btn-sm" data-rc-print="${r.studentId}">Print</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-rc-remark="${r.studentId}">Remark</button>
+            </td>
+          </tr>`
+        )
+        .join('') || '<tr><td colspan="9" class="empty-state">No report cards generated for that class and term yet.</td></tr>';
+  }
+
+  document.getElementById('rc-generate-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('rc-generate-btn');
+    btn.disabled = true;
+    try {
+      const res = await api('/api/superadmin/reports/report-cards/generate', {
+        method: 'POST',
+        body: {
+          classId: document.getElementById('rc-gen-class').value,
+          academicYearId: document.getElementById('rc-gen-year').value,
+          termId: document.getElementById('rc-gen-term').value,
+        },
+      });
+      toast(res.message || 'Report cards generated.', 'success');
+      document.getElementById('rc-list-class').value = document.getElementById('rc-gen-class').value;
+      document.getElementById('rc-list-year').value = document.getElementById('rc-gen-year').value;
+      document.getElementById('rc-list-term').value = document.getElementById('rc-gen-term').value;
+      await loadReportCards();
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('rc-load-btn').addEventListener('click', () => {
+    loadReportCards().catch((err) => toast(err.message, 'error'));
+  });
+
+  document.getElementById('rc-promote-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('rc-promote-btn');
+    btn.disabled = true;
+    try {
+      const res = await api('/api/superadmin/reports/promote-class', {
+        method: 'POST',
+        body: {
+          classId: document.getElementById('rc-promote-class').value,
+          fromAcademicYearId: document.getElementById('rc-promote-from-year').value,
+          fromTermId: document.getElementById('rc-promote-from-term').value,
+          toAcademicYearId: document.getElementById('rc-promote-to-year').value,
+          toTermId: document.getElementById('rc-promote-to-term').value,
+          promoteToNextClass: document.getElementById('rc-promote-next-class').checked,
+        },
+      });
+      toast(res.message || 'Class promoted.', 'success');
+      await loadStudents();
+      await loadAcademicAndTeachers();
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('rc-list-tbody').addEventListener('click', async (e) => {
+    const yearId = document.getElementById('rc-list-year').value;
+    const termId = document.getElementById('rc-list-term').value;
+
+    const printBtn = e.target.closest('[data-rc-print]');
+    if (printBtn) {
+      try {
+        const res = await api(
+          `/api/superadmin/reports/report-cards/student/${printBtn.dataset.rcPrint}?academicYearId=${encodeURIComponent(
+            yearId
+          )}&termId=${encodeURIComponent(termId)}`
+        );
+        window.SMS.printReportCardHtml(
+          window.SMS.buildReportCardHtml(res.reportCard, res.gradingScales)
+        );
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+      return;
+    }
+
+    const remarkBtn = e.target.closest('[data-rc-remark]');
+    if (remarkBtn) {
+      const studentId = remarkBtn.dataset.rcRemark;
+      const card = rcCache.cards.find((c) => String(c.studentId) === String(studentId));
+      const teacherRemark = window.prompt(
+        `Class teacher's remark for ${card ? card.studentName : 'this student'}:`,
+        card?.teacherRemark || ''
+      );
+      if (teacherRemark === null) return;
+      const headRemark = window.prompt(
+        "Head teacher's remark (leave blank to keep):",
+        card?.headteacherRemark || ''
+      );
+      try {
+        const res = await api('/api/superadmin/reports/report-cards/remark', {
+          method: 'POST',
+          body: { studentId, academicYearId: yearId, termId, teacherRemark, headteacherRemark: headRemark },
+        });
+        toast(res.message || 'Remark saved.', 'success');
+        await loadReportCards();
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    }
+  });
+
   // ---------------- NAVIGATION ----------------
   async function loadSectionData(sec) {
     if (sec === 'overview') await loadOverview();
@@ -1421,6 +1587,11 @@
       await loadStudentRequests();
     }
     if (sec === 'events') await loadSchoolEvents();
+    if (sec === 'report-cards') {
+      await loadAcademicAndTeachers();
+      fillPeriodSelects();
+      await loadReportCards().catch(() => {});
+    }
     if (sec === 'messages') await window.SMS.refreshMessages();
     if (sec === 'timetables') {
       await loadAcademicAndTeachers();

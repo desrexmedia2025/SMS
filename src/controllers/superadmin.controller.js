@@ -3,6 +3,7 @@ const path = require('path');
 const crypto = require('crypto');
 const superadminService = require('../services/superadmin.service');
 const schoolEventService = require('../services/schoolEvent.service');
+const reportCardService = require('../services/reportCard.service');
 const financialService = require('../services/financial.service');
 const systemModel = require('../models/system.model');
 const { recordAudit } = require('../services/audit.service');
@@ -291,6 +292,67 @@ async function enrolStudent(req, res) {
       initialPassword: password,
     },
   });
+}
+
+// ---------------- REPORT CARDS & END-OF-TERM ROLLOVER ----------------
+async function generateReportCards(req, res) {
+  const result = await reportCardService.generateClassReportCards({
+    classId: req.body.classId,
+    academicYearId: req.body.academicYearId,
+    termId: req.body.termId,
+    actor: req.user,
+    ipAddress: req.ip,
+  });
+  return res.json({ ok: true, ...result });
+}
+
+async function listReportCards(req, res) {
+  const data = await reportCardService.listClassReportCards({
+    classId: req.query.classId,
+    academicYearId: req.query.academicYearId,
+    termId: req.query.termId,
+  });
+  return res.json({ ok: true, ...data });
+}
+
+async function getReportCard(req, res) {
+  const data = await reportCardService.getStudentReportCard({
+    studentId: req.params.studentId || req.query.studentId,
+    academicYearId: req.query.academicYearId,
+    termId: req.query.termId,
+    viewer: req.user,
+  });
+  return res.json({ ok: true, ...data });
+}
+
+async function saveReportCardRemark(req, res) {
+  const result = await reportCardService.saveReportCardRemark({
+    studentId: req.body.studentId,
+    academicYearId: req.body.academicYearId,
+    termId: req.body.termId,
+    teacherRemark: req.body.teacherRemark,
+    headteacherRemark: req.body.headteacherRemark,
+    actor: req.user,
+    ipAddress: req.ip,
+  });
+  return res.json({ ok: true, ...result });
+}
+
+async function promoteClass(req, res) {
+  const result = await reportCardService.promoteClass({
+    classId: req.body.classId,
+    fromAcademicYearId: req.body.fromAcademicYearId,
+    fromTermId: req.body.fromTermId,
+    toAcademicYearId: req.body.toAcademicYearId,
+    toTermId: req.body.toTermId,
+    promoteToNextClass:
+      req.body.promoteToNextClass === true ||
+      req.body.promoteToNextClass === 'true' ||
+      req.body.promoteToNextClass === '1',
+    actor: req.user,
+    ipAddress: req.ip,
+  });
+  return res.json({ ok: true, ...result });
 }
 
 // ---------------- SCHOOL-WIDE CALENDAR EVENTS ----------------
@@ -760,6 +822,11 @@ module.exports = {
   createTeacher,
   updateTeacherSubjects,
   assignTeacher,
+  generateReportCards,
+  listReportCards,
+  getReportCard,
+  saveReportCardRemark,
+  promoteClass,
   listSchoolEvents,
   createSchoolEvent,
   updateSchoolEvent,

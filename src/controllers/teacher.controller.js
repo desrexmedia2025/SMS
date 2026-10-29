@@ -1,4 +1,7 @@
 const teacherService = require('../services/teacher.service');
+const reportCardService = require('../services/reportCard.service');
+const db = require('../config/database');
+const { AppError } = require('../middleware/errorHandler');
 const courseworkService = require('../services/coursework.service');
 const {
   requireString,
@@ -179,6 +182,89 @@ async function updateProfile(req, res) {
   return res.json({ ok: true, message: 'Teacher profile updated.' });
 }
 
+
+// ---------------- REPORT CARDS (teacher: class cards + remarks) ----------------
+async function listReportCards(req, res) {
+  const teacher = await db.get('SELECT id FROM teachers WHERE user_id = ?', [req.user.id]);
+  if (!teacher) throw new AppError(403, 'No teacher staff record is linked to your account.');
+  const classId = Number(req.query.classId);
+  if (!Number.isInteger(classId) || classId <= 0) {
+    const periods = await reportCardService.listPeriods();
+    return res.json({ ok: true, items: [], ...periods });
+  }
+  const assigned = await db.get(
+    'SELECT id FROM teacher_assignments WHERE teacher_id = ? AND class_id = ? LIMIT 1',
+    [teacher.id, classId]
+  );
+  if (!assigned) throw new AppError(403, 'You can only view report cards for your assigned classes.');
+  const data = await reportCardService.listClassReportCards({
+    classId,
+    academicYearId: req.query.academicYearId,
+    termId: req.query.termId,
+  });
+  return res.json({ ok: true, ...data });
+}
+
+async function getReportCard(req, res) {
+  const teacher = await db.get('SELECT id FROM teachers WHERE user_id = ?', [req.user.id]);
+  if (!teacher) throw new AppError(403, 'No teacher staff record is linked to your account.');
+  const studentId = Number(req.params.studentId);
+  const student = await db.get(
+    `SELECT se.class_id
+     FROM student_enrolments se
+     WHERE se.student_id = ? AND se.status IN ('enrolled', 'active')
+     ORDER BY se.id DESC LIMIT 1`,
+    [studentId]
+  );
+  if (!student) throw new AppError(404, 'Student not found.');
+  const assigned = await db.get(
+    'SELECT id FROM teacher_assignments WHERE teacher_id = ? AND class_id = ? LIMIT 1',
+    [teacher.id, student.class_id]
+  );
+  if (!assigned) throw new AppError(403, 'That student is not in any of your classes.');
+  const data = await reportCardService.getStudentReportCard({
+    studentId,
+    academicYearId: req.query.academicYearId,
+    termId: req.query.termId,
+    viewer: req.user,
+  });
+  return res.json({ ok: true, ...data });
+}
+
+async function saveReportCardRemark(req, res) {
+  const teacher = await db.get('SELECT id FROM teachers WHERE user_id = ?', [req.user.id]);
+  if (!teacher) throw new AppError(403, 'No teacher staff record is linked to your account.');
+  if (req.body.headteacherRemark !== undefined && req.body.headteacherRemark !== null) {
+    throw new AppError(403, 'Only the Superadmin can sign the head teacher remark.');
+  }
+  const studentId = Number(req.body.studentId);
+  const termId = req.body.termId ? Number(req.body.termId) : null;
+  const period = termId ? null : await reportCardService.resolvePeriod({});
+  const resolvedTerm = termId || (period && period.termId);
+  const enrolment = await db.get(
+    `SELECT se.class_id, se.academic_year_id
+     FROM student_enrolments se
+     WHERE se.student_id = ? AND se.status IN ('enrolled', 'active')
+     ORDER BY se.id DESC LIMIT 1`,
+    [studentId]
+  );
+  if (!enrolment) throw new AppError(404, 'Student not found.');
+  const assigned = await db.get(
+    'SELECT id FROM teacher_assignments WHERE teacher_id = ? AND class_id = ? LIMIT 1',
+    [teacher.id, enrolment.class_id]
+  );
+  if (!assigned) throw new AppError(403, 'That student is not in any of your classes.');
+  const result = await reportCardService.saveReportCardRemark({
+    studentId,
+    academicYearId: req.body.academicYearId || enrolment.academic_year_id,
+    termId: resolvedTerm,
+    teacherRemark: req.body.teacherRemark,
+    actor: req.user,
+    ipAddress: req.ip,
+  });
+  return res.json({ ok: true, ...result });
+}
+
 module.exports = {
   getOverview,
   getClassList,
@@ -196,5 +282,8 @@ module.exports = {
   submitMarks,
   requestMarkCorrection,
   getProgressReports,
+  listReportCards,
+  getReportCard,
+  saveReportCardRemark,
   updateProfile,
 };

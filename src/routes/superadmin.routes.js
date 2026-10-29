@@ -21,6 +21,13 @@ router.post('/users/:id/unlock', verifyCsrfToken, ctrl.unlockUser);
 router.post('/users/:id/avatar', verifyCsrfToken, uploadAvatar, profileCtrl.setUserAvatar);
 router.delete('/users/:id/avatar', verifyCsrfToken, profileCtrl.clearUserAvatar);
 
+// Report cards & end-of-term / end-of-year rollover
+router.post('/reports/report-cards/generate', verifyCsrfToken, ctrl.generateReportCards);
+router.get('/reports/report-cards', ctrl.listReportCards);
+router.get('/reports/report-cards/student/:studentId', ctrl.getReportCard);
+router.post('/reports/report-cards/remark', verifyCsrfToken, ctrl.saveReportCardRemark);
+router.post('/reports/promote-class', verifyCsrfToken, ctrl.promoteClass);
+
 // School-wide calendar events (holidays, PTA meetings, exam weeks, sports day, ...)
 router.get('/events', ctrl.listSchoolEvents);
 router.post('/events', verifyCsrfToken, ctrl.createSchoolEvent);

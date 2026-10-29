@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Teachers Dashboard - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=3.18">
+  <link rel="stylesheet" href="/css/styles.css?v=3.19">
 </head>
 <body>
   <div class="app-layout">
@@ -19,6 +19,7 @@
         <button class="nav-btn" data-section="classes">My Classes &amp; Students</button>
         <button class="nav-btn" data-section="timetable">Timetable</button>
         <button class="nav-btn" data-section="announcements">Announcements</button>
+        <button class="nav-btn" data-section="report-cards" data-title="Report Cards">Report Cards</button>
         <button class="nav-btn" data-section="messages" data-title="Messages">Messages</button>
         <button class="nav-btn" data-section="profile">Profile</button>
       </nav>
@@ -483,11 +484,36 @@
           </div>
         </section>
 
+
+        <!-- REPORT CARDS -->
+        <section id="sec-report-cards" class="module-panel hidden">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Class Report Cards</h2>
+                <div class="card-subtitle">View results for your assigned classes and write the class teacher's remark</div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                <select id="trc-class" style="min-width:150px;"></select>
+                <select id="trc-year" style="min-width:150px;"></select>
+                <select id="trc-term" style="min-width:150px;"></select>
+                <button type="button" class="btn btn-secondary btn-sm" id="trc-load-btn">Load</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Position</th><th>Student</th><th>Average</th><th>Grade</th><th>Attendance</th><th>Teacher Remark</th><th>Action</th></tr></thead>
+                <tbody id="trc-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
       </main>
     </div>
   </div>
 
-  <script src="/js/common.js?v=3.18"></script>
-  <script src="/js/teacher.js?v=3.18"></script>
+  <script src="/js/common.js?v=3.19"></script>
+  <script src="/js/teacher.js?v=3.19"></script>
 </body>
 </html>
