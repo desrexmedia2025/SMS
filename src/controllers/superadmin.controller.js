@@ -172,8 +172,8 @@ async function createSubject(req, res) {
   return res.status(201).json({ ok: true, ...created });
 }
 
-async function listTeachers(_req, res) {
-  const data = await superadminService.listTeachers();
+async function listTeachers(req, res) {
+  const data = await superadminService.listTeachers(req.query);
   return res.json({ ok: true, ...data });
 }
 

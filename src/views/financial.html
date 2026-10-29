@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Financial Dashboard - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=3.5">
+  <link rel="stylesheet" href="/css/styles.css?v=3.6">
 </head>
 <body>
   <div class="app-layout">
@@ -39,6 +39,11 @@
           <button class="mobile-menu-btn" id="mobile-menu-btn">Menu</button>
           <h1 class="topbar-title" id="topbar-title">Overview</h1>
         </div>
+        <form class="topbar-search-form" id="topbar-search-form" role="search">
+          <input type="search" id="topbar-search-input" class="topbar-search-input" placeholder="Search sections or records..." aria-label="Search dashboard">
+          <button type="submit" class="btn btn-primary btn-sm" id="topbar-search-btn">Search</button>
+          <button type="button" class="btn btn-secondary btn-sm hidden" id="topbar-search-clear-btn">Clear</button>
+        </form>
       </header>
 
       <main class="content-body">
@@ -98,7 +103,14 @@
           </div>
 
           <div class="card">
-            <div class="card-header"><h2 class="card-title">Recent Payments</h2></div>
+            <div class="card-header">
+              <h2 class="card-title">Recent Payments</h2>
+              <div class="search-bar" data-search-tbody="fin-ov-payments-tbody">
+                <input type="search" class="search-bar-input" placeholder="Search student or receipt #...">
+                <button type="button" class="btn btn-primary btn-sm" data-search-btn>Search</button>
+                <button type="button" class="btn btn-secondary btn-sm hidden" data-search-clear>Clear</button>
+              </div>
+            </div>
             <div class="table-wrap">
               <table>
                 <thead><tr><th>Date</th><th>Receipt #</th><th>Student</th><th>Method</th><th class="num">Amount</th><th>Status</th><th>Action</th></tr></thead>
@@ -112,7 +124,14 @@
         <section id="sec-billing" class="module-panel hidden">
           <div class="grid-2">
             <div class="card">
-              <div class="card-header"><h2 class="card-title">Create Fee Item</h2></div>
+              <div class="card-header">
+                <h2 class="card-title">Create Fee Item</h2>
+                <div class="search-bar" data-search-tbody="fee-cats-tbody">
+                  <input type="search" class="search-bar-input" placeholder="Search fee items...">
+                  <button type="button" class="btn btn-primary btn-sm" data-search-btn>Search</button>
+                  <button type="button" class="btn btn-secondary btn-sm hidden" data-search-clear>Clear</button>
+                </div>
+              </div>
               <form id="create-fee-cat-form" class="form-grid" style="margin-bottom:14px;">
                 <div class="form-group"><label>Fee Code</label><input type="text" name="code" placeholder="e.g. TUITION" required></div>
                 <div class="form-group"><label>Fee Name</label><input type="text" name="name" placeholder="e.g. Tuition Fee" required></div>
@@ -199,10 +218,17 @@
           <div class="card">
             <div class="card-header">
               <h2 class="card-title">Payments &amp; Official Receipts</h2>
-              <form id="lookup-rcp-form" class="toolbar" style="margin:0;">
-                <input type="text" id="rcp-lookup-input" placeholder="Enter Receipt # (e.g. RCP-...)" style="width:220px;">
-                <button class="btn btn-secondary btn-sm" type="submit">Open Receipt</button>
-              </form>
+              <div class="toolbar" style="margin:0;">
+                <div class="search-bar" data-search-tbody="fin-payments-tbody">
+                  <input type="search" class="search-bar-input" placeholder="Search student, method, receipt...">
+                  <button type="button" class="btn btn-primary btn-sm" data-search-btn>Search</button>
+                  <button type="button" class="btn btn-secondary btn-sm hidden" data-search-clear>Clear</button>
+                </div>
+                <form id="lookup-rcp-form" class="toolbar" style="margin:0;">
+                  <input type="text" id="rcp-lookup-input" placeholder="Enter Receipt # (e.g. RCP-...)" style="width:195px;">
+                  <button class="btn btn-secondary btn-sm" type="submit">Open Receipt</button>
+                </form>
+              </div>
             </div>
             <div class="table-wrap">
               <table>
@@ -218,9 +244,10 @@
           <div class="card">
             <div class="card-header">
               <h2 class="card-title">Student Fee Balances</h2>
-              <div class="toolbar" style="margin:0;">
-                <input type="text" id="acc-search" placeholder="Search name or admission #..." style="width:230px;">
-                <button class="btn btn-secondary btn-sm" id="acc-filter-btn">Search</button>
+              <div class="search-bar">
+                <input type="search" id="acc-search" class="search-bar-input" data-server-search-input data-server-search-btn="acc-filter-btn" placeholder="Search name or admission #...">
+                <button type="button" class="btn btn-primary btn-sm" id="acc-filter-btn">Search</button>
+                <button type="button" class="btn btn-secondary btn-sm hidden" id="acc-clear-btn">Clear</button>
               </div>
             </div>
             <div class="table-wrap">
@@ -237,7 +264,14 @@
           <div class="card">
             <div class="card-header">
               <h2 class="card-title">School Timetable</h2>
-              <select id="fin-tt-filter-class" style="width:190px;"><option value="">All Classes</option></select>
+              <div class="toolbar" style="margin:0;">
+                <div class="search-bar" data-search-matrix="fin-tt-matrix">
+                  <input type="search" class="search-bar-input" placeholder="Search subject, teacher, room...">
+                  <button type="button" class="btn btn-primary btn-sm" data-search-btn>Search</button>
+                  <button type="button" class="btn btn-secondary btn-sm hidden" data-search-clear>Clear</button>
+                </div>
+                <select id="fin-tt-filter-class" style="width:180px;"><option value="">All Classes</option></select>
+              </div>
             </div>
             <div id="fin-tt-matrix"></div>
           </div>
@@ -257,7 +291,7 @@
     </div>
   </div>
 
-  <script src="/js/common.js?v=3.5"></script>
-  <script src="/js/financial.js?v=3.5"></script>
+  <script src="/js/common.js?v=3.6"></script>
+  <script src="/js/financial.js?v=3.6"></script>
 </body>
 </html>

@@ -1793,7 +1793,7 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
   // Every dashboard includes Show/Hide Menu button, modern action tiles & clean v3.x assets
   for (const html of [saHtml, tcHtml, stHtml, fnHtml]) {
     assert.match(html, /id="mobile-menu-btn"/);
-    assert.match(html, /\?v=3\.5/);
+    assert.match(html, /\?v=3\.6/);
     assert.match(html, /class="action-tile-grid"/);
     assert.doesNotMatch(html, /Hide Figures/i);
     assert.doesNotMatch(html, /Audit Log/i);
@@ -1952,6 +1952,75 @@ test('21. Superadmin Lite Site Analytics & Usage Graphs: real-time page hits, se
   assert.ok(ovRes.json.analytics);
   assert.equal(ovRes.json.analytics.dailyTrend.length, 14);
 });
+
+test('22. Universal Search Buttons across all 4 Dashboards & Server-Side Search APIs', async () => {
+  const admin = new SessionClient();
+  const teacher = new SessionClient();
+  const student = new SessionClient();
+  const finance = new SessionClient();
+
+  await admin.login('admin@school.edu.gh', 'Admin@2026!');
+  await teacher.login('kofi.mensah@school.edu.gh', 'Teacher@2026!');
+  await student.login('kwame.asante@student.school.edu.gh', 'Student@2026!');
+  await finance.login('finance@school.edu.gh', 'Finance@2026!');
+
+  // 1. Verify Topbar Search + Section Search Bars & Target ID parity across all 4 dashboards
+  const dashboards = [
+    await admin.request('/dashboard/superadmin'),
+    await teacher.request('/dashboard/teacher'),
+    await student.request('/dashboard/student'),
+    await finance.request('/dashboard/financial'),
+  ];
+
+  for (const dash of dashboards) {
+    assert.equal(dash.status, 200);
+    assert.match(dash.text, /id="topbar-search-form"/);
+    assert.match(dash.text, /id="topbar-search-btn"/);
+    assert.match(dash.text, /class="search-bar"/);
+
+    // Every data-search-tbody / data-search-list / data-search-matrix target exists in the same HTML
+    const targetMatches = [
+      ...dash.text.matchAll(/data-search-(?:tbody|list|matrix)="([^"]+)"/g),
+    ];
+    assert.equal(targetMatches.length >= 4, true);
+    for (const m of targetMatches) {
+      const targetId = m[1];
+      assert.match(
+        dash.text,
+        new RegExp(`id="${targetId}"`),
+        `Missing search target #${targetId}`
+      );
+    }
+  }
+
+  // 2. Verify server-side search endpoints filter accurately
+  const tchSearch = await admin.request('/api/superadmin/teachers?search=Mensah');
+  assert.equal(tchSearch.status, 200);
+  assert.equal(tchSearch.json.teachers.length >= 1, true);
+  assert.equal(
+    tchSearch.json.teachers.every((t) =>
+      `${t.first_name} ${t.last_name} ${t.email}`.toLowerCase().includes('mensah')
+    ),
+    true
+  );
+
+  const tchNoMatch = await admin.request('/api/superadmin/teachers?search=ZZZ_NONEXISTENT_999');
+  assert.equal(tchNoMatch.status, 200);
+  assert.equal(tchNoMatch.json.teachers.length, 0);
+
+  const stuSearch = await admin.request('/api/superadmin/students?search=Kwame');
+  assert.equal(stuSearch.status, 200);
+  assert.equal(stuSearch.json.items.length >= 1, true);
+
+  const usrSearch = await admin.request('/api/superadmin/users?search=finance&role=financial');
+  assert.equal(usrSearch.status, 200);
+  assert.equal(usrSearch.json.items.length >= 1, true);
+
+  const finAccSearch = await finance.request('/api/financial/accounts?search=Kwame');
+  assert.equal(finAccSearch.status, 200);
+  assert.equal(finAccSearch.json.items.length >= 1, true);
+});
+
 
 
 

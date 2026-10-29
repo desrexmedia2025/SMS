@@ -547,7 +547,7 @@ async function resolveOrCreateSubjects(tx, { subjectIds = [], customSubjects = [
   return Array.from(resolvedMap.values());
 }
 
-async function listTeachers() {
+async function listTeachers(query = {}) {
   const [teachers, teacherSubjectRows, assignments] = await Promise.all([
     db.query(
       `SELECT
@@ -606,7 +606,7 @@ async function listTeachers() {
     }
   }
 
-  const enrichedTeachers = teachers.map((t) => {
+  let enrichedTeachers = teachers.map((t) => {
     const subMap = byTeacher.get(Number(t.id));
     const subjects = subMap ? Array.from(subMap.values()) : [];
     return {
@@ -615,6 +615,30 @@ async function listTeachers() {
       subjectIds: subjects.map((s) => s.id),
     };
   });
+
+  if (query.search) {
+    const q = String(query.search).trim().toLowerCase();
+    if (q) {
+      enrichedTeachers = enrichedTeachers.filter((t) => {
+        const subNames = (t.subjects || []).map((s) => `${s.code || ''} ${s.name || ''}`).join(' ');
+        const haystack = [
+          t.staff_number,
+          t.first_name,
+          t.last_name,
+          `${t.first_name || ''} ${t.last_name || ''}`,
+          t.email,
+          t.username,
+          t.department,
+          t.specialization,
+          subNames,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        return haystack.includes(q);
+      });
+    }
+  }
 
   return { teachers: enrichedTeachers, assignments };
 }

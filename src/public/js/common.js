@@ -487,6 +487,9 @@ window.SMS = (() => {
       topbar.appendChild(chip);
     }
 
+    initUniversalSearch();
+    initTopbarSearch(onSectionChange);
+
     navBtns.forEach((btn) => {
       btn.addEventListener('click', () => activateSection(btn.dataset.section, onSectionChange));
     });
@@ -502,6 +505,231 @@ window.SMS = (() => {
         activateSection(targetSec, onSectionChange);
       }
     });
+  }
+
+  function applySearchBar(bar) {
+    if (!bar) return { matched: 0, total: 0 };
+    const input = bar.querySelector('.search-bar-input');
+    const clearBtn = bar.querySelector('[data-search-clear]');
+    const rawQ = String(input?.value || '').trim();
+    const q = rawQ.toLowerCase();
+    if (clearBtn) clearBtn.classList.toggle('hidden', !q);
+
+    const tbodyId = bar.dataset.searchTbody;
+    const listId = bar.dataset.searchList;
+    const matrixId = bar.dataset.searchMatrix;
+
+    if (tbodyId) {
+      const tbody = document.getElementById(tbodyId);
+      if (!tbody) return { matched: 0, total: 0 };
+      bar._applying = true;
+      try {
+        tbody.querySelectorAll('tr.search-no-match-row').forEach((r) => r.remove());
+        const dataRows = Array.from(tbody.querySelectorAll('tr')).filter(
+          (r) => !r.querySelector('.empty-state') && !r.classList.contains('search-no-match-row')
+        );
+        let matched = 0;
+        for (const row of dataRows) {
+          const ok = !q || row.textContent.toLowerCase().includes(q);
+          row.classList.toggle('hidden', !ok);
+          if (ok) matched += 1;
+        }
+        if (q && dataRows.length > 0 && matched === 0) {
+          const noRow = document.createElement('tr');
+          noRow.className = 'search-no-match-row';
+          noRow.innerHTML = `<td colspan="12" class="empty-state">No matching records for "${esc(rawQ)}".</td>`;
+          tbody.appendChild(noRow);
+        }
+        return { matched, total: dataRows.length };
+      } finally {
+        bar._applying = false;
+      }
+    }
+
+    if (listId) {
+      const listEl = document.getElementById(listId);
+      if (!listEl) return { matched: 0, total: 0 };
+      bar._applying = true;
+      try {
+        listEl.querySelectorAll('.search-no-match-box').forEach((n) => n.remove());
+        const items = Array.from(listEl.children).filter(
+          (c) => !c.classList.contains('empty-state') && !c.classList.contains('search-no-match-box')
+        );
+        let matched = 0;
+        for (const item of items) {
+          const ok = !q || item.textContent.toLowerCase().includes(q);
+          item.classList.toggle('hidden', !ok);
+          if (ok) matched += 1;
+        }
+        if (q && items.length > 0 && matched === 0) {
+          const box = document.createElement('div');
+          box.className = 'empty-state search-no-match-box';
+          box.textContent = `No matching items for "${rawQ}".`;
+          listEl.appendChild(box);
+        }
+        return { matched, total: items.length };
+      } finally {
+        bar._applying = false;
+      }
+    }
+
+    if (matrixId) {
+      const matrixEl = document.getElementById(matrixId);
+      if (!matrixEl) return { matched: 0, total: 0 };
+      bar._applying = true;
+      try {
+        matrixEl.querySelectorAll('.search-no-match-box').forEach((n) => n.remove());
+        const slotCards = Array.from(matrixEl.querySelectorAll('.tt-slot-card'));
+        let matched = 0;
+        for (const card of slotCards) {
+          const ok = !q || card.textContent.toLowerCase().includes(q);
+          card.classList.toggle('hidden', !ok);
+          if (ok) matched += 1;
+        }
+        if (q && slotCards.length > 0 && matched === 0) {
+          const box = document.createElement('div');
+          box.className = 'empty-state search-no-match-box';
+          box.style.marginBottom = '10px';
+          box.textContent = `No timetable lessons matching "${rawQ}".`;
+          matrixEl.prepend(box);
+        }
+        return { matched, total: slotCards.length };
+      } finally {
+        bar._applying = false;
+      }
+    }
+
+    return { matched: 0, total: 0 };
+  }
+
+  function initUniversalSearch(root = document) {
+    root.querySelectorAll('.search-bar').forEach((bar) => {
+      if (bar.dataset.searchBound === '1') return;
+      bar.dataset.searchBound = '1';
+
+      const input = bar.querySelector('.search-bar-input');
+      const btn = bar.querySelector('[data-search-btn]');
+      const clearBtn = bar.querySelector('[data-search-clear]');
+
+      if (btn) {
+        btn.addEventListener('click', () => {
+          applySearchBar(bar);
+        });
+      }
+      if (input) {
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            if (btn) btn.click();
+            else applySearchBar(bar);
+          }
+        });
+        input.addEventListener('search', () => {
+          if (!input.value.trim()) {
+            if (clearBtn && !clearBtn.classList.contains('hidden')) clearBtn.click();
+            else applySearchBar(bar);
+          }
+        });
+      }
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          if (input) input.value = '';
+          applySearchBar(bar);
+        });
+      }
+
+      const targetId =
+        bar.dataset.searchTbody || bar.dataset.searchList || bar.dataset.searchMatrix;
+      const targetEl = targetId ? document.getElementById(targetId) : null;
+      if (targetEl && typeof MutationObserver !== 'undefined') {
+        const observer = new MutationObserver(() => {
+          if (bar._applying) return;
+          if (input && input.value.trim()) {
+            applySearchBar(bar);
+          }
+        });
+        observer.observe(targetEl, { childList: true });
+      }
+    });
+  }
+
+  function initTopbarSearch(onSectionChange) {
+    const form = document.getElementById('topbar-search-form');
+    const input = document.getElementById('topbar-search-input');
+    const clearBtn = document.getElementById('topbar-search-clear-btn');
+    if (!form || !input) return;
+
+    function runTopbarSearch(rawQuery) {
+      const q = String(rawQuery || '').trim();
+      if (clearBtn) clearBtn.classList.toggle('hidden', !q);
+
+      const activePanel = document.querySelector('.module-panel:not(.hidden)');
+      let ranInPanel = false;
+      let matchedTotal = 0;
+
+      if (activePanel) {
+        const visibleSubPane = activePanel.querySelector('.subtab-pane:not(.hidden)');
+        const scope = visibleSubPane || activePanel;
+
+        scope.querySelectorAll('.search-bar').forEach((bar) => {
+          const inp = bar.querySelector('.search-bar-input');
+          if (inp) {
+            inp.value = q;
+            const res = applySearchBar(bar);
+            matchedTotal += res.matched;
+            ranInPanel = true;
+          }
+        });
+
+        scope.querySelectorAll('[data-server-search-input]').forEach((srvInput) => {
+          srvInput.value = q;
+          const btnId = srvInput.dataset.serverSearchBtn;
+          const srvBtn = btnId ? document.getElementById(btnId) : null;
+          if (srvBtn) {
+            srvBtn.click();
+            ranInPanel = true;
+          }
+        });
+      }
+
+      if (q && (!ranInPanel || matchedTotal === 0)) {
+        const qLower = q.toLowerCase();
+        const navMatch = Array.from(document.querySelectorAll('.nav-btn[data-section]')).find(
+          (b) => {
+            const label = (b.dataset.title || b.textContent || '').trim().toLowerCase();
+            return label.includes(qLower) || String(b.dataset.section || '').includes(qLower);
+          }
+        );
+        if (navMatch && !navMatch.classList.contains('active')) {
+          activateSection(navMatch.dataset.section, onSectionChange);
+          toast(
+            `Opened ${navMatch.dataset.title || navMatch.textContent.trim()}`,
+            'info'
+          );
+          return;
+        }
+      }
+
+      if (q && !ranInPanel) {
+        toast(`No searchable list on this screen for "${q}".`, 'info');
+      }
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      runTopbarSearch(input.value);
+    });
+
+    input.addEventListener('search', () => {
+      if (!input.value.trim()) runTopbarSearch('');
+    });
+
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        input.value = '';
+        runTopbarSearch('');
+      });
+    }
   }
 
   const KPI_ICONS = {
@@ -964,6 +1192,8 @@ window.SMS = (() => {
     logout,
     activateSection,
     initNavigation,
+    applySearchBar,
+    initUniversalSearch,
     kpiCard,
     renderTimetableMatrix,
     formatBytes,

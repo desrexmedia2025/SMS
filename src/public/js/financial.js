@@ -287,6 +287,19 @@
   });
 
   document.getElementById('acc-filter-btn').addEventListener('click', () => {
+    const q = document.getElementById('acc-search').value.trim();
+    document.getElementById('acc-clear-btn')?.classList.toggle('hidden', !q);
+    loadAccounts().catch((err) => toast(err.message, 'error'));
+  });
+  document.getElementById('acc-search').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      document.getElementById('acc-filter-btn').click();
+    }
+  });
+  document.getElementById('acc-clear-btn')?.addEventListener('click', () => {
+    document.getElementById('acc-search').value = '';
+    document.getElementById('acc-clear-btn')?.classList.add('hidden');
     loadAccounts().catch((err) => toast(err.message, 'error'));
   });
 

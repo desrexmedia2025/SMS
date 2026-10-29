@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Teachers Dashboard - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=3.5">
+  <link rel="stylesheet" href="/css/styles.css?v=3.6">
 </head>
 <body>
   <div class="app-layout">
@@ -43,6 +43,11 @@
           <button class="mobile-menu-btn" id="mobile-menu-btn">Menu</button>
           <h1 class="topbar-title" id="topbar-title">Overview</h1>
         </div>
+        <form class="topbar-search-form" id="topbar-search-form" role="search">
+          <input type="search" id="topbar-search-input" class="topbar-search-input" placeholder="Search sections or records..." aria-label="Search dashboard">
+          <button type="submit" class="btn btn-primary btn-sm" id="topbar-search-btn">Search</button>
+          <button type="button" class="btn btn-secondary btn-sm hidden" id="topbar-search-clear-btn">Clear</button>
+        </form>
       </header>
 
       <main class="content-body">
@@ -109,7 +114,14 @@
           </div>
 
           <div class="card">
-            <div class="card-header"><h2 class="card-title">My Assigned Classes &amp; Subjects</h2></div>
+            <div class="card-header">
+              <h2 class="card-title">My Assigned Classes &amp; Subjects</h2>
+              <div class="search-bar" data-search-tbody="tc-ov-assignments">
+                <input type="search" class="search-bar-input" placeholder="Search class or subject...">
+                <button type="button" class="btn btn-primary btn-sm" data-search-btn>Search</button>
+                <button type="button" class="btn btn-secondary btn-sm hidden" data-search-clear>Clear</button>
+              </div>
+            </div>
             <div class="table-wrap">
               <table>
                 <thead><tr><th>Class</th><th>Subject</th></tr></thead>
@@ -196,7 +208,14 @@
                 <h2 class="card-title" id="cw-submissions-title">Student Answers &amp; Uploads</h2>
                 <div class="card-subtitle" id="cw-submissions-subtitle">Review written answers, view uploaded files, and enter scores</div>
               </div>
-              <button type="button" class="btn btn-secondary btn-sm" id="close-cw-submissions-btn">Close</button>
+              <div class="toolbar" style="margin:0;">
+                <div class="search-bar" data-search-list="cw-submissions-body">
+                  <input type="search" class="search-bar-input" placeholder="Search student submission...">
+                  <button type="button" class="btn btn-primary btn-sm" data-search-btn>Search</button>
+                  <button type="button" class="btn btn-secondary btn-sm hidden" data-search-clear>Clear</button>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" id="close-cw-submissions-btn">Close</button>
+              </div>
             </div>
             <div id="cw-submissions-body"></div>
           </div>
@@ -205,6 +224,11 @@
             <div class="card-header">
               <h2 class="card-title">Published Works &amp; Exams</h2>
               <div class="toolbar" style="margin:0;">
+                <div class="search-bar" data-search-list="tc-coursework-list">
+                  <input type="search" class="search-bar-input" placeholder="Search title or subject...">
+                  <button type="button" class="btn btn-primary btn-sm" data-search-btn>Search</button>
+                  <button type="button" class="btn btn-secondary btn-sm hidden" data-search-clear>Clear</button>
+                </div>
                 <select id="cw-filter-class"><option value="">All My Classes</option></select>
                 <select id="cw-filter-type">
                   <option value="">All Types</option>
@@ -227,7 +251,12 @@
               <h2 class="card-title">Students in My Class</h2>
               <div class="toolbar" style="margin:0;">
                 <select id="roster-class-select"></select>
-                <button class="btn btn-primary btn-sm" type="button" id="load-roster-btn">Load Students</button>
+                <button class="btn btn-secondary btn-sm" type="button" id="load-roster-btn">Load Students</button>
+                <div class="search-bar" data-search-tbody="roster-tbody">
+                  <input type="search" class="search-bar-input" placeholder="Search student or admission #...">
+                  <button type="button" class="btn btn-primary btn-sm" data-search-btn>Search</button>
+                  <button type="button" class="btn btn-secondary btn-sm hidden" data-search-clear>Clear</button>
+                </div>
               </div>
             </div>
             <div class="table-wrap">
@@ -242,7 +271,14 @@
         <!-- 4. TIMETABLE -->
         <section id="sec-timetable" class="module-panel hidden">
           <div class="card">
-            <div class="card-header"><h2 class="card-title">My Weekly Timetable</h2></div>
+            <div class="card-header">
+              <h2 class="card-title">My Weekly Timetable</h2>
+              <div class="search-bar" data-search-matrix="tc-tt-matrix">
+                <input type="search" class="search-bar-input" placeholder="Search subject, class, room...">
+                <button type="button" class="btn btn-primary btn-sm" data-search-btn>Search</button>
+                <button type="button" class="btn btn-secondary btn-sm hidden" data-search-clear>Clear</button>
+              </div>
+            </div>
             <div id="tc-tt-matrix"></div>
           </div>
         </section>
@@ -294,7 +330,14 @@
           </div>
 
           <div class="card">
-            <div class="card-header"><h2 class="card-title">Announcements</h2></div>
+            <div class="card-header">
+              <h2 class="card-title">Announcements</h2>
+              <div class="search-bar" data-search-list="tc-announcements">
+                <input type="search" class="search-bar-input" placeholder="Search announcements...">
+                <button type="button" class="btn btn-primary btn-sm" data-search-btn>Search</button>
+                <button type="button" class="btn btn-secondary btn-sm hidden" data-search-clear>Clear</button>
+              </div>
+            </div>
             <div id="tc-announcements"></div>
           </div>
         </section>
@@ -325,7 +368,7 @@
     </div>
   </div>
 
-  <script src="/js/common.js?v=3.5"></script>
-  <script src="/js/teacher.js?v=3.5"></script>
+  <script src="/js/common.js?v=3.6"></script>
+  <script src="/js/teacher.js?v=3.6"></script>
 </body>
 </html>

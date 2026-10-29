@@ -708,8 +708,24 @@
     updateTeacherSubjectCountBadge();
     updateUsrSubjectCountBadge();
 
+    renderTeachersTable(teachersCache);
+
+    document.getElementById('assignments-tbody').innerHTML =
+      (tData.assignments || [])
+        .map(
+          (a) => `<tr>
+            <td><code>${esc(a.staff_number)}</code></td>
+            <td>${esc(a.first_name)} ${esc(a.last_name)}</td>
+            <td><strong>${esc(a.class_name)}</strong></td>
+            <td>${esc(a.subject_code)} - ${esc(a.subject_name)}</td>
+          </tr>`
+        )
+        .join('') || '<tr><td colspan="4" class="empty-state">No class assignments yet.</td></tr>';
+  }
+
+  function renderTeachersTable(list) {
     document.getElementById('teachers-list-tbody').innerHTML =
-      teachersCache
+      (list || [])
         .map((t) => {
           const badges = (t.subjects || [])
             .map(
@@ -727,18 +743,14 @@
           </tr>`;
         })
         .join('') || '<tr><td colspan="6" class="empty-state">No teachers registered yet.</td></tr>';
+  }
 
-    document.getElementById('assignments-tbody').innerHTML =
-      (tData.assignments || [])
-        .map(
-          (a) => `<tr>
-            <td><code>${esc(a.staff_number)}</code></td>
-            <td>${esc(a.first_name)} ${esc(a.last_name)}</td>
-            <td><strong>${esc(a.class_name)}</strong></td>
-            <td>${esc(a.subject_code)} - ${esc(a.subject_name)}</td>
-          </tr>`
-        )
-        .join('') || '<tr><td colspan="4" class="empty-state">No class assignments yet.</td></tr>';
+  async function searchTeachersServer() {
+    const q = document.getElementById('tch-search-input')?.value.trim() || '';
+    const clearBtn = document.getElementById('tch-clear-btn');
+    if (clearBtn) clearBtn.classList.toggle('hidden', !q);
+    const tData = await api(`/api/superadmin/teachers?search=${encodeURIComponent(q)}`);
+    renderTeachersTable(tData.teachers || []);
   }
 
   function syncAssignTeacherSubjects() {
@@ -932,7 +944,14 @@
   }
 
   async function loadUsers() {
-    const data = await api('/api/superadmin/users');
+    const search = document.getElementById('usr-search-input')?.value.trim() || '';
+    const role = document.getElementById('usr-role-filter')?.value || '';
+    const clearBtn = document.getElementById('usr-clear-btn');
+    if (clearBtn) clearBtn.classList.toggle('hidden', !search && !role);
+    const qs = new URLSearchParams();
+    if (search) qs.set('search', search);
+    if (role) qs.set('role', role);
+    const data = await api(`/api/superadmin/users${qs.toString() ? `?${qs.toString()}` : ''}`);
     document.getElementById('users-tbody').innerHTML =
       (data.items || [])
         .map(
@@ -1231,9 +1250,58 @@
     }
   });
 
+  // Teachers, Students & Users Server-Backed Search Controls
+  document.getElementById('tch-search-btn')?.addEventListener('click', () => {
+    searchTeachersServer().catch((err) => toast(err.message, 'error'));
+  });
+  document.getElementById('tch-search-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      searchTeachersServer().catch((err) => toast(err.message, 'error'));
+    }
+  });
+  document.getElementById('tch-clear-btn')?.addEventListener('click', () => {
+    const inp = document.getElementById('tch-search-input');
+    if (inp) inp.value = '';
+    searchTeachersServer().catch((err) => toast(err.message, 'error'));
+  });
+
   // Students & Join Proposals
   document.getElementById('stu-filter-btn').addEventListener('click', () => {
+    const q = document.getElementById('stu-search').value.trim();
+    document.getElementById('stu-clear-btn')?.classList.toggle('hidden', !q);
     loadStudents().catch((err) => toast(err.message, 'error'));
+  });
+  document.getElementById('stu-search').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      document.getElementById('stu-filter-btn').click();
+    }
+  });
+  document.getElementById('stu-clear-btn')?.addEventListener('click', () => {
+    document.getElementById('stu-search').value = '';
+    document.getElementById('stu-clear-btn')?.classList.add('hidden');
+    loadStudents().catch((err) => toast(err.message, 'error'));
+  });
+
+  document.getElementById('usr-search-btn')?.addEventListener('click', () => {
+    loadUsers().catch((err) => toast(err.message, 'error'));
+  });
+  document.getElementById('usr-role-filter')?.addEventListener('change', () => {
+    loadUsers().catch((err) => toast(err.message, 'error'));
+  });
+  document.getElementById('usr-search-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      loadUsers().catch((err) => toast(err.message, 'error'));
+    }
+  });
+  document.getElementById('usr-clear-btn')?.addEventListener('click', () => {
+    const inp = document.getElementById('usr-search-input');
+    const sel = document.getElementById('usr-role-filter');
+    if (inp) inp.value = '';
+    if (sel) sel.value = '';
+    loadUsers().catch((err) => toast(err.message, 'error'));
   });
   document.getElementById('stu-req-status-filter').addEventListener('change', () => {
     loadStudentRequests().catch((err) => toast(err.message, 'error'));
