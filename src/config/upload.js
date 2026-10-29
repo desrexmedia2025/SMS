@@ -151,6 +151,60 @@ function uploadAttachments(req, res, next) {
   });
 }
 
+const AVATAR_MIME_MAP = {
+  'image/jpeg': '.jpg',
+  'image/pjpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  'image/gif': '.gif',
+};
+
+const avatarStorage = multer.diskStorage({
+  destination(_req, _file, cb) {
+    try {
+      const dir = path.join(resolveUploadsDir(), 'avatars');
+      fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+      cb(null, dir);
+    } catch (err) {
+      cb(err);
+    }
+  },
+  filename(_req, file, cb) {
+    const ext = AVATAR_MIME_MAP[String(file.mimetype || '').toLowerCase()] || '.jpg';
+    cb(null, `avatar_${Date.now()}_${crypto.randomUUID()}${ext}`);
+  },
+});
+
+const rawAvatarMulter = multer({
+  storage: avatarStorage,
+  limits: {
+    files: 1,
+    fileSize: 2 * 1024 * 1024, // 2 MB profile photos
+    fieldSize: 256 * 1024,
+  },
+  fileFilter(_req, file, cb) {
+    if (!AVATAR_MIME_MAP[String(file.mimetype || '').toLowerCase()]) {
+      return cb(new AppError(400, 'Profile photos must be a JPG, PNG, WEBP or GIF image.'));
+    }
+    return cb(null, true);
+  },
+});
+
+function uploadAvatar(req, res, next) {
+  const handler = rawAvatarMulter.single('avatar');
+  handler(req, res, (err) => {
+    if (!err) return next();
+    if (err instanceof AppError) return next(err);
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return next(new AppError(400, 'Profile photos must be 2 MB or smaller.'));
+      }
+      return next(new AppError(400, `Upload error: ${err.message}`));
+    }
+    return next(err);
+  });
+}
+
 function cleanupUploadedFiles(files = []) {
   for (const f of files || []) {
     if (f?.path) {
@@ -167,5 +221,6 @@ module.exports = {
   resolveUploadsDir,
   classifyUploadFile,
   uploadAttachments,
+  uploadAvatar,
   cleanupUploadedFiles,
 };

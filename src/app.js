@@ -30,6 +30,7 @@ const financialRoutes = require('./routes/financial.routes');
 const calendarRoutes = require('./routes/calendar.routes');
 const paystackService = require('./services/paystack.service');
 const courseworkService = require('./services/coursework.service');
+const profileController = require('./controllers/profile.controller');
 const { recordSiteHit } = require('./services/analytics.service');
 
 function createApp() {
@@ -229,6 +230,9 @@ function createApp() {
 
   // Authenticated, ownership-verified multimedia streaming (PDFs, images, videos, documents)
   app.get('/api/media/:id', authenticate, courseworkService.streamMediaFile);
+
+  // Authenticated profile photo streaming (no-store, content-sniffing blocked)
+  app.get('/api/users/:id/avatar', authenticate, profileController.getAvatar);
 
   // Role-protected API routers
   app.use('/api/superadmin', superadminRoutes);

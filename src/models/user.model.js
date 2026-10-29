@@ -9,6 +9,8 @@ const USER_WITH_ROLE_SQL = `
     u.full_name,
     u.phone,
     u.avatar_url,
+    u.avatar_file,
+    u.avatar_updated_at,
     u.status,
     u.google_subject_id,
     u.email_verified,
@@ -71,6 +73,17 @@ async function getPermissionsForRole(roleSlug, runner = db) {
   return rows.map((r) => r.code);
 }
 
+function resolveAvatarUrl(row) {
+  const remote = String(row.avatar_url || '').trim();
+  if (remote && /^https?:\/\//i.test(remote)) return remote;
+  const stored = String(row.avatar_file || '').trim();
+  if (!stored) return '';
+  const stamp = row.avatar_updated_at
+    ? Date.parse(String(row.avatar_updated_at).replace(' ', 'T') + 'Z') || Date.now()
+    : Date.now();
+  return `/api/users/${row.id}/avatar?v=${stamp}`;
+}
+
 function toSafeSessionUser(row) {
   if (!row) return null;
   return {
@@ -79,6 +92,7 @@ function toSafeSessionUser(row) {
     email: row.email,
     fullName: row.full_name,
     phone: row.phone || '',
+    avatarUrl: resolveAvatarUrl(row),
     status: row.status,
     role: row.role || null,
     roleName: row.role_name || '',
@@ -118,5 +132,6 @@ module.exports = {
   findByGoogleSubjectId,
   getPermissionsForRole,
   toSafeSessionUser,
+  resolveAvatarUrl,
   dashboardPathForRole,
 };

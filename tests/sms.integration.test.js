@@ -1810,7 +1810,7 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
   // Every dashboard includes Show/Hide Menu button, modern action tiles & clean v3.x assets
   for (const html of [saHtml, tcHtml, stHtml, fnHtml]) {
     assert.match(html, /id="mobile-menu-btn"/);
-    assert.match(html, /\?v=3\.13/);
+    assert.match(html, /\?v=3\.14/);
     assert.match(html, /class="action-tile-grid"/);
     assert.doesNotMatch(html, /Hide Figures/i);
     assert.doesNotMatch(html, /Audit Log/i);
@@ -2300,6 +2300,217 @@ test('24. Overview Calendar on all four dashboards: small widget in the right co
   );
   assert.match(commonSrc, /\/api\/calendar\/events/);
   assert.match(commonSrc, /initOverviewCalendar/);
+});
+
+test('25. Profile photos & one-time code (OTP) sign-in by email or phone', async () => {
+  const PNG_1PX = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+    'base64'
+  );
+
+  function pngForm(field = 'avatar') {
+    const form = new FormData();
+    form.append(field, new Blob([PNG_1PX], { type: 'image/png' }), 'photo.png');
+    return form;
+  }
+
+  // ---------- ONE-TIME CODE SIGN-IN (EMAIL) ----------
+  const otpClient = new SessionClient();
+  await otpClient.request('/api/auth/session');
+
+  // CSRF protection on the OTP endpoints
+  const noCsrf = await otpClient.request('/api/auth/otp/request', {
+    method: 'POST',
+    body: { identifier: 'admin@school.edu.gh', channel: 'email' },
+    sendCsrf: false,
+  });
+  assert.equal(noCsrf.status, 403);
+
+  const otpReq = await otpClient.request('/api/auth/otp/request', {
+    method: 'POST',
+    body: { identifier: 'admin@school.edu.gh', channel: 'email' },
+  });
+  assert.equal(otpReq.status, 200);
+  assert.equal(otpReq.json.channel, 'email');
+  assert.match(otpReq.json.sandboxCode, /^\d{6}$/);
+  assert.match(otpReq.json.destination, /@/);
+  assert.ok(otpReq.json.expiresInSeconds > 60);
+
+  // Wrong code is rejected
+  const wrongCode = await otpClient.request('/api/auth/otp/verify', {
+    method: 'POST',
+    body: { identifier: 'admin@school.edu.gh', code: '000000' },
+  });
+  assert.equal(wrongCode.status, 400);
+
+  // Correct code signs the user in and lands on the right dashboard
+  const otpLogin = await otpClient.request('/api/auth/otp/verify', {
+    method: 'POST',
+    body: { identifier: 'admin@school.edu.gh', code: otpReq.json.sandboxCode },
+  });
+  assert.equal(otpLogin.status, 200);
+  assert.equal(otpLogin.json.user.role, 'superadmin');
+  assert.equal(otpLogin.json.redirectTo, '/dashboard/superadmin');
+  assert.ok(otpLogin.json.sessionToken);
+
+  const otpSession = await otpClient.request('/api/auth/session');
+  assert.equal(otpSession.json.authenticated, true);
+  assert.equal(otpSession.json.user.email, 'admin@school.edu.gh');
+
+  // Codes are strictly single-use
+  const replay = await otpClient.request('/api/auth/otp/verify', {
+    method: 'POST',
+    body: { identifier: 'admin@school.edu.gh', code: otpReq.json.sandboxCode },
+  });
+  assert.equal(replay.status, 400);
+
+  // Unknown accounts are never revealed (anti-enumeration): same 200, no code
+  const unknown = await otpClient.request('/api/auth/otp/request', {
+    method: 'POST',
+    body: { identifier: 'no.such.user@nowhere.test', channel: 'email' },
+  });
+  assert.equal(unknown.status, 200);
+  assert.equal(unknown.json.sandboxCode, '');
+
+  // ---------- ONE-TIME CODE SIGN-IN (PHONE / SMS) ----------
+  const student = new SessionClient();
+  await student.login('kwame.asante@student.school.edu.gh', 'Student@2026!');
+  const phoneRes = await student.request('/api/student/profile/contact', {
+    method: 'PATCH',
+    body: { phone: '0244112233' },
+  });
+  assert.equal(phoneRes.status, 200);
+
+  const phoneClient = new SessionClient();
+  await phoneClient.request('/api/auth/session');
+  const smsReq = await phoneClient.request('/api/auth/otp/request', {
+    method: 'POST',
+    body: { identifier: '0244112233', channel: 'phone' },
+  });
+  assert.equal(smsReq.status, 200);
+  assert.equal(smsReq.json.channel, 'phone');
+  assert.match(smsReq.json.sandboxCode, /^\d{6}$/);
+
+  const smsLogin = await phoneClient.request('/api/auth/otp/verify', {
+    method: 'POST',
+    body: { identifier: '0244112233', code: smsReq.json.sandboxCode },
+  });
+  assert.equal(smsLogin.status, 200);
+  assert.equal(smsLogin.json.user.role, 'student');
+  assert.equal(smsLogin.json.redirectTo, '/dashboard/student');
+
+  // Request throttling: 3 live codes per 10 minutes, then 429
+  let throttled = null;
+  for (let i = 0; i < 2; i += 1) {
+    await phoneClient.request('/api/auth/otp/request', {
+      method: 'POST',
+      body: { identifier: '0244112233', channel: 'phone' },
+    });
+  }
+  throttled = await phoneClient.request('/api/auth/otp/request', {
+    method: 'POST',
+    body: { identifier: '0244112233', channel: 'phone' },
+  });
+  assert.equal(throttled.status, 429);
+
+  // ---------- PROFILE PHOTO UPLOAD, SERVING & REMOVAL ----------
+  const teacher = new SessionClient();
+  await teacher.login('kofi.mensah@school.edu.gh', 'Teacher@2026!');
+  const teacherSess = await teacher.request('/api/auth/session');
+  const teacherId = teacherSess.json.user.id;
+
+  const anonAvatar = await new SessionClient().request(`/api/users/${teacherId}/avatar`);
+  assert.equal(anonAvatar.status, 401);
+
+  const missingAvatar = await teacher.request(`/api/users/${teacherId}/avatar`);
+  assert.equal(missingAvatar.status, 404);
+
+  const upload = await teacher.request('/api/auth/avatar', {
+    method: 'POST',
+    body: pngForm(),
+  });
+  assert.equal(upload.status, 200);
+  assert.match(upload.json.avatarUrl, /^\/api\/users\/\d+\/avatar\?v=\d+$/);
+
+  const served = await teacher.request(upload.json.avatarUrl);
+  assert.equal(served.status, 200);
+  assert.match(String(served.headers.get('content-type') || ''), /^image\//);
+  assert.equal(Buffer.compare(served.buffer, PNG_1PX), 0);
+
+  const sessAfter = await teacher.request('/api/auth/session');
+  assert.match(sessAfter.json.user.avatarUrl, /^\/api\/users\/\d+\/avatar/);
+
+  // Non-image uploads are rejected
+  const badForm = new FormData();
+  badForm.append('avatar', new Blob([Buffer.from('not an image')], { type: 'text/plain' }), 'notes.txt');
+  const badUpload = await teacher.request('/api/auth/avatar', { method: 'POST', body: badForm });
+  assert.equal(badUpload.status, 400);
+
+  // Superadmin can set any account's photo; other roles cannot
+  const admin = new SessionClient();
+  await admin.login('admin@school.edu.gh', 'Admin@2026!');
+  const adminSet = await admin.request(`/api/superadmin/users/${teacherId}/avatar`, {
+    method: 'POST',
+    body: pngForm(),
+  });
+  assert.equal(adminSet.status, 200);
+  assert.match(adminSet.json.avatarUrl, /^\/api\/users\/\d+\/avatar/);
+
+  const forbiddenSet = await student.request(`/api/superadmin/users/${teacherId}/avatar`, {
+    method: 'POST',
+    body: pngForm(),
+  });
+  assert.equal(forbiddenSet.status, 403);
+
+  // Removal clears the stored photo
+  const removed = await teacher.request('/api/auth/avatar', { method: 'DELETE' });
+  assert.equal(removed.status, 200);
+  assert.equal(removed.json.avatarUrl, '');
+  const afterRemoval = await teacher.request(`/api/users/${teacherId}/avatar`);
+  assert.equal(afterRemoval.status, 404);
+
+  // ---------- UI: avatar controls in the side panel + OTP panel on /login ----------
+  const loginPage = await new SessionClient().request('/login');
+  assert.equal(loginPage.status, 200);
+  assert.match(loginPage.text, /id="otp-panel"/);
+  assert.match(loginPage.text, /id="otp-identifier"/);
+  assert.match(loginPage.text, /id="otp-channel"/);
+  assert.match(loginPage.text, /id="otp-code-input"/);
+  assert.match(loginPage.text, /id="otp-request-btn"/);
+  assert.match(loginPage.text, /id="otp-verify-btn"/);
+
+  const loginJs = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'public', 'js', 'login.js'),
+    'utf8'
+  );
+  assert.match(loginJs, /\/api\/auth\/otp\/request/);
+  assert.match(loginJs, /\/api\/auth\/otp\/verify/);
+
+  for (const [hRel, extraIds] of [
+    ['src/views/superadmin.html', ['sb-avatar-img', 'change-photo-btn', 'avatar-file-input']],
+    ['src/views/teacher.html', ['sb-avatar-img', 'prof-avatar-img', 'prof-photo-btn']],
+    ['src/views/student.html', ['sb-avatar-img', 'prof-avatar-img', 'prof-photo-btn']],
+    ['src/views/financial.html', ['sb-avatar-img', 'change-photo-btn', 'avatar-file-input']],
+  ]) {
+    const html = fs.readFileSync(path.join(__dirname, '..', hRel), 'utf8');
+    for (const id of extraIds) {
+      assert.match(html, new RegExp(`id="${id}"`), `${hRel} must contain #${id}`);
+    }
+  }
+
+  const commonSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'public', 'js', 'common.js'),
+    'utf8'
+  );
+  assert.match(commonSrc, /\/api\/auth\/avatar/);
+  assert.match(commonSrc, /initProfileAvatar/);
+
+  const cssText = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'public', 'css', 'styles.css'),
+    'utf8'
+  );
+  assert.match(cssText, /\.profile-avatar \{/);
+  assert.match(cssText, /\.otp-code-input \{/);
 });
 
 

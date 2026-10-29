@@ -15,6 +15,14 @@
   await SMS.initSession();
   SMS.configureGoogleLinkButton('google-link-btn');
   SMS.initOverviewCalendar();
+  SMS.initProfileAvatar();
+  SMS.initProfileAvatar({
+    imgId: 'prof-avatar-img',
+    initialsId: 'prof-avatar-initials',
+    changeId: 'prof-photo-btn',
+    removeId: 'prof-photo-remove-btn',
+    inputId: 'prof-avatar-input',
+  });
   document.getElementById('logout-btn').addEventListener('click', SMS.logout);
 
   function getCheckedClassIds(containerId) {

@@ -1,5 +1,7 @@
 const express = require('express');
 const ctrl = require('../controllers/superadmin.controller');
+const profileCtrl = require('../controllers/profile.controller');
+const { uploadAvatar } = require('../config/upload');
 const { authenticate } = require('../middleware/authenticate');
 const { authorizeRole } = require('../middleware/authorizeRole');
 const { verifyCsrfToken } = require('../middleware/csrfProtection');
@@ -14,6 +16,8 @@ router.get('/users', ctrl.listUsers);
 router.post('/users', verifyCsrfToken, ctrl.createUser);
 router.patch('/users/:id', verifyCsrfToken, ctrl.updateUser);
 router.post('/users/:id/unlock', verifyCsrfToken, ctrl.unlockUser);
+router.post('/users/:id/avatar', verifyCsrfToken, uploadAvatar, profileCtrl.setUserAvatar);
+router.delete('/users/:id/avatar', verifyCsrfToken, profileCtrl.clearUserAvatar);
 
 router.get('/academic', ctrl.getAcademicSetup);
 router.post('/academic/years', verifyCsrfToken, ctrl.createAcademicYear);

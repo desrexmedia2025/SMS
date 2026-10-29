@@ -4,6 +4,7 @@
   await SMS.initSession();
   SMS.configureGoogleLinkButton('google-link-btn');
   SMS.initOverviewCalendar();
+  SMS.initProfileAvatar();
   document.getElementById('logout-btn').addEventListener('click', SMS.logout);
 
   const user = SMS.getUser();
@@ -961,11 +962,12 @@
             <td>${esc(u.email)}</td>
             <td><span class="badge badge-neutral">${esc(u.role)}</span></td>
             <td>${statusBadge(u.status)}</td>
-            <td>
+            <td style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button type="button" class="btn btn-secondary btn-sm" data-set-avatar="${u.id}" data-user-name="${esc(u.full_name)}">Photo</button>
               ${
                 u.role !== 'superadmin'
                   ? `<button type="button" class="btn btn-secondary btn-sm" data-toggle-user="${u.id}" data-cur-status="${esc(u.status)}">${u.status === 'active' ? 'Suspend' : 'Activate'}</button>`
-                  : '-'
+                  : ''
               }
             </td>
           </tr>`
@@ -1516,7 +1518,17 @@
     }
   });
 
+  // Superadmin sets any portal account's profile photo
+  const userAvatarInput = document.getElementById('user-avatar-input');
+  let pendingAvatarUserId = null;
+
   document.getElementById('users-tbody').addEventListener('click', async (e) => {
+    const avatarBtn = e.target.closest('[data-set-avatar]');
+    if (avatarBtn) {
+      pendingAvatarUserId = Number(avatarBtn.dataset.setAvatar);
+      if (pendingAvatarUserId > 0) userAvatarInput?.click();
+      return;
+    }
     const btn = e.target.closest('[data-toggle-user]');
     if (!btn) return;
     const next = btn.dataset.curStatus === 'active' ? 'suspended' : 'active';
@@ -1526,6 +1538,34 @@
         body: { status: next },
       });
       toast(`Account ${next}.`, 'info');
+      await loadUsers();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+
+  userAvatarInput?.addEventListener('change', async () => {
+    const file = userAvatarInput.files && userAvatarInput.files[0];
+    const userId = pendingAvatarUserId;
+    pendingAvatarUserId = null;
+    userAvatarInput.value = '';
+    if (!file || !userId) return;
+    if (!/^image\/(png|jpeg|jpg|webp|gif)$/i.test(file.type)) {
+      toast('Profile photos must be a JPG, PNG, WEBP or GIF image.', 'error');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast('Profile photos must be 2 MB or smaller.', 'error');
+      return;
+    }
+    const form = new FormData();
+    form.append('avatar', file);
+    try {
+      const data = await api(`/api/superadmin/users/${userId}/avatar`, {
+        method: 'POST',
+        body: form,
+      });
+      toast(data.message || 'Profile photo updated.', 'success');
       await loadUsers();
     } catch (err) {
       toast(err.message, 'error');

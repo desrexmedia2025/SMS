@@ -1719,6 +1719,121 @@ window.SMS = (() => {
       .join('')}</div>`;
   }
 
+  /* ---------------- PROFILE PHOTO AVATARS (Side Panel + Profile Pages) ---------------- */
+  const AVATAR_CONTROLS = [];
+
+  function initialsOf(name) {
+    const parts = String(name || '')
+      .split(/\s+/)
+      .filter(Boolean);
+    if (!parts.length) return 'SC';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  }
+
+  function avatarUrlWithBust(url) {
+    if (!url) return '';
+    return url.includes('?') ? `${url}&t=${Date.now()}` : `${url}?t=${Date.now()}`;
+  }
+
+  function renderAvatarControl(cfg) {
+    const user = currentUser || {};
+    const url = user.avatarUrl || '';
+    const img = document.getElementById(cfg.imgId);
+    const fallback = document.getElementById(cfg.initialsId);
+    const removeBtn = document.getElementById(cfg.removeId);
+
+    if (fallback) fallback.textContent = initialsOf(user.fullName || user.username);
+    if (img) {
+      if (url) {
+        img.src = avatarUrlWithBust(url);
+        img.classList.remove('hidden');
+        if (fallback) fallback.classList.add('hidden');
+      } else {
+        img.removeAttribute('src');
+        img.classList.add('hidden');
+        if (fallback) fallback.classList.remove('hidden');
+      }
+    }
+    if (removeBtn) removeBtn.classList.toggle('hidden', !url);
+  }
+
+  function renderAllAvatars() {
+    AVATAR_CONTROLS.forEach(renderAvatarControl);
+  }
+
+  async function uploadAvatarFile(cfg, file) {
+    if (!file) return;
+    if (!/^image\/(png|jpeg|jpg|webp|gif)$/i.test(file.type)) {
+      toast('Profile photos must be a JPG, PNG, WEBP or GIF image.', 'error');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast('Profile photos must be 2 MB or smaller.', 'error');
+      return;
+    }
+    const form = new FormData();
+    form.append('avatar', file);
+    const changeBtn = document.getElementById(cfg.changeId);
+    if (changeBtn) changeBtn.disabled = true;
+    try {
+      const data = await api('/api/auth/avatar', { method: 'POST', body: form });
+      if (currentUser) currentUser.avatarUrl = data.avatarUrl || '';
+      document.dispatchEvent(
+        new CustomEvent('sms:avatarchanged', { detail: { avatarUrl: data.avatarUrl || '' } })
+      );
+      renderAllAvatars();
+      toast(data.message || 'Profile photo updated.', 'success');
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      if (changeBtn) changeBtn.disabled = false;
+      const input = document.getElementById(cfg.inputId);
+      if (input) input.value = '';
+    }
+  }
+
+  async function removeAvatarFile() {
+    try {
+      const data = await api('/api/auth/avatar', { method: 'DELETE' });
+      if (currentUser) currentUser.avatarUrl = '';
+      document.dispatchEvent(new CustomEvent('sms:avatarchanged', { detail: { avatarUrl: '' } }));
+      renderAllAvatars();
+      toast(data.message || 'Profile photo removed.', 'info');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }
+
+  function initProfileAvatar(options = {}) {
+    const cfg = {
+      imgId: options.imgId || 'sb-avatar-img',
+      initialsId: options.initialsId || 'sb-avatar-initials',
+      changeId: options.changeId || 'change-photo-btn',
+      removeId: options.removeId || 'remove-photo-btn',
+      inputId: options.inputId || 'avatar-file-input',
+    };
+
+    const changeBtn = document.getElementById(cfg.changeId);
+    const input = document.getElementById(cfg.inputId);
+    const removeBtn = document.getElementById(cfg.removeId);
+
+    if (changeBtn && input && changeBtn.dataset.avatarBound !== '1') {
+      changeBtn.dataset.avatarBound = '1';
+      changeBtn.addEventListener('click', () => input.click());
+      input.addEventListener('change', () => uploadAvatarFile(cfg, input.files && input.files[0]));
+    }
+    if (removeBtn && removeBtn.dataset.avatarBound !== '1') {
+      removeBtn.dataset.avatarBound = '1';
+      removeBtn.addEventListener('click', removeAvatarFile);
+    }
+
+    if (!AVATAR_CONTROLS.some((c) => c.imgId === cfg.imgId)) {
+      AVATAR_CONTROLS.push(cfg);
+    }
+    renderAvatarControl(cfg);
+  }
+
   /* ---------------- OVERVIEW CALENDAR (All Four Dashboards) ---------------- */
   const CAL_EVENT_CACHE = new Map();
   const CAL_STATE = { year: null, month: null, selected: null, events: [], loading: false };
@@ -2030,6 +2145,9 @@ window.SMS = (() => {
     navigateAuthenticated,
     initOverviewCalendar,
     clearCalendarCache,
+    initProfileAvatar,
+    renderAllAvatars,
+    initialsOf,
     setSessionToken,
     getSessionToken,
     getUser: () => currentUser,
