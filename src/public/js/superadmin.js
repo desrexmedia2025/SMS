@@ -1235,6 +1235,172 @@
     }
   });
 
+  // ---------------- SCHOOL-WIDE CALENDAR EVENTS ----------------
+  const SEV_PRESET_COLORS = [
+    '#2563eb', '#0ea5e9', '#7c3aed', '#dc2626',
+    '#059669', '#f59e0b', '#db2777', '#0f172a',
+  ];
+
+  let schoolEventsCache = [];
+  let editingSchoolEventId = null;
+
+  function renderSevPresets() {
+    const box = document.getElementById('sev-colour-presets');
+    if (!box) return;
+    box.innerHTML = SEV_PRESET_COLORS.map(
+      (c) =>
+        `<button type="button" class="sev-colour-swatch" data-sev-colour="${c}" style="background:${c}" aria-label="Use colour ${c}"></button>`
+    ).join('');
+  }
+  renderSevPresets();
+
+  document.getElementById('sev-colour-presets').addEventListener('click', (e) => {
+    const sw = e.target.closest('[data-sev-colour]');
+    if (!sw) return;
+    document.getElementById('sev-colour').value = sw.dataset.sevColour;
+  });
+
+  const SEV_TYPE_COLORS = {
+    holiday: '#0ea5e9',
+    meeting: '#7c3aed',
+    exam: '#dc2626',
+    sports: '#059669',
+    other: '#f59e0b',
+  };
+
+  document.getElementById('sev-type').addEventListener('change', (e) => {
+    document.getElementById('sev-colour').value = SEV_TYPE_COLORS[e.target.value] || '#2563eb';
+  });
+
+  function sevDateLabel(ev) {
+    if (ev.start_date === ev.end_date) return ev.start_date;
+    return `${ev.start_date} to ${ev.end_date}`;
+  }
+
+  async function loadSchoolEvents() {
+    const data = await api('/api/superadmin/events');
+    schoolEventsCache = data.items || [];
+    renderSchoolEvents();
+  }
+
+  function renderSchoolEvents() {
+    const q = (document.getElementById('sev-search-input')?.value || '').trim().toLowerCase();
+    document.getElementById('sev-clear-btn')?.classList.toggle('hidden', !q);
+    const rows = schoolEventsCache.filter(
+      (ev) =>
+        !q ||
+        `${ev.title} ${ev.event_type_label} ${ev.description || ''}`.toLowerCase().includes(q)
+    );
+    document.getElementById('school-events-tbody').innerHTML =
+      rows
+        .map(
+          (ev) => `<tr>
+            <td><span class="sev-colour-chip" style="background:${esc(ev.color)}"></span></td>
+            <td>
+              <strong>${esc(ev.title)}</strong>
+              ${ev.description ? `<div class="muted-sm">${esc(ev.description)}</div>` : ''}
+            </td>
+            <td><span class="badge badge-neutral">${esc(ev.event_type_label)}</span></td>
+            <td class="tabular">${esc(sevDateLabel(ev))}${ev.multi_day ? ' <span class="muted-sm">(multi-day)</span>' : ''}</td>
+            <td>${esc(ev.audience_label)}</td>
+            <td style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button type="button" class="btn btn-secondary btn-sm" data-edit-sev="${ev.id}">Edit</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-del-sev="${ev.id}">Delete</button>
+            </td>
+          </tr>`
+        )
+        .join('') || '<tr><td colspan="6" class="empty-state">No school events scheduled yet.</td></tr>';
+  }
+
+  document.getElementById('sev-search-btn').addEventListener('click', renderSchoolEvents);
+  document.getElementById('sev-clear-btn').addEventListener('click', () => {
+    document.getElementById('sev-search-input').value = '';
+    renderSchoolEvents();
+  });
+  document.getElementById('sev-search-input').addEventListener('input', renderSchoolEvents);
+
+  function resetSchoolEventForm() {
+    editingSchoolEventId = null;
+    document.getElementById('school-event-form').reset();
+    document.getElementById('school-event-id').value = '';
+    document.getElementById('school-event-form-title').textContent = 'Add School Event';
+    document.getElementById('sev-submit-btn').textContent = 'Add Event';
+    document.getElementById('cancel-edit-school-event').classList.add('hidden');
+    document.getElementById('sev-colour').value = '#2563eb';
+  }
+
+  document.getElementById('cancel-edit-school-event').addEventListener('click', resetSchoolEventForm);
+
+  document.getElementById('school-event-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = {
+      title: document.getElementById('sev-title').value.trim(),
+      description: document.getElementById('sev-description').value.trim(),
+      eventType: document.getElementById('sev-type').value,
+      startDate: document.getElementById('sev-start').value,
+      endDate: document.getElementById('sev-end').value || document.getElementById('sev-start').value,
+      color: document.getElementById('sev-colour').value,
+      audience: document.getElementById('sev-audience').value,
+    };
+    const isEdit = Boolean(editingSchoolEventId);
+    const btn = document.getElementById('sev-submit-btn');
+    btn.disabled = true;
+    try {
+      const res = isEdit
+        ? await api(`/api/superadmin/events/${editingSchoolEventId}`, {
+            method: 'PATCH',
+            body: payload,
+          })
+        : await api('/api/superadmin/events', { method: 'POST', body: payload });
+      toast(res.message || 'School event saved.', 'success');
+      resetSchoolEventForm();
+      window.SMS.clearCalendarCache();
+      await loadSchoolEvents();
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('school-events-tbody').addEventListener('click', async (e) => {
+    const editBtn = e.target.closest('[data-edit-sev]');
+    if (editBtn) {
+      const ev = schoolEventsCache.find((x) => Number(x.id) === Number(editBtn.dataset.editSev));
+      if (!ev) return;
+      editingSchoolEventId = ev.id;
+      document.getElementById('school-event-id').value = String(ev.id);
+      document.getElementById('sev-title').value = ev.title || '';
+      document.getElementById('sev-description').value = ev.description || '';
+      document.getElementById('sev-type').value = ev.event_type || 'other';
+      document.getElementById('sev-start').value = ev.start_date || '';
+      document.getElementById('sev-end').value = ev.end_date || '';
+      document.getElementById('sev-audience').value = ev.audience || 'all';
+      document.getElementById('sev-colour').value = ev.color || '#2563eb';
+      document.getElementById('school-event-form-title').textContent = `Edit — ${ev.title}`;
+      document.getElementById('sev-submit-btn').textContent = 'Save Changes';
+      document.getElementById('cancel-edit-school-event').classList.remove('hidden');
+      document.getElementById('sev-title').focus();
+      return;
+    }
+
+    const delBtn = e.target.closest('[data-del-sev]');
+    if (delBtn) {
+      const ev = schoolEventsCache.find((x) => Number(x.id) === Number(delBtn.dataset.delSev));
+      if (!ev) return;
+      if (!window.confirm(`Delete the event "${ev.title}"?`)) return;
+      try {
+        const res = await api(`/api/superadmin/events/${ev.id}`, { method: 'DELETE' });
+        toast(res.message || 'School event deleted.', 'success');
+        if (Number(editingSchoolEventId) === Number(ev.id)) resetSchoolEventForm();
+        window.SMS.clearCalendarCache();
+        await loadSchoolEvents();
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    }
+  });
+
   // ---------------- NAVIGATION ----------------
   async function loadSectionData(sec) {
     if (sec === 'overview') await loadOverview();
@@ -1252,6 +1418,7 @@
       await loadStudents();
       await loadStudentRequests();
     }
+    if (sec === 'events') await loadSchoolEvents();
     if (sec === 'timetables') {
       await loadAcademicAndTeachers();
       await loadTimetable();

@@ -21,6 +21,12 @@ router.post('/users/:id/unlock', verifyCsrfToken, ctrl.unlockUser);
 router.post('/users/:id/avatar', verifyCsrfToken, uploadAvatar, profileCtrl.setUserAvatar);
 router.delete('/users/:id/avatar', verifyCsrfToken, profileCtrl.clearUserAvatar);
 
+// School-wide calendar events (holidays, PTA meetings, exam weeks, sports day, ...)
+router.get('/events', ctrl.listSchoolEvents);
+router.post('/events', verifyCsrfToken, ctrl.createSchoolEvent);
+router.patch('/events/:id', verifyCsrfToken, ctrl.updateSchoolEvent);
+router.delete('/events/:id', verifyCsrfToken, ctrl.deleteSchoolEvent);
+
 router.get('/academic', ctrl.getAcademicSetup);
 router.post('/academic/years', verifyCsrfToken, ctrl.createAcademicYear);
 router.post('/academic/terms', verifyCsrfToken, ctrl.createTerm);

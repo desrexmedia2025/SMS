@@ -1956,9 +1956,19 @@ window.SMS = (() => {
       const key = `${cursor.getFullYear()}-${pad2(cursor.getMonth() + 1)}-${pad2(cursor.getDate())}`;
       const outside = cursor.getMonth() !== month;
       const dayEvents = byDate.get(key) || [];
-      const tones = Array.from(new Set(dayEvents.map((e) => e.tone || e.kind))).slice(0, 3);
-      const dots = tones
-        .map((t) => `<span class="cal-dot cal-dot-${esc(t)}"></span>`)
+      const toneSet = new Map();
+      dayEvents.forEach((e) => {
+        const tone = e.tone || e.kind;
+        if (!toneSet.has(tone)) toneSet.set(tone, e.color || '');
+      });
+      const dots = Array.from(toneSet.entries())
+        .slice(0, 3)
+        .map(
+          ([t, color]) =>
+            `<span class="cal-dot ${color ? 'cal-dot-custom' : `cal-dot-${esc(t)}`}"${
+              color ? ` style="background:${esc(color)}"` : ''
+            }></span>`
+        )
         .join('');
       cells += `<button type="button" class="cal-day${outside ? ' is-outside' : ''}${
         key === today ? ' is-today' : ''
@@ -1993,6 +2003,11 @@ window.SMS = (() => {
         <span class="cal-legend-item"><span class="cal-dot cal-dot-announcement"></span>Announcements</span>
         <span class="cal-legend-item"><span class="cal-dot cal-dot-fee"></span>Fees Due</span>
         <span class="cal-legend-item"><span class="cal-dot cal-dot-payment"></span>Payments</span>
+        ${
+          CAL_STATE.events.some((ev) => ev.kind === 'school_event')
+            ? '<span class="cal-legend-item"><span class="cal-dot cal-dot-school_event"></span>School Events</span>'
+            : ''
+        }
       </div>
     `;
 
@@ -2022,7 +2037,9 @@ window.SMS = (() => {
 
     const itemHtml = (ev) => `
       <div class="cal-agenda-item">
-        <span class="cal-dot cal-dot-${esc(ev.tone || ev.kind)}"></span>
+        <span class="cal-dot ${
+          ev.color ? 'cal-dot-custom' : `cal-dot-${esc(ev.tone || ev.kind)}`
+        }"${ev.color ? ` style="background:${esc(ev.color)}"` : ''}></span>
         <div class="cal-agenda-copy">
           <div class="cal-agenda-title">${esc(ev.title)}</div>
           <div class="cal-agenda-meta">${esc(ev.date)} &middot; ${esc(ev.meta || ev.kindLabel || '')}</div>

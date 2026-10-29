@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const superadminService = require('../services/superadmin.service');
+const schoolEventService = require('../services/schoolEvent.service');
 const financialService = require('../services/financial.service');
 const systemModel = require('../models/system.model');
 const { recordAudit } = require('../services/audit.service');
@@ -290,6 +291,57 @@ async function enrolStudent(req, res) {
       initialPassword: password,
     },
   });
+}
+
+// ---------------- SCHOOL-WIDE CALENDAR EVENTS ----------------
+async function listSchoolEvents(req, res) {
+  const data = await schoolEventService.listSchoolEvents({
+    from: optionalString(req.query.from, 10),
+    to: optionalString(req.query.to, 10),
+  });
+  return res.json({ ok: true, ...data });
+}
+
+async function createSchoolEvent(req, res) {
+  const created = await schoolEventService.createSchoolEvent({
+    title: req.body.title,
+    description: optionalString(req.body.description, 500),
+    eventType: req.body.eventType || req.body.event_type || 'other',
+    startDate: req.body.startDate || req.body.start_date,
+    endDate: req.body.endDate || req.body.end_date,
+    color: optionalString(req.body.color, 9),
+    audience: req.body.audience || 'all',
+    actor: req.user,
+    ipAddress: req.ip,
+  });
+  return res.status(201).json({ ok: true, ...created });
+}
+
+async function updateSchoolEvent(req, res) {
+  const eventId = requirePositiveInt(req.params.id, 'Event ID');
+  const updated = await schoolEventService.updateSchoolEvent({
+    eventId,
+    title: req.body.title,
+    description: req.body.description === undefined ? undefined : optionalString(req.body.description, 500),
+    eventType: req.body.eventType || req.body.event_type,
+    startDate: req.body.startDate || req.body.start_date,
+    endDate: req.body.endDate || req.body.end_date,
+    color: req.body.color === undefined ? undefined : optionalString(req.body.color, 9),
+    audience: req.body.audience,
+    actor: req.user,
+    ipAddress: req.ip,
+  });
+  return res.json({ ok: true, ...updated });
+}
+
+async function deleteSchoolEvent(req, res) {
+  const eventId = requirePositiveInt(req.params.id, 'Event ID');
+  const result = await schoolEventService.deleteSchoolEvent({
+    eventId,
+    actor: req.user,
+    ipAddress: req.ip,
+  });
+  return res.json({ ok: true, ...result });
 }
 
 // ---------------- CENTRALISED RECORD EDITING (Students, Teachers & Staff) ----------------
@@ -708,6 +760,10 @@ module.exports = {
   createTeacher,
   updateTeacherSubjects,
   assignTeacher,
+  listSchoolEvents,
+  createSchoolEvent,
+  updateSchoolEvent,
+  deleteSchoolEvent,
   listStudents,
   enrolStudent,
   updateStudent,

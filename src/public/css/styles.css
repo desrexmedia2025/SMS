@@ -3557,3 +3557,37 @@ html[dir="rtl"] .nav-btn.active {
   .record-modal { max-height: calc(100vh - 20px); }
   .record-modal-footer .btn { flex: 1; }
 }
+
+/* ------------- School Events (Superadmin calendar publishing) ------------- */
+.sev-colour-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sev-colour-row input[type="color"] {
+  width: 46px;
+  height: 34px;
+  padding: 2px;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+.sev-colour-presets { display: flex; gap: 6px; flex-wrap: wrap; }
+.sev-colour-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.12);
+  cursor: pointer;
+  padding: 0;
+}
+.sev-colour-swatch:hover { transform: scale(1.12); }
+.sev-colour-chip {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.12);
+  vertical-align: middle;
+}
+.cal-dot-school_event { background: var(--primary, #2563eb); }
+.cal-dot-custom { box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.15); }
+.muted-sm { color: var(--muted, #64748b); font-size: 0.78rem; font-weight: 400; }

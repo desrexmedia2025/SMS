@@ -1810,7 +1810,7 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
   // Every dashboard includes Show/Hide Menu button, modern action tiles & clean v3.x assets
   for (const html of [saHtml, tcHtml, stHtml, fnHtml]) {
     assert.match(html, /id="mobile-menu-btn"/);
-    assert.match(html, /\?v=3\.16/);
+    assert.match(html, /\?v=3\.17/);
     assert.match(html, /class="action-tile-grid"/);
     assert.doesNotMatch(html, /Hide Figures/i);
     assert.doesNotMatch(html, /Audit Log/i);
@@ -2717,4 +2717,246 @@ test('26. Superadmin can edit student records, teacher records and staff account
   const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'css', 'styles.css'), 'utf8');
   assert.match(css, /\.record-modal-backdrop \{/);
   assert.match(css, /\.record-modal \{/);
+});
+
+test('27. Superadmin publishes school events that appear on all four dashboard calendars in their own colour', async () => {
+  const admin = new SessionClient();
+  await admin.login('admin@school.edu.gh', 'Admin@2026!');
+
+  const year = new Date().getFullYear();
+  const month = String(new Date().getMonth() + 1).padStart(2, '0');
+  const from = `${year}-${month}-01`;
+  const daysInMonth = new Date(year, Number(month), 0).getDate();
+  const to = `${year}-${month}-${String(daysInMonth).padStart(2, '0')}`;
+
+  const emptyList = (await admin.request('/api/superadmin/events')).json;
+  assert.deepEqual(emptyList.items, [], 'the school event store must start clean');
+
+  // ---------- CREATE ----------
+  const holiday = await admin.request('/api/superadmin/events', {
+    method: 'POST',
+    body: {
+      title: 'Independence Day Holiday',
+      description: 'School closed',
+      eventType: 'holiday',
+      startDate: `${year}-${month}-06`,
+      endDate: `${year}-${month}-06`,
+      color: '#0ea5e9',
+      audience: 'all',
+    },
+  });
+  assert.equal(holiday.status, 201);
+  assert.equal(holiday.json.event.event_type, 'holiday');
+  assert.equal(holiday.json.event.event_type_label, 'Holiday');
+  assert.equal(holiday.json.event.color, '#0ea5e9');
+  assert.equal(holiday.json.event.audience_label, 'Everyone');
+  const holidayId = holiday.json.event.id;
+
+  const examWeek = await admin.request('/api/superadmin/events', {
+    method: 'POST',
+    body: {
+      title: 'End of Term Exam Week',
+      eventType: 'exam',
+      startDate: `${year}-${month}-10`,
+      endDate: `${year}-${month}-12`,
+      audience: 'students',
+    },
+  });
+  assert.equal(examWeek.status, 201);
+  assert.equal(examWeek.json.event.color, '#dc2626', 'exam events default to their type colour');
+  assert.equal(examWeek.json.event.multi_day, true);
+  const examId = examWeek.json.event.id;
+
+  const pta = await admin.request('/api/superadmin/events', {
+    method: 'POST',
+    body: {
+      title: 'PTA General Meeting',
+      eventType: 'meeting',
+      startDate: `${year}-${month}-15`,
+      endDate: `${year}-${month}-15`,
+      color: '#7c3aed',
+      audience: 'staff',
+    },
+  });
+  assert.equal(pta.status, 201);
+  const ptaId = pta.json.event.id;
+
+  const listed = (await admin.request('/api/superadmin/events')).json;
+  assert.equal((listed.items || []).length, 3);
+  assert.deepEqual(
+    (listed.items || []).map((e) => e.title).sort(),
+    ['End of Term Exam Week', 'Independence Day Holiday', 'PTA General Meeting']
+  );
+
+  // ---------- VALIDATION ----------
+  const shortTitle = await admin.request('/api/superadmin/events', {
+    method: 'POST',
+    body: { title: 'AB', startDate: `${year}-${month}-20`, endDate: `${year}-${month}-20` },
+  });
+  assert.equal(shortTitle.status, 400);
+
+  const badRange = await admin.request('/api/superadmin/events', {
+    method: 'POST',
+    body: { title: 'Bad range event', startDate: `${year}-${month}-20`, endDate: `${year}-${month}-18` },
+  });
+  assert.equal(badRange.status, 400);
+
+  const badDate = await admin.request('/api/superadmin/events', {
+    method: 'POST',
+    body: { title: 'Bad date event', startDate: 'not-a-date', endDate: 'not-a-date' },
+  });
+  assert.equal(badDate.status, 400);
+
+  const noCsrf = await admin.request('/api/superadmin/events', {
+    method: 'POST',
+    body: { title: 'No csrf event', startDate: `${year}-${month}-20`, endDate: `${year}-${month}-20` },
+    sendCsrf: false,
+  });
+  assert.equal(noCsrf.status, 403);
+
+  const teacher = new SessionClient();
+  await teacher.login('kofi.mensah@school.edu.gh', 'Teacher@2026!');
+  const forbidden = await teacher.request('/api/superadmin/events', {
+    method: 'POST',
+    body: { title: 'Teacher event', startDate: `${year}-${month}-20`, endDate: `${year}-${month}-20` },
+  });
+  assert.equal(forbidden.status, 403);
+
+  // ---------- CALENDAR DELIVERY PER ROLE ----------
+  const calFor = async (client) =>
+    (await client.request(`/api/calendar/events?from=${from}&to=${to}`)).json.events || [];
+  const titlesFor = (events) => events.map((e) => e.title);
+
+  const adminEvents = await calFor(admin);
+  assert.ok(titlesFor(adminEvents).includes('Independence Day Holiday'));
+  assert.ok(titlesFor(adminEvents).includes('PTA General Meeting'));
+  assert.ok(titlesFor(adminEvents).includes('End of Term Exam Week'), 'superadmin sees every event');
+
+  const teacherEvents = await calFor(teacher);
+  assert.ok(titlesFor(teacherEvents).includes('Independence Day Holiday'));
+  assert.ok(titlesFor(teacherEvents).includes('PTA General Meeting'), 'staff audience includes teachers');
+  assert.ok(
+    !titlesFor(teacherEvents).includes('End of Term Exam Week'),
+    'students-only events are hidden from teachers'
+  );
+
+  const student = new SessionClient();
+  await student.login('kwame.asante@student.school.edu.gh', 'Student@2026!');
+  const studentEvents = await calFor(student);
+  assert.ok(titlesFor(studentEvents).includes('Independence Day Holiday'));
+  assert.ok(titlesFor(studentEvents).includes('End of Term Exam Week'));
+  assert.ok(
+    !titlesFor(studentEvents).includes('PTA General Meeting'),
+    'staff-only events are hidden from students'
+  );
+
+  const finance = new SessionClient();
+  await finance.login('finance@school.edu.gh', 'Finance@2026!');
+  const financeEvents = await calFor(finance);
+  assert.ok(titlesFor(financeEvents).includes('Independence Day Holiday'));
+  assert.ok(titlesFor(financeEvents).includes('PTA General Meeting'));
+  assert.ok(!titlesFor(financeEvents).includes('End of Term Exam Week'));
+
+  // ---------- COLOUR + MULTI-DAY ----------
+  const holidayEntry = studentEvents.find((e) => e.title === 'Independence Day Holiday');
+  assert.equal(holidayEntry.kind, 'school_event');
+  assert.equal(holidayEntry.kindLabel, 'Holiday');
+  assert.equal(holidayEntry.color, '#0ea5e9');
+  assert.equal(holidayEntry.date, `${year}-${month}-06`);
+
+  const examEntries = studentEvents.filter((e) => e.title === 'End of Term Exam Week');
+  assert.equal(examEntries.length, 3, 'a 3-day event expands into three calendar days');
+  assert.deepEqual(
+    examEntries.map((e) => e.date).sort(),
+    [`${year}-${month}-10`, `${year}-${month}-11`, `${year}-${month}-12`]
+  );
+  assert.equal(examEntries[0].color, '#dc2626');
+
+  // ---------- UPDATE ----------
+  const patched = await admin.request(`/api/superadmin/events/${holidayId}`, {
+    method: 'PATCH',
+    body: {
+      title: 'Independence Day (Public Holiday)',
+      eventType: 'holiday',
+      startDate: `${year}-${month}-07`,
+      endDate: `${year}-${month}-07`,
+      color: '#123456',
+      audience: 'all',
+      description: 'School closed for the national celebration',
+    },
+  });
+  assert.equal(patched.status, 200);
+  assert.equal(patched.json.event.title, 'Independence Day (Public Holiday)');
+  assert.equal(patched.json.event.color, '#123456');
+  assert.equal(patched.json.event.start_date, `${year}-${month}-07`);
+
+  const movedEvents = await calFor(student);
+  const movedEntry = movedEvents.find((e) => e.title === 'Independence Day (Public Holiday)');
+  assert.ok(movedEntry, 'renamed event must appear on the student calendar');
+  assert.equal(movedEntry.date, `${year}-${month}-07`);
+  assert.equal(movedEntry.color, '#123456');
+  assert.ok(!titlesFor(movedEvents).includes('Independence Day Holiday'), 'old title is gone');
+
+  const missingPatch = await admin.request('/api/superadmin/events/987654321', {
+    method: 'PATCH',
+    body: { title: 'Ghost event update' },
+  });
+  assert.equal(missingPatch.status, 404);
+
+  // ---------- DELETE ----------
+  const deleted = await admin.request(`/api/superadmin/events/${ptaId}`, { method: 'DELETE' });
+  assert.equal(deleted.status, 200);
+  const afterDelete = await calFor(teacher);
+  assert.ok(
+    !titlesFor(afterDelete).includes('PTA General Meeting'),
+    'deleted events disappear from the calendars'
+  );
+  assert.ok(titlesFor(afterDelete).includes('Independence Day (Public Holiday)'));
+
+  const missingDelete = await admin.request('/api/superadmin/events/987654321', { method: 'DELETE' });
+  assert.equal(missingDelete.status, 404);
+
+  const teacherDelete = await teacher.request(`/api/superadmin/events/${examId}`, { method: 'DELETE' });
+  assert.equal(teacherDelete.status, 403);
+
+  // ---------- UI WIRING ----------
+  const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'views', 'superadmin.html'), 'utf8');
+  for (const id of [
+    'sec-events',
+    'school-event-form',
+    'school-event-id',
+    'sev-title',
+    'sev-type',
+    'sev-start',
+    'sev-end',
+    'sev-audience',
+    'sev-colour',
+    'sev-description',
+    'school-events-tbody',
+  ]) {
+    assert.match(html, new RegExp(`id="${id}"`), `superadmin.html must contain #${id}`);
+  }
+  assert.match(html, /data-section="events"/);
+  assert.match(html, /School Events/);
+  assert.match(html, /PTA Meeting/);
+  assert.match(html, /Exam Week/);
+
+  const js = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'js', 'superadmin.js'), 'utf8');
+  assert.match(js, /\/api\/superadmin\/events/);
+  assert.match(js, /data-edit-sev=/);
+  assert.match(js, /data-del-sev=/);
+  assert.match(js, /clearCalendarCache/);
+
+  const common = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'js', 'common.js'), 'utf8');
+  assert.match(common, /cal-dot-custom/);
+
+  const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'css', 'styles.css'), 'utf8');
+  assert.match(css, /\.sev-colour-chip \{/);
+  assert.match(css, /\.cal-dot-school_event \{/);
+
+  const migration = fs.readFileSync(
+    path.join(__dirname, '..', 'database', 'migrations', '015_school_events.sql'),
+    'utf8'
+  );
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS school_events/);
 });

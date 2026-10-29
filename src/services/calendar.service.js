@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const schoolEventService = require('./schoolEvent.service');
 const { AppError } = require('../middleware/errorHandler');
 
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -9,6 +10,7 @@ const KIND_LABELS = {
   announcement: 'Announcement',
   fee: 'Fee Due',
   payment: 'Payment',
+  school_event: 'School Event',
 };
 
 function dateKeyOf(value) {
@@ -72,6 +74,7 @@ function pushEvent(bucket, event) {
     title: String(event.title || '').slice(0, 160),
     meta: String(event.meta || '').slice(0, 200),
     tone: event.tone || event.kind,
+    color: event.color || '',
   });
 }
 
@@ -363,6 +366,10 @@ async function getCalendarEvents(user, query = {}) {
   } else if (user.role === 'financial') {
     events = await financialEvents(range);
   }
+
+  // School-wide events published by the Superadmin appear on every dashboard
+  const schoolEvents = await schoolEventService.getSchoolEventsForRole(user.role, range);
+  events = events.concat(schoolEvents);
 
   const byDate = new Map();
   events.forEach((ev) => {

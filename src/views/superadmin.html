@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Superadmin - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=3.16">
+  <link rel="stylesheet" href="/css/styles.css?v=3.17">
 </head>
 <body>
   <div class="app-layout">
@@ -37,6 +37,9 @@
         <button class="nav-btn" data-section="students" data-title="Students">
           <span class="nav-item-label">Students</span>
           <span class="nav-count-pill hidden" id="nav-pending-proposals-pill">0</span>
+        </button>
+        <button class="nav-btn" data-section="events" data-title="School Events">
+          <span class="nav-item-label">School Events</span>
         </button>
         <button class="nav-btn" data-section="timetables" data-title="Timetable">
           <span class="nav-item-label">Timetable</span>
@@ -678,6 +681,69 @@
           </div>
         </section>
 
+        <!-- 4B. SCHOOL EVENTS -->
+        <section id="sec-events" class="module-panel hidden">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title" id="school-event-form-title">Add School Event</h2>
+                <div class="card-subtitle">Holidays, PTA meetings, exam weeks and sports days appear on every dashboard calendar in their own colour</div>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm hidden" id="cancel-edit-school-event">Cancel Edit</button>
+            </div>
+            <form id="school-event-form" class="form-grid">
+              <input type="hidden" id="school-event-id">
+              <div class="form-group"><label>Event Title</label><input type="text" id="sev-title" maxlength="160" placeholder="e.g. Independence Day Holiday" required></div>
+              <div class="form-group"><label>Event Type</label>
+                <select id="sev-type">
+                  <option value="holiday">Holiday</option>
+                  <option value="meeting">PTA Meeting</option>
+                  <option value="exam">Exam Week</option>
+                  <option value="sports">Sports Day</option>
+                  <option value="other">Other Event</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Start Date</label><input type="date" id="sev-start" required></div>
+              <div class="form-group"><label>End Date</label><input type="date" id="sev-end"></div>
+              <div class="form-group"><label>Visible To</label>
+                <select id="sev-audience">
+                  <option value="all">Everyone</option>
+                  <option value="teachers">Teachers only</option>
+                  <option value="students">Students only</option>
+                  <option value="staff">Staff only (teachers &amp; finance)</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Colour</label>
+                <div class="sev-colour-row">
+                  <input type="color" id="sev-colour" value="#2563eb" aria-label="Event colour">
+                  <div class="sev-colour-presets" id="sev-colour-presets"></div>
+                </div>
+              </div>
+              <div class="form-group form-grid-full"><label>Description <span class="hint-inline">optional</span></label><input type="text" id="sev-description" maxlength="500" placeholder="Short note shown on the calendar"></div>
+              <div class="form-actions-end form-grid-full" style="margin-top:4px;">
+                <button class="btn btn-primary" type="submit" id="sev-submit-btn">Add Event</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Scheduled School Events</h2>
+              <div class="search-bar">
+                <input type="search" id="sev-search-input" class="search-bar-input" placeholder="Search events..." data-server-search-input data-server-search-btn="sev-search-btn">
+                <button type="button" class="btn btn-primary btn-sm" id="sev-search-btn">Search</button>
+                <button type="button" class="btn btn-secondary btn-sm hidden" id="sev-clear-btn">Clear</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Colour</th><th>Event</th><th>Type</th><th>Date</th><th>Visible To</th><th>Action</th></tr></thead>
+                <tbody id="school-events-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
         <!-- 5. TIMETABLE -->
         <section id="sec-timetables" class="module-panel hidden">
           <div class="card">
@@ -1158,7 +1224,7 @@
     </div>
   </div>
 
-  <script src="/js/common.js?v=3.16"></script>
-  <script src="/js/superadmin.js?v=3.16"></script>
+  <script src="/js/common.js?v=3.17"></script>
+  <script src="/js/superadmin.js?v=3.17"></script>
 </body>
 </html>
