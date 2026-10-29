@@ -116,3 +116,44 @@ Superadmins and authorised Financial Officers can switch the school's active cur
 | :--- | :--- | :--- |
 | **Superadmin** | `admin@school.edu.gh` | `Admin@2026!` |
 
+## Vercel Deployment
+
+The project ships ready for Vercel: `vercel.json` exposes the Express app as the
+serverless function `api/index.js`, and `middleware.js` forwards every path to
+that function.
+
+**Live production URL:** `https://school-management-system-gamma-ebon.vercel.app`
+
+Environment variables are configured on the Vercel project (Settings -> Environment Variables):
+
+| Variable | Production value |
+| :--- | :--- |
+| `NODE_ENV` | `production` |
+| `APP_BASE_URL` | `https://school-management-system-gamma-ebon.vercel.app` |
+| `SESSION_SECRET` | 48-character random secret (sensitive) |
+| `SESSION_COOKIE_NAME` | `sms.sid` |
+| `DB_DRIVER` | `sqlite` (temporary - see note below) |
+| `SQLITE_PATH` | `/tmp/sms_vercel.sqlite` |
+| `DB_AUTO_FALLBACK` | `true` |
+| `AUTO_SEED_DEMO` | `false` (the database stays clean) |
+| `SUPERADMIN_INITIAL_EMAIL` / `SUPERADMIN_INITIAL_PASSWORD` | bootstrap superadmin credentials (sensitive) |
+| `DEFAULT_CURRENCY_CODE` / `DEFAULT_CURRENCY_SYMBOL` / `SCHOOL_TIMEZONE` | `GHS` / `GH₵` / `Africa/Accra` |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_CALLBACK_URL` | OAuth 2.0 credentials (`GOOGLE_CLIENT_SECRET` is still empty) |
+| `PAYSTACK_PUBLIC_KEY` / `PAYSTACK_SECRET_KEY` / `PAYSTACK_CALLBACK_URL` | payment gateway keys (still empty) |
+
+**Important - database persistence:** Vercel's filesystem is ephemeral, so the
+current SQLite file (`/tmp/sms_vercel.sqlite`) is per-instance and is discarded
+whenever a new instance starts; uploaded coursework files behave the same way.
+For real use, point the project at a hosted MySQL/MariaDB database by setting
+`DB_DRIVER=mysql`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
+(and `DB_CONNECTION_LIMIT`) on Vercel, then redeploy. Sessions are stored in the
+database, so a shared MySQL instance is what keeps users signed in across
+serverless instances.
+
+**How the deployment is produced:** the Vercel project's Install Command clones
+this branch (`arena/1ab5d416-sms`) into the build container and runs
+`npm install`, so the deployed build always matches the branch tip. Connecting
+the GitHub repository to the project (Vercel Dashboard -> Settings -> Git) is
+the recommended long-term setup: it replaces that step with native Git
+deployments that use `vercel.json` directly.
+

@@ -25,7 +25,25 @@ function ensureBootstrapped() {
   return bootPromise;
 }
 
+// `middleware.js` rewrites every request to `/api/index` and keeps the real
+// request path inside the `p` query parameter. Put the original path back so
+// Express routes exactly as it does when `vercel.json` rewrites the request.
+function restoreOriginalUrl(req) {
+  const raw = req.url || '/';
+  const marker = '/api/index';
+  if (raw !== marker && !raw.startsWith(`${marker}?`)) return;
+  const queryIndex = raw.indexOf('?');
+  if (queryIndex === -1) {
+    req.url = '/';
+    return;
+  }
+  const params = new URLSearchParams(raw.slice(queryIndex + 1));
+  const original = params.get('p');
+  req.url = original && original.startsWith('/') ? original : '/';
+}
+
 module.exports = async function vercelHandler(req, res) {
   await ensureBootstrapped();
+  restoreOriginalUrl(req);
   return app(req, res);
 };
