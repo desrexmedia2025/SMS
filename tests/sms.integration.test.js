@@ -1230,7 +1230,9 @@ test('16. Superadmin Custom Grading Scale Management & Clean Sub-Tabbed Workspac
   assert.equal(htmlRes.status, 200);
   assert.match(htmlRes.text, /data-tab-group="academic"/);
   assert.match(htmlRes.text, /data-tab-group="students"/);
-  assert.match(htmlRes.text, /data-tab-group="teachers"/);
+  assert.match(htmlRes.text, /data-section="teacher-register"/);
+  assert.match(htmlRes.text, /data-section="teachers"/);
+  assert.match(htmlRes.text, /data-section="teacher-assign"/);
   assert.match(htmlRes.text, /data-tab-group="finance"/);
   assert.doesNotMatch(htmlRes.text, /Security Audit Logs/i);
   assert.doesNotMatch(htmlRes.text, /Database Backups/i);
@@ -1791,7 +1793,7 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
   // Every dashboard includes Show/Hide Menu button, modern action tiles & clean v3.x assets
   for (const html of [saHtml, tcHtml, stHtml, fnHtml]) {
     assert.match(html, /id="mobile-menu-btn"/);
-    assert.match(html, /\?v=3\.4/);
+    assert.match(html, /\?v=3\.5/);
     assert.match(html, /class="action-tile-grid"/);
     assert.doesNotMatch(html, /Hide Figures/i);
     assert.doesNotMatch(html, /Audit Log/i);

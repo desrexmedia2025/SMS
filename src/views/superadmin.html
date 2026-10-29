@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Superadmin - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=3.4">
+  <link rel="stylesheet" href="/css/styles.css?v=3.5">
 </head>
 <body>
   <div class="app-layout">
@@ -25,8 +25,14 @@
         <button class="nav-btn" data-section="academic" data-title="Classes &amp; Subjects">
           <span class="nav-item-label">Classes &amp; Subjects</span>
         </button>
-        <button class="nav-btn" data-section="teachers" data-title="Teachers">
-          <span class="nav-item-label">Teachers</span>
+        <button class="nav-btn" data-section="teacher-register" data-title="Register Teacher">
+          <span class="nav-item-label">Register Teacher</span>
+        </button>
+        <button class="nav-btn" data-section="teachers" data-title="Teachers List">
+          <span class="nav-item-label">Teachers List</span>
+        </button>
+        <button class="nav-btn" data-section="teacher-assign" data-title="Assign Class &amp; Subject">
+          <span class="nav-item-label">Assign Class &amp; Subject</span>
         </button>
         <button class="nav-btn" data-section="students" data-title="Students">
           <span class="nav-item-label">Students</span>
@@ -145,7 +151,7 @@
                 <span class="action-tile-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
               </button>
 
-              <button type="button" class="action-tile" data-jump-section="teachers">
+              <button type="button" class="action-tile" data-jump-section="teacher-register">
                 <span class="action-tile-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
                 </span>
@@ -321,177 +327,177 @@
           </div>
         </section>
 
-        <!-- 3. TEACHERS -->
+        <!-- 3A. REGISTER TEACHER -->
+        <section id="sec-teacher-register" class="module-panel hidden">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Register Teacher</h2>
+                <div class="card-subtitle">Create a teacher account, link one or more subjects, and optionally assign classes</div>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm" data-nav-jump="teachers">View Teachers List</button>
+            </div>
+            <form id="create-teacher-form">
+              <div class="form-grid">
+                <div class="form-group"><label>Staff Number (Optional)</label><input type="text" name="staffNumber" placeholder="Auto-generated if blank"></div>
+                <div class="form-group"><label>First Name</label><input type="text" name="firstName" required></div>
+                <div class="form-group"><label>Last Name</label><input type="text" name="lastName" required></div>
+                <div class="form-group"><label>Email</label><input type="email" name="email" placeholder="teacher@school.edu" required></div>
+                <div class="form-group"><label>Phone (Optional)</label><input type="text" name="phone"></div>
+                <div class="form-group"><label>Department (Optional)</label><input type="text" name="department" placeholder="e.g. Sciences"></div>
+                <div class="form-group"><label>Initial Password (Optional)</label><input type="password" name="password" placeholder="Auto-generated if blank" autocomplete="new-password"></div>
+              </div>
+
+              <datalist id="subject-suggestions-list">
+                <option value="Mathematics"></option>
+                <option value="Further Mathematics"></option>
+                <option value="English Language"></option>
+                <option value="Literature in English"></option>
+                <option value="Integrated Science"></option>
+                <option value="Physics"></option>
+                <option value="Chemistry"></option>
+                <option value="Biology"></option>
+                <option value="Social Studies"></option>
+                <option value="Computing / ICT"></option>
+                <option value="Economics"></option>
+                <option value="Geography"></option>
+                <option value="History"></option>
+                <option value="Government"></option>
+                <option value="French"></option>
+              </datalist>
+
+              <div class="multi-subject-box" style="margin-top:12px;">
+                <div class="multi-subject-head">
+                  <div>
+                    <div class="multi-subject-title">Subjects Taught (1 or More)</div>
+                    <div class="multi-subject-hint">Check existing subjects or type Subject 1, Subject 2... below.</div>
+                  </div>
+                  <span class="badge badge-info" id="tch-selected-subjects-count">0 subjects selected</span>
+                </div>
+                <div id="tch-reg-subject-checkboxes" class="multi-check-grid"></div>
+
+                <div id="tch-subject-rows-list" class="subject-rows-stack">
+                  <div class="subject-row-item" data-subject-row>
+                    <span class="subject-row-label">Subject 1</span>
+                    <input type="text" class="tch-subject-row-input" list="subject-suggestions-list" placeholder="e.g. Mathematics">
+                  </div>
+                  <div class="subject-row-item" data-subject-row>
+                    <span class="subject-row-label">Subject 2</span>
+                    <input type="text" class="tch-subject-row-input" list="subject-suggestions-list" placeholder="Optional second subject">
+                    <button type="button" class="btn btn-secondary btn-sm" data-remove-subject-row>Remove</button>
+                  </div>
+                </div>
+
+                <div class="subject-add-row-bar">
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-add-tch-subject-row">+ Add Another Subject</button>
+                  <div class="subject-inline-adder" style="margin-top:0;">
+                    <input type="text" id="tch-custom-subject-input" list="subject-suggestions-list" placeholder="Or comma-separated subjects...">
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-add-tch-subject">+ Add</button>
+                  </div>
+                </div>
+                <div id="tch-custom-subject-chips" class="subject-chip-list"></div>
+              </div>
+
+              <div class="form-group" id="tch-reg-classes-group" style="margin-top:12px;">
+                <label>Assign Classes Now (Optional)</label>
+                <div id="tch-reg-class-checkboxes" class="multi-check-grid" style="margin-bottom:0;"></div>
+              </div>
+
+              <div class="form-actions-end"><button class="btn btn-primary" type="submit">Register Teacher</button></div>
+            </form>
+          </div>
+        </section>
+
+        <!-- 3B. TEACHERS LIST -->
         <section id="sec-teachers" class="module-panel hidden">
-          <div class="subnav-bar">
-            <div class="subnav-tabs" data-tab-group="teachers">
-              <button type="button" class="subtab-btn active" data-subtab="tch-staff">Register &amp; Teachers List</button>
-              <button type="button" class="subtab-btn" data-subtab="tch-assignments">Assign Classes &amp; Subjects</button>
+          <!-- Inline Edit Teacher Subjects Card -->
+          <div class="card hidden" id="edit-teacher-subjects-card">
+            <div class="card-header">
+              <h2 class="card-title" id="edit-teacher-subjects-title">Update Teacher Subjects</h2>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-cancel-edit-teacher-subjects">Close</button>
             </div>
+            <form id="edit-teacher-subjects-form">
+              <input type="hidden" name="teacherId" id="edit-tch-id">
+              <div class="multi-subject-box">
+                <div class="multi-subject-head">
+                  <div class="multi-subject-title">Subjects Taught</div>
+                  <span class="badge badge-info" id="edit-tch-subjects-count">0 subjects selected</span>
+                </div>
+                <div id="edit-tch-subject-checkboxes" class="multi-check-grid"></div>
+                <div class="subject-inline-adder">
+                  <input type="text" id="edit-tch-custom-subject-input" placeholder="Add new subject(s)...">
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-add-edit-tch-subject">+ Add</button>
+                </div>
+                <div id="edit-tch-custom-subject-chips" class="subject-chip-list"></div>
+              </div>
+              <div class="form-actions-end" style="margin-top:12px;">
+                <button type="submit" class="btn btn-primary">Save Subjects</button>
+              </div>
+            </form>
           </div>
 
-          <!-- Register & Teachers List -->
-          <div id="subtab-tch-staff" class="subtab-pane" data-tab-pane="teachers">
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <h2 class="card-title">Register Teacher</h2>
-                  <div class="card-subtitle">Create a teacher account, link one or more subjects, and optionally assign classes right away</div>
-                </div>
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Registered Teachers</h2>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="btn btn-primary btn-sm" data-nav-jump="teacher-register">Register Teacher</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-nav-jump="teacher-assign">Assign Class &amp; Subject</button>
               </div>
-              <form id="create-teacher-form">
-                <div class="form-grid">
-                  <div class="form-group"><label>Staff Number (Optional)</label><input type="text" name="staffNumber" placeholder="Auto-generated if blank"></div>
-                  <div class="form-group"><label>First Name</label><input type="text" name="firstName" required></div>
-                  <div class="form-group"><label>Last Name</label><input type="text" name="lastName" required></div>
-                  <div class="form-group"><label>Email</label><input type="email" name="email" placeholder="teacher@school.edu" required></div>
-                  <div class="form-group"><label>Phone (Optional)</label><input type="text" name="phone"></div>
-                  <div class="form-group"><label>Department (Optional)</label><input type="text" name="department" placeholder="e.g. Sciences"></div>
-                  <div class="form-group"><label>Initial Password (Optional)</label><input type="password" name="password" placeholder="Auto-generated if blank" autocomplete="new-password"></div>
-                </div>
-
-                <datalist id="subject-suggestions-list">
-                  <option value="Mathematics"></option>
-                  <option value="Further Mathematics"></option>
-                  <option value="English Language"></option>
-                  <option value="Literature in English"></option>
-                  <option value="Integrated Science"></option>
-                  <option value="Physics"></option>
-                  <option value="Chemistry"></option>
-                  <option value="Biology"></option>
-                  <option value="Social Studies"></option>
-                  <option value="Computing / ICT"></option>
-                  <option value="Economics"></option>
-                  <option value="Geography"></option>
-                  <option value="History"></option>
-                  <option value="Government"></option>
-                  <option value="French"></option>
-                </datalist>
-
-                <div class="multi-subject-box" style="margin-top:12px;">
-                  <div class="multi-subject-head">
-                    <div>
-                      <div class="multi-subject-title">Subjects Taught (1 or More)</div>
-                      <div class="multi-subject-hint">Check existing subjects or type Subject 1, Subject 2... below.</div>
-                    </div>
-                    <span class="badge badge-info" id="tch-selected-subjects-count">0 subjects selected</span>
-                  </div>
-                  <div id="tch-reg-subject-checkboxes" class="multi-check-grid"></div>
-
-                  <div id="tch-subject-rows-list" class="subject-rows-stack">
-                    <div class="subject-row-item" data-subject-row>
-                      <span class="subject-row-label">Subject 1</span>
-                      <input type="text" class="tch-subject-row-input" list="subject-suggestions-list" placeholder="e.g. Mathematics">
-                    </div>
-                    <div class="subject-row-item" data-subject-row>
-                      <span class="subject-row-label">Subject 2</span>
-                      <input type="text" class="tch-subject-row-input" list="subject-suggestions-list" placeholder="Optional second subject">
-                      <button type="button" class="btn btn-secondary btn-sm" data-remove-subject-row>Remove</button>
-                    </div>
-                  </div>
-
-                  <div class="subject-add-row-bar">
-                    <button type="button" class="btn btn-secondary btn-sm" id="btn-add-tch-subject-row">+ Add Another Subject</button>
-                    <div class="subject-inline-adder" style="margin-top:0;">
-                      <input type="text" id="tch-custom-subject-input" list="subject-suggestions-list" placeholder="Or comma-separated subjects...">
-                      <button type="button" class="btn btn-secondary btn-sm" id="btn-add-tch-subject">+ Add</button>
-                    </div>
-                  </div>
-                  <div id="tch-custom-subject-chips" class="subject-chip-list"></div>
-                </div>
-
-                <div class="form-group" id="tch-reg-classes-group" style="margin-top:12px;">
-                  <label>Assign Classes Now (Optional)</label>
-                  <div id="tch-reg-class-checkboxes" class="multi-check-grid" style="margin-bottom:0;"></div>
-                </div>
-
-                <div class="form-actions-end"><button class="btn btn-primary" type="submit">Register Teacher</button></div>
-              </form>
             </div>
-
-            <!-- Inline Edit Teacher Subjects Card -->
-            <div class="card hidden" id="edit-teacher-subjects-card">
-              <div class="card-header">
-                <h2 class="card-title" id="edit-teacher-subjects-title">Update Teacher Subjects</h2>
-                <button type="button" class="btn btn-secondary btn-sm" id="btn-cancel-edit-teacher-subjects">Close</button>
-              </div>
-              <form id="edit-teacher-subjects-form">
-                <input type="hidden" name="teacherId" id="edit-tch-id">
-                <div class="multi-subject-box">
-                  <div class="multi-subject-head">
-                    <div class="multi-subject-title">Subjects Taught</div>
-                    <span class="badge badge-info" id="edit-tch-subjects-count">0 subjects selected</span>
-                  </div>
-                  <div id="edit-tch-subject-checkboxes" class="multi-check-grid"></div>
-                  <div class="subject-inline-adder">
-                    <input type="text" id="edit-tch-custom-subject-input" placeholder="Add new subject(s)...">
-                    <button type="button" class="btn btn-secondary btn-sm" id="btn-add-edit-tch-subject">+ Add</button>
-                  </div>
-                  <div id="edit-tch-custom-subject-chips" class="subject-chip-list"></div>
-                </div>
-                <div class="form-actions-end" style="margin-top:12px;">
-                  <button type="submit" class="btn btn-primary">Save Subjects</button>
-                </div>
-              </form>
-            </div>
-
-            <div class="card">
-              <div class="card-header"><h2 class="card-title">Registered Teachers</h2></div>
-              <div class="table-wrap">
-                <table>
-                  <thead><tr><th>Staff #</th><th>Name</th><th>Email</th><th>Subjects Taught</th><th>Status</th><th>Action</th></tr></thead>
-                  <tbody id="teachers-list-tbody"></tbody>
-                </table>
-              </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Staff #</th><th>Name</th><th>Email</th><th>Subjects Taught</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody id="teachers-list-tbody"></tbody>
+              </table>
             </div>
           </div>
+        </section>
 
-          <!-- Assign Classes & Subjects -->
-          <div id="subtab-tch-assignments" class="subtab-pane hidden" data-tab-pane="teachers">
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <h2 class="card-title">Assign Teacher to Classes &amp; Subjects</h2>
-                  <div class="card-subtitle">Choose a teacher, select one or all classes, and check their subjects</div>
-                </div>
+        <!-- 3C. ASSIGN CLASS & SUBJECT -->
+        <section id="sec-teacher-assign" class="module-panel hidden">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Assign Teacher to Classes &amp; Subjects</h2>
+                <div class="card-subtitle">Choose a teacher, select one or all classes, and check their subjects</div>
               </div>
-              <form id="assign-teacher-form">
-                <div class="form-group">
-                  <label>Select Teacher</label>
-                  <select name="teacherId" id="asg-teacher" required></select>
-                </div>
-
-                <div class="multi-subject-box" style="margin-top:12px;">
-                  <div class="multi-subject-head">
-                    <div class="multi-subject-title">Classes</div>
-                    <label class="subject-check-pill" style="margin:0;">
-                      <input type="checkbox" id="asg-all-classes-chk">
-                      <span><strong>All Classes</strong></span>
-                    </label>
-                  </div>
-                  <div id="asg-classes-checkboxes" class="multi-check-grid" style="margin-bottom:0;"></div>
-                </div>
-
-                <div class="multi-subject-box" style="margin-top:12px;">
-                  <div class="multi-subject-head">
-                    <div class="multi-subject-title">Subjects</div>
-                    <span class="badge badge-info" id="asg-selected-subjects-count">0 subjects selected</span>
-                  </div>
-                  <div id="asg-subjects-checkboxes" class="multi-check-grid" style="margin-bottom:0;"></div>
-                </div>
-
-                <div class="form-actions-end"><button class="btn btn-primary" type="submit">Save Assignment</button></div>
-              </form>
             </div>
-
-            <div class="card">
-              <div class="card-header"><h2 class="card-title">Current Class &amp; Subject Assignments</h2></div>
-              <div class="table-wrap">
-                <table>
-                  <thead><tr><th>Staff #</th><th>Teacher</th><th>Class</th><th>Subject</th></tr></thead>
-                  <tbody id="assignments-tbody"></tbody>
-                </table>
+            <form id="assign-teacher-form">
+              <div class="form-group">
+                <label>Select Teacher</label>
+                <select name="teacherId" id="asg-teacher" required></select>
               </div>
+
+              <div class="multi-subject-box" style="margin-top:12px;">
+                <div class="multi-subject-head">
+                  <div class="multi-subject-title">Classes</div>
+                  <label class="subject-check-pill" style="margin:0;">
+                    <input type="checkbox" id="asg-all-classes-chk">
+                    <span><strong>All Classes</strong></span>
+                  </label>
+                </div>
+                <div id="asg-classes-checkboxes" class="multi-check-grid" style="margin-bottom:0;"></div>
+              </div>
+
+              <div class="multi-subject-box" style="margin-top:12px;">
+                <div class="multi-subject-head">
+                  <div class="multi-subject-title">Subjects</div>
+                  <span class="badge badge-info" id="asg-selected-subjects-count">0 subjects selected</span>
+                </div>
+                <div id="asg-subjects-checkboxes" class="multi-check-grid" style="margin-bottom:0;"></div>
+              </div>
+
+              <div class="form-actions-end"><button class="btn btn-primary" type="submit">Save Assignment</button></div>
+            </form>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><h2 class="card-title">Current Class &amp; Subject Assignments</h2></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Staff #</th><th>Teacher</th><th>Class</th><th>Subject</th></tr></thead>
+                <tbody id="assignments-tbody"></tbody>
+              </table>
             </div>
           </div>
         </section>
@@ -903,7 +909,7 @@
     </div>
   </div>
 
-  <script src="/js/common.js?v=3.4"></script>
-  <script src="/js/superadmin.js?v=3.4"></script>
+  <script src="/js/common.js?v=3.5"></script>
+  <script src="/js/superadmin.js?v=3.5"></script>
 </body>
 </html>

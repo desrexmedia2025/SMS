@@ -957,7 +957,14 @@
   async function loadSectionData(sec) {
     if (sec === 'overview') await loadOverview();
     if (sec === 'analytics') await loadAnalytics(currentAnalyticsDays);
-    if (sec === 'academic' || sec === 'teachers') await loadAcademicAndTeachers();
+    if (
+      sec === 'academic' ||
+      sec === 'teacher-register' ||
+      sec === 'teachers' ||
+      sec === 'teacher-assign'
+    ) {
+      await loadAcademicAndTeachers();
+    }
     if (sec === 'students') {
       await loadAcademicAndTeachers();
       await loadStudents();
