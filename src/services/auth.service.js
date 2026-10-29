@@ -309,6 +309,14 @@ async function changeOwnPassword({ userId, currentPassword, newPassword, current
   });
 }
 
+const CURRENT_TERMS_VERSION = '2026.1';
+const SUPPORTED_THEMES = new Set(['light', 'dark', 'ocean', 'system']);
+const SUPPORTED_LANGUAGES = new Set(['en', 'fr', 'es', 'pt', 'tw', 'ar']);
+
+function isTruthyTermsAcceptance(val) {
+  return val === true || val === 1 || val === '1' || val === 'true' || val === 'on';
+}
+
 async function submitStudentJoinRequest({
   firstName,
   lastName,
@@ -320,8 +328,12 @@ async function submitStudentJoinRequest({
   guardianName = '',
   guardianPhone = '',
   password,
+  acceptTerms = false,
   ipAddress = '',
 }) {
+  if (!isTruthyTermsAcceptance(acceptTerms)) {
+    throw new AppError(400, 'You must read and accept the Terms and Conditions to create an account.');
+  }
   const cleanEmail = String(email || '').trim().toLowerCase();
   const strongPassword = requireStrongPassword(password, 'Password');
 
@@ -349,8 +361,8 @@ async function submitStudentJoinRequest({
   const passwordHash = await bcrypt.hash(strongPassword, 10);
   const ins = await db.run(
     `INSERT INTO student_registration_requests
-     (first_name, last_name, email, phone, gender, date_of_birth, requested_class_id, guardian_name, guardian_phone, password_hash, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+     (first_name, last_name, email, phone, gender, date_of_birth, requested_class_id, guardian_name, guardian_phone, password_hash, terms_accepted, terms_accepted_at, terms_version, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP, ?, 'pending')`,
     [
       firstName,
       lastName,
@@ -362,6 +374,7 @@ async function submitStudentJoinRequest({
       guardianName,
       guardianPhone,
       passwordHash,
+      CURRENT_TERMS_VERSION,
     ]
   );
 
@@ -423,8 +436,8 @@ async function submitGoogleStudentJoinRequest({
 
   const ins = await db.run(
     `INSERT INTO student_registration_requests
-     (first_name, last_name, email, phone, gender, date_of_birth, requested_class_id, guardian_name, guardian_phone, password_hash, google_subject_id, auth_provider, status)
-     VALUES (?, ?, ?, '', ?, '', ?, '', ?, '', ?, 'google', 'pending')`,
+     (first_name, last_name, email, phone, gender, date_of_birth, requested_class_id, guardian_name, guardian_phone, password_hash, google_subject_id, auth_provider, terms_accepted, terms_accepted_at, terms_version, status)
+     VALUES (?, ?, ?, '', ?, '', ?, '', ?, '', ?, 'google', 1, CURRENT_TIMESTAMP, ?, 'pending')`,
     [
       firstName,
       lastName,
@@ -433,6 +446,7 @@ async function submitGoogleStudentJoinRequest({
       validClassId,
       guardianPhone || '',
       googleSubjectId,
+      CURRENT_TERMS_VERSION,
     ]
   );
 
@@ -447,13 +461,71 @@ async function submitGoogleStudentJoinRequest({
   return { id: ins.insertId, status: 'pending', alreadyPending: false };
 }
 
+async function acceptUserTerms({ userId, role = '', ipAddress = '' }) {
+  const existing = await userModel.findById(userId);
+  if (!existing) throw new AppError(404, 'Account not found.');
+
+  await db.run(
+    `UPDATE users
+     SET terms_accepted_at = COALESCE(terms_accepted_at, CURRENT_TIMESTAMP),
+         terms_version = ?
+     WHERE id = ?`,
+    [CURRENT_TERMS_VERSION, userId]
+  );
+
+  await recordAudit({
+    actorUserId: userId,
+    actorRole: role || existing.role || '',
+    action: 'TERMS_ACCEPTED',
+    targetType: 'user',
+    targetId: String(userId),
+    ipAddress,
+    metadata: { version: CURRENT_TERMS_VERSION },
+  });
+
+  const updated = await userModel.findById(userId);
+  return userModel.toSafeSessionUser(updated);
+}
+
+async function updateUserPreferences({ userId, theme, language }) {
+  const existing = await userModel.findById(userId);
+  if (!existing) throw new AppError(404, 'Account not found.');
+
+  const nextTheme =
+    theme !== undefined
+      ? String(theme || '').trim().toLowerCase()
+      : existing.theme_preference || 'light';
+  const nextLanguage =
+    language !== undefined
+      ? String(language || '').trim().toLowerCase()
+      : existing.language_preference || 'en';
+
+  if (!SUPPORTED_THEMES.has(nextTheme)) {
+    throw new AppError(400, 'Unsupported theme preference.');
+  }
+  if (!SUPPORTED_LANGUAGES.has(nextLanguage)) {
+    throw new AppError(400, 'Unsupported language preference.');
+  }
+
+  await db.run(
+    'UPDATE users SET theme_preference = ?, language_preference = ? WHERE id = ?',
+    [nextTheme, nextLanguage, userId]
+  );
+
+  const updated = await userModel.findById(userId);
+  return userModel.toSafeSessionUser(updated);
+}
+
 module.exports = {
   MAX_FAILED_ATTEMPTS,
   LOCKOUT_DURATION_MS,
+  CURRENT_TERMS_VERSION,
   isCurrentlyLocked,
   loginWithPassword,
   submitStudentJoinRequest,
   submitGoogleStudentJoinRequest,
+  acceptUserTerms,
+  updateUserPreferences,
   requestPasswordReset,
   confirmPasswordReset,
   changeOwnPassword,

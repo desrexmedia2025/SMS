@@ -337,6 +337,7 @@ async function registerStudent(req, res) {
     guardianName,
     guardianPhone,
     password,
+    acceptTerms: req.body.acceptTerms,
     ipAddress: req.ip,
   });
 
@@ -675,6 +676,44 @@ async function unlinkGoogle(req, res) {
   return res.json({ ok: true, message: 'Google Sign-In unlinked from your school account.' });
 }
 
+async function acceptTerms(req, res) {
+  if (!req.body || (!req.body.accept && !req.body.acceptTerms)) {
+    throw new AppError(400, 'Please confirm that you accept the Terms and Conditions.');
+  }
+  const updatedUser = await authService.acceptUserTerms({
+    userId: req.user.id,
+    role: req.user.role,
+    ipAddress: req.ip,
+  });
+  req.session.user = updatedUser;
+  await new Promise((resolve, reject) => {
+    req.session.save((err) => (err ? reject(err) : resolve()));
+  });
+  return res.json({
+    ok: true,
+    user: updatedUser,
+    termsVersion: authService.CURRENT_TERMS_VERSION,
+  });
+}
+
+async function updatePreferences(req, res) {
+  const updatedUser = await authService.updateUserPreferences({
+    userId: req.user.id,
+    theme: req.body?.theme,
+    language: req.body?.language,
+  });
+  req.session.user = updatedUser;
+  await new Promise((resolve, reject) => {
+    req.session.save((err) => (err ? reject(err) : resolve()));
+  });
+  return res.json({
+    ok: true,
+    user: updatedUser,
+    themePreference: updatedUser.themePreference,
+    languagePreference: updatedUser.languagePreference,
+  });
+}
+
 module.exports = {
   regenerateSessionWithUser,
   getSessionStatus,
@@ -684,6 +723,8 @@ module.exports = {
   requestReset,
   confirmReset,
   changePassword,
+  acceptTerms,
+  updatePreferences,
   startGoogleOAuth,
   getConsentContext,
   renderDevGoogleConsent,

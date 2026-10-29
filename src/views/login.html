@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sign In - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=3.6">
+  <link rel="stylesheet" href="/css/styles.css?v=3.7">
 </head>
 <body class="centered-shell login-page-bg">
   <div class="login-split-card">
@@ -203,6 +203,14 @@
               >
             </div>
 
+            <label class="terms-agree-row" for="reg-accept-terms">
+              <input type="checkbox" id="reg-accept-terms" name="acceptTerms" value="1" required>
+              <span>
+                I have read and agree to the
+                <button type="button" id="open-reg-terms-btn" class="login-inline-link">Terms &amp; Conditions</button>
+              </span>
+            </label>
+
             <div class="login-submit-row" style="margin-top:2px;">
               <button type="submit" id="register-submit-btn" class="login-pill-submit">
                 CREATE ACCOUNT
@@ -283,7 +291,24 @@
     </div>
   </div>
 
-  <script src="/js/common.js?v=3.6"></script>
-  <script src="/js/login.js?v=3.6"></script>
+  <!-- Student Account Creation Terms & Conditions Modal -->
+  <div class="terms-modal-backdrop" id="login-terms-modal">
+    <div class="terms-modal-card" role="dialog" aria-modal="true" aria-labelledby="login-terms-title">
+      <div class="terms-modal-head">
+        <h2 class="terms-modal-title" id="login-terms-title">Terms &amp; Conditions</h2>
+        <div class="terms-modal-sub">School Management System — Student Account &amp; Portal Policy (v2026.1)</div>
+      </div>
+      <div class="terms-scroll-body" id="login-terms-clauses-body"></div>
+      <div class="terms-modal-foot">
+        <div class="terms-modal-actions">
+          <button type="button" class="btn btn-secondary btn-sm" id="close-reg-terms-modal-btn">Close</button>
+          <button type="button" class="btn btn-primary btn-sm" id="accept-reg-terms-modal-btn">I Agree &amp; Continue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/common.js?v=3.7"></script>
+  <script src="/js/login.js?v=3.7"></script>
 </body>
 </html>

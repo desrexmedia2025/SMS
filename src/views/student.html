@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Students Dashboard - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=3.6">
+  <link rel="stylesheet" href="/css/styles.css?v=3.7">
 </head>
 <body>
   <div class="app-layout">
@@ -30,9 +30,32 @@
             <strong id="sb-currency-display">GHS (GH₵)</strong>
           </div>
         </div>
+        <div class="sidebar-pref-grid">
+          <div class="sidebar-control-group">
+            <label class="sidebar-control-label" for="sb-theme-select">Theme</label>
+            <select id="sb-theme-select" aria-label="Select Theme">
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+              <option value="ocean">Ocean Glass</option>
+              <option value="system">System</option>
+            </select>
+          </div>
+          <div class="sidebar-control-group">
+            <label class="sidebar-control-label" for="sb-lang-select">Language</label>
+            <select id="sb-lang-select" aria-label="Select Language">
+              <option value="en">English</option>
+              <option value="fr">Français</option>
+              <option value="es">Español</option>
+              <option value="pt">Português</option>
+              <option value="tw">Twi</option>
+              <option value="ar">العربية</option>
+            </select>
+          </div>
+        </div>
         <div class="sidebar-session-box">
           <div class="sidebar-footer" id="sb-user-info">Signed in as Student</div>
           <a href="/auth/google?mode=link" class="sidebar-google-link hidden" id="google-link-btn">Link Google</a>
+          <button type="button" class="sidebar-terms-btn" id="open-terms-btn">Terms &amp; Conditions</button>
         </div>
         <button type="button" class="sidebar-logout-btn" id="logout-btn">Sign Out</button>
       </div>
@@ -315,7 +338,7 @@
     </div>
   </div>
 
-  <script src="/js/common.js?v=3.6"></script>
-  <script src="/js/student.js?v=3.6"></script>
+  <script src="/js/common.js?v=3.7"></script>
+  <script src="/js/student.js?v=3.7"></script>
 </body>
 </html>

@@ -1,6 +1,8 @@
-// Hardened DOM, HTTP, CSRF, Session Carrier, Privacy Masking, Currency, Paystack Checkout & CSV utilities for SMS
+// Hardened DOM, HTTP, CSRF, Session Carrier, Theme, Multi-Language, Terms Gate, Currency, Paystack Checkout & CSV utilities for SMS
 window.SMS = (() => {
   const SESSION_STORAGE_KEY = 'sms_session_token';
+  const THEME_STORAGE_KEY = 'sms_theme_pref';
+  const LANG_STORAGE_KEY = 'sms_lang_pref';
   let csrfToken = '';
   let sessionToken = '';
   let currencySymbol = 'GH₵';
@@ -8,6 +10,337 @@ window.SMS = (() => {
   let currentUser = null;
   let googleAuthEnabled = false;
   let googleAuthMode = 'sandbox';
+  let activeThemePref = 'light';
+  let activeLangPref = 'en';
+
+  const I18N_DICTIONARY = {
+    fr: {
+      'Overview': 'Aperçu',
+      'Site Analytics': 'Analytique du site',
+      'Classes & Subjects': 'Classes et matières',
+      'Register Teacher': 'Inscrire un enseignant',
+      'Teachers List': 'Liste des enseignants',
+      'Assign Class & Subject': 'Affecter classe et matière',
+      'Students': 'Élèves',
+      'Timetable': 'Emploi du temps',
+      'Finance & Paystack': 'Finances et Paystack',
+      'Staff Accounts': 'Comptes du personnel',
+      'Announcements': 'Annonces',
+      'Settings': 'Paramètres',
+      'Classwork, Homework, Tests & Exams': 'Devoirs, contrôles et examens',
+      'My Classes & Students': 'Mes classes et élèves',
+      'Profile': 'Profil',
+      'My Scores': 'Mes notes',
+      'Fees & Paystack': 'Frais et Paystack',
+      'Fees & Billing': 'Frais et facturation',
+      'Payments & Receipts': 'Paiements et reçus',
+      'Student Balances': 'Soldes des élèves',
+      'Sign Out': 'Déconnexion',
+      'Hide Menu': 'Masquer le menu',
+      'Show Menu': 'Afficher le menu',
+      'Menu': 'Menu',
+      'Search': 'Rechercher',
+      'Clear': 'Effacer',
+      'Refresh': 'Actualiser',
+      'Print': 'Imprimer',
+      'Close': 'Fermer',
+      'Shortcuts': 'Raccourcis',
+      'Currency': 'Devise',
+      'School Currency': 'Devise scolaire',
+      'Theme': 'Thème',
+      'Language': 'Langue',
+      'Terms & Conditions': 'Conditions générales',
+      'Academics': 'Scolarité',
+      'Administration': 'Administration',
+      'Save Settings': 'Enregistrer les paramètres',
+      'Search sections or records...': 'Rechercher une section ou un dossier...',
+    },
+    es: {
+      'Overview': 'Resumen',
+      'Site Analytics': 'Analítica del sitio',
+      'Classes & Subjects': 'Clases y materias',
+      'Register Teacher': 'Registrar docente',
+      'Teachers List': 'Lista de docentes',
+      'Assign Class & Subject': 'Asignar clase y materia',
+      'Students': 'Estudiantes',
+      'Timetable': 'Horario',
+      'Finance & Paystack': 'Finanzas y Paystack',
+      'Staff Accounts': 'Cuentas del personal',
+      'Announcements': 'Anuncios',
+      'Settings': 'Configuración',
+      'Classwork, Homework, Tests & Exams': 'Tareas, pruebas y exámenes',
+      'My Classes & Students': 'Mis clases y estudiantes',
+      'Profile': 'Perfil',
+      'My Scores': 'Mis calificaciones',
+      'Fees & Paystack': 'Tasas y Paystack',
+      'Fees & Billing': 'Tasas y facturación',
+      'Payments & Receipts': 'Pagos y recibos',
+      'Student Balances': 'Saldos estudiantiles',
+      'Sign Out': 'Cerrar sesión',
+      'Hide Menu': 'Ocultar menú',
+      'Show Menu': 'Mostrar menú',
+      'Menu': 'Menú',
+      'Search': 'Buscar',
+      'Clear': 'Limpiar',
+      'Refresh': 'Actualizar',
+      'Print': 'Imprimir',
+      'Close': 'Cerrar',
+      'Shortcuts': 'Accesos rápidos',
+      'Currency': 'Moneda',
+      'School Currency': 'Moneda escolar',
+      'Theme': 'Tema',
+      'Language': 'Idioma',
+      'Terms & Conditions': 'Términos y condiciones',
+      'Academics': 'Académico',
+      'Administration': 'Administración',
+      'Save Settings': 'Guardar configuración',
+      'Search sections or records...': 'Buscar secciones o registros...',
+    },
+    pt: {
+      'Overview': 'Visão geral',
+      'Site Analytics': 'Análise do site',
+      'Classes & Subjects': 'Turmas e disciplinas',
+      'Register Teacher': 'Registar professor',
+      'Teachers List': 'Lista de professores',
+      'Assign Class & Subject': 'Atribuir turma e disciplina',
+      'Students': 'Estudantes',
+      'Timetable': 'Horário',
+      'Finance & Paystack': 'Finanças e Paystack',
+      'Staff Accounts': 'Contas da equipa',
+      'Announcements': 'Comunicados',
+      'Settings': 'Definições',
+      'Classwork, Homework, Tests & Exams': 'Trabalhos, testes e exames',
+      'My Classes & Students': 'Minhas turmas e alunos',
+      'Profile': 'Perfil',
+      'My Scores': 'Minhas notas',
+      'Fees & Paystack': 'Propinas e Paystack',
+      'Fees & Billing': 'Propinas e faturação',
+      'Payments & Receipts': 'Pagamentos e recibos',
+      'Student Balances': 'Saldos dos alunos',
+      'Sign Out': 'Terminar sessão',
+      'Hide Menu': 'Ocultar menu',
+      'Show Menu': 'Mostrar menu',
+      'Menu': 'Menu',
+      'Search': 'Pesquisar',
+      'Clear': 'Limpar',
+      'Refresh': 'Atualizar',
+      'Print': 'Imprimir',
+      'Close': 'Fechar',
+      'Shortcuts': 'Atalhos',
+      'Currency': 'Moeda',
+      'School Currency': 'Moeda escolar',
+      'Theme': 'Tema',
+      'Language': 'Idioma',
+      'Terms & Conditions': 'Termos e condições',
+      'Academics': 'Académico',
+      'Administration': 'Administração',
+      'Save Settings': 'Guardar definições',
+      'Search sections or records...': 'Pesquisar secções ou registos...',
+    },
+    tw: {
+      'Overview': 'Nsɛm Titiriw',
+      'Site Analytics': ' Dwumadi Akontaabu',
+      'Classes & Subjects': 'Adesuakuw ne Adesua',
+      'Register Teacher': 'Kyerɛw Ɔkyerɛkyerɛfo',
+      'Teachers List': 'Akyerɛkyerɛfo Din',
+      'Assign Class & Subject': 'Kyɛ Adesuakuw ne Adesua',
+      'Students': 'Adesuafo',
+      'Timetable': 'Berɛ Nhyehyɛe',
+      'Finance & Paystack': 'Sikasɛm ne Paystack',
+      'Staff Accounts': 'Adwumayɛfo Akonta',
+      'Announcements': 'Nkaebɔ',
+      'Settings': 'Nhyehyɛe',
+      'Classwork, Homework, Tests & Exams': 'Adesua Dwuma ne Nsɔhwɛ',
+      'My Classes & Students': 'Me Adesuakuw ne Adesuafo',
+      'Profile': 'Me Ho Nsɛm',
+      'My Scores': 'Me Nkontaabu',
+      'Fees & Paystack': 'Sukuu Ka ne Paystack',
+      'Fees & Billing': 'Sukuu Ka Nhyehyɛe',
+      'Payments & Receipts': 'Tua ne Risiti',
+      'Student Balances': 'Adesuafo Sika Ka',
+      'Sign Out': 'Pue',
+      'Hide Menu': 'Fa Menu Sie',
+      'Show Menu': 'Kyerɛ Menu',
+      'Menu': 'Menu',
+      'Search': 'Hwehwɛ',
+      'Clear': 'Pepa',
+      'Refresh': 'San Yi',
+      'Print': 'Tintim',
+      'Close': 'To Mu',
+      'Shortcuts': ' Kwan Tiawa',
+      'Currency': 'Sika Su',
+      'School Currency': 'Sukuu Sika Su',
+      'Theme': 'Ahosu',
+      'Language': 'Kasa',
+      'Terms & Conditions': 'Mmara ne Nhyehyɛe',
+      'Academics': 'Adesua',
+      'Administration': 'Ntotoe',
+      'Save Settings': 'Kora Nhyehyɛe',
+      'Search sections or records...': 'Hwehwɛ biribi wɔ ha...',
+    },
+    ar: {
+      'Overview': 'نظرة عامة',
+      'Site Analytics': 'تحليلات الموقع',
+      'Classes & Subjects': 'الفصول والمواد',
+      'Register Teacher': 'تسجيل معلم',
+      'Teachers List': 'قائمة المعلمين',
+      'Assign Class & Subject': 'تعيين فصل ومادة',
+      'Students': 'الطلاب',
+      'Timetable': 'الجدول الدراسي',
+      'Finance & Paystack': 'المالية و Paystack',
+      'Staff Accounts': 'حسابات الموظفين',
+      'Announcements': 'الإعلانات',
+      'Settings': 'الإعدادات',
+      'Classwork, Homework, Tests & Exams': 'الواجبات والاختبارات والامتحانات',
+      'My Classes & Students': 'فصولي وطلابي',
+      'Profile': 'الملف الشخصي',
+      'My Scores': 'درجاتي',
+      'Fees & Paystack': 'الرسوم و Paystack',
+      'Fees & Billing': 'الرسوم والفواتير',
+      'Payments & Receipts': 'المدفوعات والإيصالات',
+      'Student Balances': 'أرصدة الطلاب',
+      'Sign Out': 'تسجيل الخروج',
+      'Hide Menu': 'إخفاء القائمة',
+      'Show Menu': 'إظهار القائمة',
+      'Menu': 'القائمة',
+      'Search': 'بحث',
+      'Clear': 'مسح',
+      'Refresh': 'تحديث',
+      'Print': 'طباعة',
+      'Close': 'إغلاق',
+      'Shortcuts': 'اختصارات',
+      'Currency': 'العملة',
+      'School Currency': 'عملة المدرسة',
+      'Theme': 'المظهر',
+      'Language': 'اللغة',
+      'Terms & Conditions': 'الشروط والأحكام',
+      'Academics': 'الشؤون الأكاديمية',
+      'Administration': 'الإدارة',
+      'Save Settings': 'حفظ الإعدادات',
+      'Search sections or records...': 'ابحث في الأقسام أو السجلات...',
+    },
+  };
+
+  function resolveEffectiveTheme(pref) {
+    const clean = String(pref || 'light').toLowerCase();
+    if (clean === 'system') {
+      try {
+        return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+          ? 'dark'
+          : 'light';
+      } catch (_) {
+        return 'light';
+      }
+    }
+    if (['light', 'dark', 'ocean'].includes(clean)) return clean;
+    return 'light';
+  }
+
+  function applyTheme(pref, { persistLocal = true } = {}) {
+    const normalized = ['light', 'dark', 'ocean', 'system'].includes(String(pref || '').toLowerCase())
+      ? String(pref).toLowerCase()
+      : 'light';
+    activeThemePref = normalized;
+    const effective = resolveEffectiveTheme(normalized);
+    document.documentElement.setAttribute('data-theme', effective);
+    document.documentElement.setAttribute('data-theme-pref', normalized);
+    if (persistLocal) {
+      try {
+        localStorage.setItem(THEME_STORAGE_KEY, normalized);
+      } catch (_) {
+        // ignore storage errors
+      }
+    }
+    ['sb-theme-select', 'topbar-theme-select'].forEach((id) => {
+      const sel = document.getElementById(id);
+      if (sel && sel.value !== normalized) sel.value = normalized;
+    });
+  }
+
+  function translateText(str, lang) {
+    const cleanKey = String(str || '').trim();
+    if (!cleanKey || lang === 'en') return cleanKey;
+    const dict = I18N_DICTIONARY[lang];
+    return (dict && dict[cleanKey]?.trim()) || cleanKey;
+  }
+
+  function applyLanguage(lang, { persistLocal = true } = {}) {
+    const normalized = ['en', 'fr', 'es', 'pt', 'tw', 'ar'].includes(String(lang || '').toLowerCase())
+      ? String(lang).toLowerCase()
+      : 'en';
+    activeLangPref = normalized;
+    document.documentElement.setAttribute('lang', normalized);
+    document.documentElement.setAttribute('dir', normalized === 'ar' ? 'rtl' : 'ltr');
+
+    if (persistLocal) {
+      try {
+        localStorage.setItem(LANG_STORAGE_KEY, normalized);
+      } catch (_) {
+        // ignore storage errors
+      }
+    }
+
+    ['sb-lang-select', 'topbar-lang-select'].forEach((id) => {
+      const sel = document.getElementById(id);
+      if (sel && sel.value !== normalized) sel.value = normalized;
+    });
+
+    const selectors = [
+      '.nav-item-label',
+      '.nav-btn',
+      '.nav-section-label',
+      '.topbar-title',
+      '.card-title',
+      '.sidebar-control-label',
+      '.sidebar-logout-btn',
+      '.sidebar-terms-btn',
+      '.menu-btn-text',
+      'button[data-search-btn]',
+      'button[data-search-clear]',
+      '#topbar-search-btn',
+      '#topbar-search-clear-btn',
+      '#stu-filter-btn',
+      '#acc-filter-btn',
+      '#tch-search-btn',
+      '#usr-search-btn',
+    ];
+
+    document.querySelectorAll(selectors.join(',')).forEach((el) => {
+      if (el.children.length > 0 && !el.classList.contains('nav-btn')) return;
+      if (el.classList.contains('nav-btn') && el.querySelector('.nav-item-label')) return;
+      if (el.dataset.i18nOrig === undefined) {
+        el.dataset.i18nOrig = el.textContent.trim();
+      }
+      const orig = el.dataset.i18nOrig;
+      if (!orig) return;
+      el.textContent = normalized === 'en' ? orig : translateText(orig, normalized);
+    });
+
+    document.querySelectorAll('input[placeholder]').forEach((inp) => {
+      if (inp.dataset.i18nPhOrig === undefined) {
+        inp.dataset.i18nPhOrig = inp.getAttribute('placeholder') || '';
+      }
+      const orig = inp.dataset.i18nPhOrig;
+      if (!orig) return;
+      inp.setAttribute('placeholder', normalized === 'en' ? orig : translateText(orig, normalized));
+    });
+  }
+
+  // Bootstrap saved theme & language before first paint to prevent flash
+  (() => {
+    try {
+      const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+      if (savedTheme) applyTheme(savedTheme, { persistLocal: false });
+      const savedLang = localStorage.getItem(LANG_STORAGE_KEY);
+      if (savedLang && savedLang !== 'en') {
+        document.documentElement.setAttribute('lang', savedLang);
+        document.documentElement.setAttribute('dir', savedLang === 'ar' ? 'rtl' : 'ltr');
+        activeLangPref = savedLang;
+      }
+    } catch (_) {
+      // ignore storage errors
+    }
+  })();
 
   function setSessionToken(tok) {
     sessionToken = String(tok || '').trim();
@@ -177,6 +510,23 @@ window.SMS = (() => {
     if (sess.school) {
       setCurrency(sess.school.currency_code, sess.school.currency_symbol);
     }
+    if (sess.user) {
+      const userTheme = sess.user.themePreference;
+      const userLang = sess.user.languagePreference;
+      let storedTheme = '';
+      let storedLang = '';
+      try {
+        storedTheme = localStorage.getItem(THEME_STORAGE_KEY) || '';
+        storedLang = localStorage.getItem(LANG_STORAGE_KEY) || '';
+      } catch (_) {
+        // ignore
+      }
+      applyTheme(storedTheme || userTheme || 'light', { persistLocal: true });
+      applyLanguage(storedLang || userLang || 'en', { persistLocal: true });
+    } else {
+      applyTheme(activeThemePref, { persistLocal: false });
+      applyLanguage(activeLangPref, { persistLocal: false });
+    }
     try {
       sessionStorage.removeItem('sms_privacy_masked');
       document.body?.classList.remove('privacy-masked');
@@ -185,7 +535,135 @@ window.SMS = (() => {
     }
     enhancePasswordInputs();
     installBackButtonGuard();
+    if (window.location.pathname.startsWith('/dashboard/') && sess.authenticated && sess.user) {
+      ensureFirstVisitTermsGate(sess.user);
+    }
     return sess;
+  }
+
+  function buildTermsClausesHtml() {
+    return `
+      <div class="terms-clause">
+        <h4>1. Portal Access &amp; Role Responsibility</h4>
+        <p>Your School Management System credentials are strictly personal. You are responsible for all actions taken under your session across Superadmin, Teacher, Student, or Financial workspaces.</p>
+      </div>
+      <div class="terms-clause">
+        <h4>2. Academic Honesty &amp; Coursework Conduct</h4>
+        <p>Submitted classwork, homework, tests, exams, grades, and uploaded documents/media must be authentic, accurate, and compliant with school academic standards.</p>
+      </div>
+      <div class="terms-clause">
+        <h4>3. Student &amp; Staff Data Confidentiality</h4>
+        <p>Personal records, admission details, contact numbers, grades, and financial balances are confidential school records and may not be shared with unauthorized third parties.</p>
+      </div>
+      <div class="terms-clause">
+        <h4>4. Fee Billing, Paystack Payments &amp; Receipts</h4>
+        <p>All online payments, outbound transfers, and reversals processed through Paystack are logged with official receipt numbers and audit trails. Fraudulent or disputed chargebacks are subject to administrative review.</p>
+      </div>
+      <div class="terms-clause">
+        <h4>5. Acceptable Portal Use &amp; Security</h4>
+        <p>Users must not attempt unauthorized access, session tampering, or uploading harmful content. School Administration reserves the right to suspend accounts that violate portal policy.</p>
+      </div>
+    `;
+  }
+
+  function openTermsModal({ mandatory = false, user = null } = {}) {
+    let backdrop = document.getElementById('sms-terms-gate-modal');
+    if (!backdrop) {
+      backdrop = document.createElement('div');
+      backdrop.id = 'sms-terms-gate-modal';
+      backdrop.className = 'terms-modal-backdrop';
+      document.body.appendChild(backdrop);
+    }
+
+    const acceptedDate = user?.termsAcceptedAt
+      ? String(user.termsAcceptedAt).slice(0, 16)
+      : '';
+
+    backdrop.innerHTML = `
+      <div class="terms-modal-card" role="dialog" aria-modal="true" aria-labelledby="sms-terms-modal-title">
+        <div class="terms-modal-head">
+          <h2 class="terms-modal-title" id="sms-terms-modal-title">${
+            mandatory ? 'Welcome — Review &amp; Accept Terms &amp; Conditions' : 'Terms &amp; Conditions'
+          }</h2>
+          <div class="terms-modal-sub">${
+            mandatory
+              ? 'First-time dashboard visit: please read and accept the School Management System Terms &amp; Conditions to continue.'
+              : acceptedDate
+              ? `Version 2026.1 — Accepted on ${esc(acceptedDate)}`
+              : 'School Management System — Acceptable Use, Privacy &amp; Portal Policy (v2026.1)'
+          }</div>
+        </div>
+        <div class="terms-scroll-body">
+          ${buildTermsClausesHtml()}
+        </div>
+        <div class="terms-modal-foot">
+          ${
+            mandatory
+              ? `
+                <label class="terms-modal-check" for="sms-terms-gate-checkbox">
+                  <input type="checkbox" id="sms-terms-gate-checkbox">
+                  <span>I have read, understood, and agree to the Terms &amp; Conditions.</span>
+                </label>
+                <div class="terms-modal-actions">
+                  <button type="button" class="btn btn-secondary btn-sm" id="sms-terms-decline-btn">Sign Out</button>
+                  <button type="button" class="btn btn-primary btn-sm" id="sms-terms-accept-btn" disabled>Accept &amp; Continue</button>
+                </div>
+              `
+              : `
+                <div class="terms-modal-actions">
+                  <button type="button" class="btn btn-primary btn-sm" id="sms-terms-close-btn">Close</button>
+                </div>
+              `
+          }
+        </div>
+      </div>
+    `;
+
+    backdrop.classList.add('open');
+
+    if (mandatory) {
+      const chk = document.getElementById('sms-terms-gate-checkbox');
+      const acceptBtn = document.getElementById('sms-terms-accept-btn');
+      const declineBtn = document.getElementById('sms-terms-decline-btn');
+
+      chk?.addEventListener('change', () => {
+        if (acceptBtn) acceptBtn.disabled = !chk.checked;
+      });
+
+      acceptBtn?.addEventListener('click', async () => {
+        if (!chk?.checked) return;
+        acceptBtn.disabled = true;
+        acceptBtn.textContent = 'Saving...';
+        try {
+          const res = await api('/api/auth/terms/accept', {
+            method: 'POST',
+            body: { accept: true },
+          });
+          if (res.user) currentUser = res.user;
+          backdrop.classList.remove('open');
+          toast('Terms & Conditions accepted. Welcome to your dashboard.', 'success');
+        } catch (err) {
+          toast(err.message, 'error');
+          acceptBtn.disabled = false;
+          acceptBtn.textContent = 'Accept & Continue';
+        }
+      });
+
+      declineBtn?.addEventListener('click', () => {
+        logout();
+      });
+    } else {
+      const closeBtn = document.getElementById('sms-terms-close-btn');
+      closeBtn?.addEventListener('click', () => backdrop.classList.remove('open'));
+      backdrop.onclick = (e) => {
+        if (e.target === backdrop) backdrop.classList.remove('open');
+      };
+    }
+  }
+
+  function ensureFirstVisitTermsGate(user) {
+    if (!user || user.termsAccepted) return;
+    openTermsModal({ mandatory: true, user });
   }
 
   function installBackButtonGuard() {
@@ -392,9 +870,10 @@ window.SMS = (() => {
     const labelSpan = mobileBtn.querySelector('.menu-btn-text');
     const labelText = isVisible ? 'Hide Menu' : 'Show Menu';
     if (labelSpan) {
-      labelSpan.textContent = labelText;
+      labelSpan.dataset.i18nOrig = labelText;
+      labelSpan.textContent = translateText(labelText, activeLangPref);
     } else {
-      mobileBtn.textContent = labelText;
+      mobileBtn.textContent = translateText(labelText, activeLangPref);
     }
     mobileBtn.setAttribute('aria-expanded', isVisible ? 'true' : 'false');
     mobileBtn.setAttribute('title', isVisible ? 'Hide sidebar menu' : 'Show sidebar menu');
@@ -409,8 +888,13 @@ window.SMS = (() => {
     const subtitleEl = document.getElementById('topbar-subtitle');
     if (titleEl && activeBtn) {
       const labelEl = activeBtn.querySelector('.nav-item-label');
-      titleEl.textContent =
-        activeBtn.dataset.title || (labelEl ? labelEl.textContent.trim() : activeBtn.textContent.trim());
+      const rawTitle =
+        activeBtn.dataset.title ||
+        labelEl?.dataset.i18nOrig ||
+        activeBtn.dataset.i18nOrig ||
+        (labelEl ? labelEl.textContent.trim() : activeBtn.textContent.trim());
+      titleEl.dataset.i18nOrig = rawTitle;
+      titleEl.textContent = translateText(rawTitle, activeLangPref);
     }
     if (subtitleEl && activeBtn) {
       subtitleEl.textContent = activeBtn.dataset.subtitle || '';
@@ -489,6 +973,16 @@ window.SMS = (() => {
 
     initUniversalSearch();
     initTopbarSearch(onSectionChange);
+    initThemeAndLanguageControls();
+    initScrollGlassEffect();
+
+    const termsBtn = document.getElementById('open-terms-btn');
+    if (termsBtn && !termsBtn.dataset.boundTerms) {
+      termsBtn.dataset.boundTerms = '1';
+      termsBtn.addEventListener('click', () => {
+        openTermsModal({ mandatory: false, user: currentUser });
+      });
+    }
 
     navBtns.forEach((btn) => {
       btn.addEventListener('click', () => activateSection(btn.dataset.section, onSectionChange));
@@ -730,6 +1224,85 @@ window.SMS = (() => {
         runTopbarSearch('');
       });
     }
+  }
+
+  async function savePreferencesRemote(partial) {
+    if (!currentUser) return;
+    try {
+      const res = await api('/api/auth/preferences', {
+        method: 'PATCH',
+        body: partial,
+      });
+      if (res.user) currentUser = res.user;
+    } catch (_) {
+      // keep local preference even if offline
+    }
+  }
+
+  function initThemeAndLanguageControls() {
+    const topbar = document.querySelector('.topbar');
+    if (topbar && !document.getElementById('topbar-prefs-bar')) {
+      const prefsWrap = document.createElement('div');
+      prefsWrap.id = 'topbar-prefs-bar';
+      prefsWrap.className = 'topbar-prefs-bar';
+      prefsWrap.innerHTML = `
+        <select id="topbar-theme-select" class="topbar-pref-select" aria-label="Theme">
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+          <option value="ocean">Ocean Glass</option>
+          <option value="system">System</option>
+        </select>
+        <select id="topbar-lang-select" class="topbar-pref-select" aria-label="Language">
+          <option value="en">English</option>
+          <option value="fr">Français</option>
+          <option value="es">Español</option>
+          <option value="pt">Português</option>
+          <option value="tw">Twi</option>
+          <option value="ar">العربية</option>
+        </select>
+      `;
+      const dateChip = topbar.querySelector('.topbar-date-chip');
+      if (dateChip) {
+        topbar.insertBefore(prefsWrap, dateChip);
+      } else {
+        topbar.appendChild(prefsWrap);
+      }
+    }
+
+    ['sb-theme-select', 'topbar-theme-select'].forEach((id) => {
+      const sel = document.getElementById(id);
+      if (!sel || sel.dataset.prefBound === '1') return;
+      sel.dataset.prefBound = '1';
+      sel.value = activeThemePref;
+      sel.addEventListener('change', () => {
+        applyTheme(sel.value, { persistLocal: true });
+        savePreferencesRemote({ theme: sel.value });
+      });
+    });
+
+    ['sb-lang-select', 'topbar-lang-select'].forEach((id) => {
+      const sel = document.getElementById(id);
+      if (!sel || sel.dataset.prefBound === '1') return;
+      sel.dataset.prefBound = '1';
+      sel.value = activeLangPref;
+      sel.addEventListener('change', () => {
+        applyLanguage(sel.value, { persistLocal: true });
+        savePreferencesRemote({ language: sel.value });
+      });
+    });
+
+    applyTheme(activeThemePref, { persistLocal: false });
+    applyLanguage(activeLangPref, { persistLocal: false });
+  }
+
+  function initScrollGlassEffect() {
+    if (window.__smsScrollGlassBound) return;
+    window.__smsScrollGlassBound = true;
+    const onScroll = () => {
+      document.body?.classList.toggle('is-scrolled', window.scrollY > 8);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
   }
 
   const KPI_ICONS = {
@@ -1194,6 +1767,10 @@ window.SMS = (() => {
     initNavigation,
     applySearchBar,
     initUniversalSearch,
+    applyTheme,
+    applyLanguage,
+    openTermsModal,
+    buildTermsClausesHtml,
     kpiCard,
     renderTimetableMatrix,
     formatBytes,

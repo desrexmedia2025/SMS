@@ -768,7 +768,22 @@ test('13. School Management System branding, student-only join proposals (Supera
   });
   assert.equal(tryFinanceReg.status, 403);
 
-  // 13c. Student submits join proposal -> blocked before approval -> Superadmin accepts -> student signs in
+  // 13c. Student registration requires Terms & Conditions acceptance
+  const missingTermsRes = await publicClient.request('/api/auth/register-student', {
+    method: 'POST',
+    body: {
+      firstName: 'Nana',
+      lastName: 'Adjei',
+      email: 'nana.adjei@student.school.edu.gh',
+      requestedClassId: firstClassId,
+      gender: 'Female',
+      guardianPhone: '+233 24 900 1122',
+      password: 'Nana#Student2026!',
+    },
+  });
+  assert.equal(missingTermsRes.status, 400);
+
+  // Student submits join proposal with accepted Terms -> blocked before approval -> Superadmin accepts -> student signs in
   const studentProposalRes = await publicClient.request('/api/auth/register-student', {
     method: 'POST',
     body: {
@@ -779,6 +794,7 @@ test('13. School Management System branding, student-only join proposals (Supera
       gender: 'Female',
       guardianPhone: '+233 24 900 1122',
       password: 'Nana#Student2026!',
+      acceptTerms: true,
     },
   });
   assert.equal(studentProposalRes.status, 201);
@@ -827,6 +843,7 @@ test('13. School Management System branding, student-only join proposals (Supera
       email: 'kojo.declined@student.school.edu.gh',
       requestedClassId: firstClassId,
       password: 'Kojo#Student2026!',
+      acceptTerms: true,
     },
   });
   assert.equal(rejectedProposal.status, 201);
@@ -1793,7 +1810,7 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
   // Every dashboard includes Show/Hide Menu button, modern action tiles & clean v3.x assets
   for (const html of [saHtml, tcHtml, stHtml, fnHtml]) {
     assert.match(html, /id="mobile-menu-btn"/);
-    assert.match(html, /\?v=3\.6/);
+    assert.match(html, /\?v=3\.7/);
     assert.match(html, /class="action-tile-grid"/);
     assert.doesNotMatch(html, /Hide Figures/i);
     assert.doesNotMatch(html, /Audit Log/i);
@@ -2020,6 +2037,81 @@ test('22. Universal Search Buttons across all 4 Dashboards & Server-Side Search 
   assert.equal(finAccSearch.status, 200);
   assert.equal(finAccSearch.json.items.length >= 1, true);
 });
+
+test('23. Terms & Conditions (Registration + First Dashboard Visit), Themes, Languages & Glass Navbars', async () => {
+  const pub = new SessionClient();
+  const loginPage = await pub.request('/login');
+  assert.equal(loginPage.status, 200);
+  assert.match(loginPage.text, /id="reg-accept-terms"/);
+  assert.match(loginPage.text, /id="open-reg-terms-btn"/);
+  assert.match(loginPage.text, /id="login-terms-modal"/);
+
+  const teacher = new SessionClient();
+  await teacher.login('kofi.mensah@school.edu.gh', 'Teacher@2026!');
+
+  // First-time dashboard visit check: termsAccepted starts false before acceptance
+  const initialSess = await teacher.request('/api/auth/session');
+  assert.equal(initialSess.status, 200);
+  assert.equal(initialSess.json.user.termsAccepted, false);
+
+  // Accept Terms & Conditions on first dashboard visit
+  const acceptRes = await teacher.request('/api/auth/terms/accept', {
+    method: 'POST',
+    body: { accept: true },
+  });
+  assert.equal(acceptRes.status, 200);
+  assert.equal(acceptRes.json.user.termsAccepted, true);
+  assert.equal(acceptRes.json.termsVersion, '2026.1');
+
+  const afterSess = await teacher.request('/api/auth/session');
+  assert.equal(afterSess.json.user.termsAccepted, true);
+
+  // Persist Theme & Language preferences on user profile
+  const prefRes = await teacher.request('/api/auth/preferences', {
+    method: 'PATCH',
+    body: { theme: 'dark', language: 'fr' },
+  });
+  assert.equal(prefRes.status, 200);
+  assert.equal(prefRes.json.themePreference, 'dark');
+  assert.equal(prefRes.json.languagePreference, 'fr');
+
+  const badPrefRes = await teacher.request('/api/auth/preferences', {
+    method: 'PATCH',
+    body: { theme: 'neon-pink' },
+  });
+  assert.equal(badPrefRes.status, 400);
+
+  // Verify Theme, Language & Terms controls across all 4 dashboards + Glass Navbar CSS
+  const admin = new SessionClient();
+  const student = new SessionClient();
+  const finance = new SessionClient();
+  await admin.login('admin@school.edu.gh', 'Admin@2026!');
+  await student.login('kwame.asante@student.school.edu.gh', 'Student@2026!');
+  await finance.login('finance@school.edu.gh', 'Finance@2026!');
+
+  const pages = [
+    await admin.request('/dashboard/superadmin'),
+    await teacher.request('/dashboard/teacher'),
+    await student.request('/dashboard/student'),
+    await finance.request('/dashboard/financial'),
+  ];
+  for (const p of pages) {
+    assert.equal(p.status, 200);
+    assert.match(p.text, /id="sb-theme-select"/);
+    assert.match(p.text, /id="sb-lang-select"/);
+    assert.match(p.text, /id="open-terms-btn"/);
+  }
+
+  const cssText = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'public', 'css', 'styles.css'),
+    'utf8'
+  );
+  assert.match(cssText, /--glass-topbar-bg:/);
+  assert.match(cssText, /backdrop-filter:\s*blur\(20px\)/);
+  assert.match(cssText, /html\[data-theme="dark"\]/);
+  assert.match(cssText, /html\[data-theme="ocean"\]/);
+});
+
 
 
 

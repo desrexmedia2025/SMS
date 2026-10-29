@@ -8,7 +8,7 @@ const router = express.Router();
 
 const authRateLimit = createRateLimiter({
   windowMs: 60 * 1000,
-  max: 60,
+  max: 120,
   keyPrefix: 'auth',
   message: 'Too many authentication attempts from this network. Please wait a minute before trying again.',
 });
@@ -20,6 +20,8 @@ router.post('/logout', verifyCsrfToken, authController.logout);
 router.post('/password-reset/request', authRateLimit, verifyCsrfToken, authController.requestReset);
 router.post('/password-reset/confirm', authRateLimit, verifyCsrfToken, authController.confirmReset);
 router.post('/password/change', authenticate, verifyCsrfToken, authController.changePassword);
+router.post('/terms/accept', authenticate, verifyCsrfToken, authController.acceptTerms);
+router.patch('/preferences', authenticate, verifyCsrfToken, authController.updatePreferences);
 
 // Real-Time Google OAuth 2.0 + State-Verified Interactive Sandbox & Popup Handoff
 router.get('/google', authRateLimit, authController.startGoogleOAuth);

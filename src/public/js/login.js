@@ -132,6 +132,14 @@
   });
 
   document.getElementById('google-register-btn').addEventListener('click', () => {
+    const termsChk = document.getElementById('reg-accept-terms');
+    if (termsChk && !termsChk.checked) {
+      registerFeedbackEl.textContent =
+        'You must read and accept the Terms and Conditions before creating an account.';
+      registerFeedbackEl.className = 'alert alert-error';
+      registerFeedbackEl.classList.remove('hidden');
+      return;
+    }
     const qs = new URLSearchParams({ mode: 'register' });
     const classId = document.getElementById('reg-class-select').value;
     const gender = document.getElementById('reg-gender').value;
@@ -140,6 +148,27 @@
     if (gender) qs.set('gender', gender);
     if (guardianPhone) qs.set('guardianPhone', guardianPhone);
     SMS.startGoogleAuth(`/auth/google?${qs.toString()}`);
+  });
+
+  const loginTermsModal = document.getElementById('login-terms-modal');
+  const loginTermsBody = document.getElementById('login-terms-clauses-body');
+  if (loginTermsBody && typeof SMS.buildTermsClausesHtml === 'function') {
+    loginTermsBody.innerHTML = SMS.buildTermsClausesHtml();
+  }
+  document.getElementById('open-reg-terms-btn')?.addEventListener('click', () => {
+    loginTermsModal?.classList.add('open');
+  });
+  document.getElementById('close-reg-terms-modal-btn')?.addEventListener('click', () => {
+    loginTermsModal?.classList.remove('open');
+  });
+  document.getElementById('accept-reg-terms-modal-btn')?.addEventListener('click', () => {
+    const chk = document.getElementById('reg-accept-terms');
+    if (chk) chk.checked = true;
+    registerFeedbackEl.classList.add('hidden');
+    loginTermsModal?.classList.remove('open');
+  });
+  loginTermsModal?.addEventListener('click', (e) => {
+    if (e.target === loginTermsModal) loginTermsModal.classList.remove('open');
   });
 
   async function performLogin(identifier, password) {
@@ -176,6 +205,14 @@
   registerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     registerFeedbackEl.classList.add('hidden');
+    const acceptTerms = Boolean(document.getElementById('reg-accept-terms')?.checked);
+    if (!acceptTerms) {
+      registerFeedbackEl.textContent =
+        'You must read and accept the Terms and Conditions to create an account.';
+      registerFeedbackEl.className = 'alert alert-error';
+      registerFeedbackEl.classList.remove('hidden');
+      return;
+    }
     registerSubmitBtn.disabled = true;
     registerSubmitBtn.textContent = 'SUBMITTING...';
     try {
@@ -187,6 +224,7 @@
         gender: document.getElementById('reg-gender').value,
         guardianPhone: document.getElementById('reg-guardian-phone').value.trim(),
         password: document.getElementById('reg-password').value,
+        acceptTerms: true,
       };
       const res = await SMS.api('/api/auth/register-student', {
         method: 'POST',

@@ -19,6 +19,10 @@ const USER_WITH_ROLE_SQL = `
     u.locked_until,
     u.password_changed_at,
     u.last_login_at,
+    u.terms_accepted_at,
+    u.terms_version,
+    u.theme_preference,
+    u.language_preference,
     u.created_at,
     r.slug AS role,
     r.name AS role_name,
@@ -84,6 +88,11 @@ function toSafeSessionUser(row) {
     admissionNumber: row.admission_number || null,
     googleLinked: Boolean(row.google_subject_id),
     authProvider: row.auth_provider || 'local',
+    termsAccepted: Boolean(row.terms_accepted_at),
+    termsAcceptedAt: row.terms_accepted_at || null,
+    termsVersion: row.terms_version || '',
+    themePreference: row.theme_preference || 'light',
+    languagePreference: row.language_preference || 'en',
   };
 }
 
