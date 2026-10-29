@@ -49,6 +49,10 @@ async function initDatabase(options = {}) {
         connectionLimit: env.db.connectionLimit,
         queueLimit: 0,
         timezone: 'Z',
+        connectTimeout: env.db.connectTimeoutMs,
+        enableKeepAlive: true,
+        keepAliveInitialDelay: 10000,
+        ...(env.db.ssl ? { ssl: env.db.ssl } : {}),
       });
       const conn = await pool.getConnection();
       await conn.ping();

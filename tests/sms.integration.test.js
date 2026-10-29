@@ -3654,3 +3654,73 @@ test('29. Printable per-term report cards with class position, grading & remarks
   );
   assert.match(migration, /CREATE TABLE IF NOT EXISTS report_cards/);
 });
+
+test('Test 30: hosted database config uses TLS for remote hosts and never silently degrades', () => {
+  const envPath = require.resolve('../src/config/environment');
+  const originalModule = require.cache[envPath];
+  const saved = {
+    DB_DRIVER: process.env.DB_DRIVER,
+    DB_HOST: process.env.DB_HOST,
+    DB_SSL: process.env.DB_SSL,
+    DB_SSL_REJECT_UNAUTHORIZED: process.env.DB_SSL_REJECT_UNAUTHORIZED,
+    DB_AUTO_FALLBACK: process.env.DB_AUTO_FALLBACK,
+  };
+
+  // Blank every key first: an unset variable would otherwise be refilled by dotenv from .env
+  const loadEnv = (vars) => {
+    for (const key of Object.keys(saved)) process.env[key] = '';
+    Object.assign(process.env, vars);
+    delete require.cache[envPath];
+    return require('../src/config/environment');
+  };
+
+  try {
+    // Hosted endpoints (TiDB Cloud, Aiven, Railway, PlanetScale, Cloud SQL) are TLS-only
+    assert.deepEqual(
+      loadEnv({ DB_HOST: 'gateway01.eu-central-1.prod.aws.tidbcloud.com' }).db.ssl,
+      { rejectUnauthorized: true },
+      'remote database hosts must negotiate TLS by default'
+    );
+
+    // Loopback and private-network hosts stay plain text
+    assert.equal(loadEnv({ DB_HOST: '127.0.0.1' }).db.ssl, null);
+    assert.equal(loadEnv({ DB_HOST: '10.0.0.5' }).db.ssl, null);
+
+    // Explicit overrides win in both directions
+    assert.equal(loadEnv({ DB_HOST: 'db.school.example', DB_SSL: 'false' }).db.ssl, null);
+    assert.deepEqual(
+      loadEnv({
+        DB_HOST: 'db.school.example',
+        DB_SSL: 'true',
+        DB_SSL_REJECT_UNAUTHORIZED: 'false',
+      }).db.ssl,
+      { rejectUnauthorized: false }
+    );
+
+    // A production deployment pinned to MySQL must fail loudly rather than fall back to an
+    // ephemeral SQLite file, otherwise sessions and records vanish between instances.
+    assert.equal(loadEnv({ DB_DRIVER: 'mysql' }).db.autoFallback, false);
+    assert.equal(loadEnv({ DB_DRIVER: 'mysql', DB_AUTO_FALLBACK: 'false' }).db.autoFallback, false);
+    assert.equal(loadEnv({ DB_DRIVER: 'mysql', DB_AUTO_FALLBACK: 'true' }).db.autoFallback, true);
+    assert.equal(loadEnv({ DB_DRIVER: 'sqlite' }).db.autoFallback, true);
+  } finally {
+    for (const key of Object.keys(saved)) {
+      if (saved[key] === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = saved[key];
+      }
+    }
+    require.cache[envPath] = originalModule;
+    delete require.cache[envPath];
+    require('../src/config/environment');
+    require.cache[envPath] = originalModule;
+  }
+
+  const dbSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'config', 'database.js'), 'utf8');
+  assert.match(dbSource, /ssl: env\.db\.ssl/, 'the MySQL pool must forward the resolved TLS config');
+  assert.match(dbSource, /connectTimeout/, 'the MySQL pool must fail fast with a connect timeout');
+
+  const envSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'config', 'environment.js'), 'utf8');
+  assert.match(envSource, /resolveMysqlSsl/);
+});

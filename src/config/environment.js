@@ -24,6 +24,27 @@ const defaultSqlitePath = process.env.SQLITE_PATH
     ? '/tmp/sms_vercel.sqlite'
     : path.resolve(process.cwd(), './data/sms_dev.sqlite');
 
+// Hosted MySQL/MariaDB endpoints (TiDB Cloud, Aiven, Railway, PlanetScale, Cloud SQL, ...)
+// are TLS-only, and the driver must opt in explicitly. Local/private hosts stay plain.
+const LOCAL_DB_HOST_PATTERN =
+  /^(localhost|127\.|0\.0\.0\.0|::1|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|.*\.internal|.*\.local)/;
+
+function resolveMysqlSsl(host) {
+  const raw = String(process.env.DB_SSL || '').trim().toLowerCase();
+  const rejectUnauthorized = !['false', '0', 'no', 'off'].includes(
+    String(process.env.DB_SSL_REJECT_UNAUTHORIZED || 'true').trim().toLowerCase()
+  );
+
+  if (['false', '0', 'no', 'off', 'disabled', 'none'].includes(raw)) return null;
+  if (['true', '1', 'yes', 'on', 'enabled', 'require'].includes(raw)) {
+    return { rejectUnauthorized };
+  }
+
+  const candidate = String(host || '').trim().toLowerCase();
+  if (!candidate || LOCAL_DB_HOST_PATTERN.test(candidate)) return null;
+  return { rejectUnauthorized };
+}
+
 const env = {
   nodeEnv: NODE_ENV,
   isProduction,
@@ -41,13 +62,25 @@ const env = {
 
   db: {
     driver: defaultDbDriver,
-    autoFallback: process.env.DB_AUTO_FALLBACK !== 'false' && (!isProduction || isVercel),
+    // A production deployment that silently falls back to an ephemeral SQLite file loses every
+    // session and record on the next cold start, so an explicit `DB_DRIVER=mysql` only falls
+    // back when `DB_AUTO_FALLBACK=true` is asked for.
+    autoFallback: (() => {
+      const requested = String(process.env.DB_AUTO_FALLBACK || '').trim().toLowerCase();
+      if (requested) {
+        return !['false', '0', 'no', 'off'].includes(requested);
+      }
+      const explicitDriver = String(process.env.DB_DRIVER || '').trim().toLowerCase();
+      return explicitDriver !== 'mysql' && !isProduction;
+    })(),
     host: process.env.DB_HOST || '127.0.0.1',
     port: parseInt(process.env.DB_PORT || '3306', 10),
     name: process.env.DB_NAME || 'school_management',
     user: process.env.DB_USER || 'sms_app_user',
     password: process.env.DB_PASSWORD || '',
     connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT || '10', 10),
+    connectTimeoutMs: parseInt(process.env.DB_CONNECT_TIMEOUT_MS || '15000', 10),
+    ssl: resolveMysqlSsl(process.env.DB_HOST || '127.0.0.1'),
     sqlitePath: defaultSqlitePath,
   },
 
