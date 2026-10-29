@@ -11,6 +11,8 @@ Every dashboard includes a responsive **Show Menu / Hide Menu** sidebar toggle a
 
 **Profile Photos**: Every account has a profile photo shown in the side panel session box, with a **Change Photo / Remove** control and a larger **Profile Photo** card on the Teacher and Student Profile pages. Uploads accept JPG, PNG, WEBP or GIF images up to **2 MB**, are stored outside the web root (`data/uploads/avatars`), and are served only to signed-in users through the authenticated, `no-store` endpoint `GET /api/users/:id/avatar`. The Superadmin can additionally set or clear any portal account's photo from **Staff Accounts**.
 
+**Edit Any Record (Superadmin)**: Every row in **Students**, **Teachers List** and **Staff Accounts** now has an **Edit** control that opens a modal for full record editing. Student edits cover admission number, names, portal email, phone, class placement, gender, date of birth, guardian details, address, medical notes, status and an optional password reset; teacher edits cover staff number, names, email, phone, qualification, specialization, department, hire date, status and optional password reset; staff account edits cover full name, username, email, phone, role, status and optional password reset. All three are validated server-side (email/admission-number/staff-number uniqueness return `HTTP 409`), require CSRF, are Superadmin-only (`HTTP 403` for every other role) and are written to the audit log as `STUDENT_RECORD_UPDATED`, `TEACHER_RECORD_UPDATED` and `STAFF_ACCOUNT_UPDATED`.
+
 **Overview Calendar (All Four Dashboards)**: The first card of every Overview, anchored in the top-left corner, is a live month calendar with **Previous / Next / Today** navigation, colour-coded event markers, and a side agenda listing the selected day's items plus everything upcoming. Its role-scoped feed comes from `GET /api/calendar/events?from=YYYY-MM-DD&to=YYYY-MM-DD`:
 - **Superadmin** - school-wide coursework/exam deadlines, published announcements, fee due dates, and payments collected.
 - **Teacher** - their own classwork, homework, test and exam deadlines plus the class announcements they published.
@@ -57,7 +59,7 @@ Every dashboard includes a responsive **Show Menu / Hide Menu** sidebar toggle a
 │   ├── views/                                       # Server-protected HTML shells (login + 4 dashboards)
 │   └── public/                                      # Responsive institutional CSS & modular client JS
 └── tests/
-    └── sms.integration.test.js                      # 25 end-to-end RBAC, IDOR, OAuth, Paystack, calendar, profile photo & security suites
+    └── sms.integration.test.js                      # 26 end-to-end RBAC, IDOR, OAuth, Paystack, calendar, profile photo, record editing & security suites
 ```
 
 ---

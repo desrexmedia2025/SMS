@@ -966,7 +966,7 @@ async function listStudents(query = {}) {
   const items = await db.query(
     `SELECT
        s.*,
-       u.email, u.username, u.status AS user_status,
+       u.email, u.username, u.phone, u.status AS user_status,
        se.class_id, se.roll_number, se.academic_year_id,
        c.name AS class_name
      FROM students s
@@ -1886,6 +1886,364 @@ async function getSiteAnalytics(query = {}) {
   return analyticsService.getSiteAnalytics({ days: query.days });
 }
 
+// ---------------- CENTRALISED RECORD EDITING (Students, Teachers & Staff) ----------------
+async function assertUniqueEmail(email, excludeUserId) {
+  const clash = await db.get(
+    'SELECT id FROM users WHERE LOWER(email) = ? AND id <> ?',
+    [String(email).toLowerCase(), excludeUserId]
+  );
+  if (clash) throw new AppError(409, 'That email address is already used by another account.');
+}
+
+async function assertUniqueUsername(username, excludeUserId) {
+  const clash = await db.get(
+    'SELECT id FROM users WHERE LOWER(username) = ? AND id <> ?',
+    [String(username).toLowerCase(), excludeUserId]
+  );
+  if (clash) throw new AppError(409, 'That username is already taken by another account.');
+}
+
+async function updateStudentRecord({
+  studentId,
+  admissionNumber,
+  firstName,
+  lastName,
+  email,
+  phone,
+  gender,
+  dateOfBirth,
+  guardianName,
+  guardianPhone,
+  guardianEmail,
+  address,
+  medicalNotes,
+  status,
+  classId,
+  newPassword,
+  actor,
+  ipAddress,
+}) {
+  const student = await db.get(
+    `SELECT s.*, u.id AS user_id, u.email AS user_email, u.full_name, u.phone AS user_phone
+     FROM students s
+     INNER JOIN users u ON u.id = s.user_id
+     WHERE s.id = ?`,
+    [studentId]
+  );
+  if (!student) throw new AppError(404, 'Student record not found.');
+
+  if (email && String(email).toLowerCase() !== String(student.user_email).toLowerCase()) {
+    await assertUniqueEmail(email, student.user_id);
+  }
+  if (admissionNumber && admissionNumber !== student.admission_number) {
+    const admClash = await db.get(
+      'SELECT id FROM students WHERE admission_number = ? AND id <> ?',
+      [admissionNumber, studentId]
+    );
+    if (admClash) throw new AppError(409, 'That admission number is already assigned to another student.');
+  }
+
+  const nextFirst = firstName || student.first_name;
+  const nextLast = lastName || student.last_name;
+
+  await db.withTransaction(async (tx) => {
+    await tx.run(
+      `UPDATE students
+       SET admission_number = ?, first_name = ?, last_name = ?, gender = ?, date_of_birth = ?,
+           guardian_name = ?, guardian_phone = ?, guardian_email = ?, address = ?, medical_notes = ?,
+           status = ?
+       WHERE id = ?`,
+      [
+        admissionNumber || student.admission_number,
+        nextFirst,
+        nextLast,
+        gender === undefined ? student.gender : gender,
+        dateOfBirth === undefined ? student.date_of_birth : dateOfBirth,
+        guardianName === undefined ? student.guardian_name : guardianName,
+        guardianPhone === undefined ? student.guardian_phone : guardianPhone,
+        guardianEmail === undefined ? student.guardian_email : guardianEmail,
+        address === undefined ? student.address : address,
+        medicalNotes === undefined ? student.medical_notes : medicalNotes,
+        status || student.status,
+        studentId,
+      ]
+    );
+
+    await tx.run(
+      `UPDATE users
+       SET email = COALESCE(?, email),
+           phone = ?,
+           full_name = ?,
+           status = ?,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [
+        email ? String(email).toLowerCase() : null,
+        phone === undefined ? student.user_phone : phone,
+        `${nextFirst} ${nextLast}`,
+        status || student.status,
+        student.user_id,
+      ]
+    );
+
+    if (newPassword && String(newPassword).trim().length >= 8) {
+      const hash = await bcrypt.hash(String(newPassword).trim(), 10);
+      await tx.run(
+        `UPDATE users
+         SET password_hash = ?, failed_login_attempts = 0, locked_until = NULL,
+             password_changed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [hash, student.user_id]
+      );
+    }
+
+    if (classId !== undefined) {
+      const existing = await tx.get(
+        'SELECT id, class_id FROM student_enrolments WHERE student_id = ? ORDER BY id DESC LIMIT 1',
+        [studentId]
+      );
+      if (existing) {
+        await tx.run(
+          'UPDATE student_enrolments SET class_id = ?, status = ? WHERE id = ?',
+          [classId || existing.class_id, status && status !== 'active' ? 'inactive' : 'enrolled', existing.id]
+        );
+      } else if (classId) {
+        const period = await systemModel.ensureActiveAcademicPeriod(tx);
+        await tx.run(
+          `INSERT INTO student_enrolments (student_id, class_id, academic_year_id, term_id, status)
+           VALUES (?, ?, ?, ?, 'enrolled')`,
+          [studentId, classId, period.yearId, period.termId || null]
+        );
+      }
+    }
+
+    await recordAudit(
+      {
+        actorUserId: actor.id,
+        actorRole: actor.role,
+        action: 'STUDENT_RECORD_UPDATED',
+        targetType: 'student',
+        targetId: String(studentId),
+        ipAddress,
+        metadata: { admissionNumber: admissionNumber || student.admission_number, classId: classId ?? null },
+      },
+      tx
+    );
+  });
+
+  const fresh = await db.get(
+    `SELECT s.*, u.email, u.username, u.phone, u.status AS user_status,
+            se.class_id, se.roll_number, c.name AS class_name
+     FROM students s
+     INNER JOIN users u ON u.id = s.user_id
+     LEFT JOIN student_enrolments se ON se.student_id = s.id
+     LEFT JOIN classes c ON c.id = se.class_id
+     WHERE s.id = ?`,
+    [studentId]
+  );
+  return { student: fresh, message: 'Student record updated.' };
+}
+
+async function updateTeacherRecord({
+  teacherId,
+  staffNumber,
+  firstName,
+  lastName,
+  email,
+  phone,
+  qualification,
+  specialization,
+  department,
+  hireDate,
+  status,
+  newPassword,
+  actor,
+  ipAddress,
+}) {
+  const teacher = await db.get(
+    `SELECT t.*, u.id AS user_id, u.email AS user_email, u.phone AS user_phone
+     FROM teachers t
+     INNER JOIN users u ON u.id = t.user_id
+     WHERE t.id = ?`,
+    [teacherId]
+  );
+  if (!teacher) throw new AppError(404, 'Teacher record not found.');
+
+  if (email && String(email).toLowerCase() !== String(teacher.user_email).toLowerCase()) {
+    await assertUniqueEmail(email, teacher.user_id);
+  }
+  if (staffNumber && staffNumber !== teacher.staff_number) {
+    const staffClash = await db.get(
+      'SELECT id FROM teachers WHERE staff_number = ? AND id <> ?',
+      [staffNumber, teacherId]
+    );
+    if (staffClash) throw new AppError(409, 'That staff number is already assigned to another teacher.');
+  }
+
+  const nextFirst = firstName || teacher.first_name;
+  const nextLast = lastName || teacher.last_name;
+
+  await db.withTransaction(async (tx) => {
+    await tx.run(
+      `UPDATE teachers
+       SET staff_number = ?, first_name = ?, last_name = ?, qualification = ?, specialization = ?,
+           department = ?, hire_date = ?, status = ?
+       WHERE id = ?`,
+      [
+        staffNumber || teacher.staff_number,
+        nextFirst,
+        nextLast,
+        qualification === undefined ? teacher.qualification : qualification,
+        specialization === undefined ? teacher.specialization : specialization,
+        department === undefined ? teacher.department : department,
+        hireDate === undefined ? teacher.hire_date : hireDate,
+        status || teacher.status,
+        teacherId,
+      ]
+    );
+
+    await tx.run(
+      `UPDATE users
+       SET email = COALESCE(?, email), phone = ?, full_name = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [
+        email ? String(email).toLowerCase() : null,
+        phone === undefined ? teacher.user_phone : phone,
+        `${nextFirst} ${nextLast}`,
+        status || teacher.status,
+        teacher.user_id,
+      ]
+    );
+
+    if (newPassword && String(newPassword).trim().length >= 8) {
+      const hash = await bcrypt.hash(String(newPassword).trim(), 10);
+      await tx.run(
+        `UPDATE users
+         SET password_hash = ?, failed_login_attempts = 0, locked_until = NULL,
+             password_changed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [hash, teacher.user_id]
+      );
+    }
+
+    await recordAudit(
+      {
+        actorUserId: actor.id,
+        actorRole: actor.role,
+        action: 'TEACHER_RECORD_UPDATED',
+        targetType: 'teacher',
+        targetId: String(teacherId),
+        ipAddress,
+        metadata: { staffNumber: staffNumber || teacher.staff_number },
+      },
+      tx
+    );
+  });
+
+  const fresh = await db.get(
+    `SELECT t.*, u.username, u.email, u.phone, u.status AS user_status
+     FROM teachers t
+     INNER JOIN users u ON u.id = t.user_id
+     WHERE t.id = ?`,
+    [teacherId]
+  );
+  return { teacher: fresh, message: 'Teacher record updated.' };
+}
+
+async function updateStaffAccount({
+  targetUserId,
+  fullName,
+  email,
+  username,
+  phone,
+  roleSlug,
+  status,
+  newPassword,
+  actor,
+  ipAddress,
+}) {
+  const target = await db.get('SELECT * FROM users WHERE id = ?', [targetUserId]);
+  if (!target) throw new AppError(404, 'User account not found.');
+
+  if (email && String(email).toLowerCase() !== String(target.email).toLowerCase()) {
+    await assertUniqueEmail(email, targetUserId);
+  }
+  if (username && String(username).toLowerCase() !== String(target.username).toLowerCase()) {
+    await assertUniqueUsername(username, targetUserId);
+  }
+
+  await db.withTransaction(async (tx) => {
+    await tx.run(
+      `UPDATE users
+       SET full_name = COALESCE(?, full_name),
+           email = COALESCE(?, email),
+           username = COALESCE(?, username),
+           phone = ?,
+           status = COALESCE(?, status),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [
+        fullName ? String(fullName).trim() : null,
+        email ? String(email).toLowerCase() : null,
+        username ? String(username).trim() : null,
+        phone === undefined ? target.phone : phone,
+        status || null,
+        targetUserId,
+      ]
+    );
+
+    if (roleSlug) {
+      const role = await tx.get('SELECT id FROM roles WHERE slug = ?', [roleSlug]);
+      if (!role) throw new AppError(400, 'Invalid role.');
+      if (target.id === actor.id && roleSlug !== 'superadmin') {
+        throw new AppError(400, 'You cannot remove your own Superadmin role.');
+      }
+      await tx.run('DELETE FROM user_roles WHERE user_id = ?', [targetUserId]);
+      await tx.run(
+        'INSERT INTO user_roles (user_id, role_id, assigned_by_user_id) VALUES (?, ?, ?)',
+        [targetUserId, role.id, actor.id]
+      );
+    }
+
+    if (status && status !== 'active') {
+      await tx.run('DELETE FROM user_sessions WHERE user_id = ?', [targetUserId]);
+    }
+
+    if (newPassword && String(newPassword).trim().length >= 8) {
+      const hash = await bcrypt.hash(String(newPassword).trim(), 10);
+      await tx.run(
+        `UPDATE users
+         SET password_hash = ?, failed_login_attempts = 0, locked_until = NULL,
+             password_changed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [hash, targetUserId]
+      );
+    }
+
+    await recordAudit(
+      {
+        actorUserId: actor.id,
+        actorRole: actor.role,
+        action: 'STAFF_ACCOUNT_UPDATED',
+        targetType: 'user',
+        targetId: String(targetUserId),
+        ipAddress,
+        metadata: { roleSlug: roleSlug || null, status: status || null, passwordReset: Boolean(newPassword) },
+      },
+      tx
+    );
+  });
+
+  const fresh = await db.get(
+    `SELECT u.id, u.full_name, u.email, u.username, u.phone, u.status,
+            (SELECT r.slug FROM user_roles ur INNER JOIN roles r ON r.id = ur.role_id WHERE ur.user_id = u.id LIMIT 1) AS role
+     FROM users u
+     WHERE u.id = ?`,
+    [targetUserId]
+  );
+  return { user: fresh, message: 'Staff account updated.' };
+}
+
 module.exports = {
   getOverview,
   getSiteAnalytics,
@@ -1905,6 +2263,9 @@ module.exports = {
   assignTeacher,
   listStudents,
   enrolStudent,
+  updateStudentRecord,
+  updateTeacherRecord,
+  updateStaffAccount,
   listStudentRegistrationRequests,
   reviewStudentRegistrationRequest,
   listTimetables,

@@ -292,6 +292,101 @@ async function enrolStudent(req, res) {
   });
 }
 
+// ---------------- CENTRALISED RECORD EDITING (Students, Teachers & Staff) ----------------
+async function updateStudent(req, res) {
+  const studentId = requirePositiveInt(req.params.id, 'Student ID');
+  const rawPw = optionalString(req.body.password, 160);
+  const updated = await superadminService.updateStudentRecord({
+    studentId,
+    admissionNumber: optionalString(req.body.admissionNumber, 40),
+    firstName: req.body.firstName
+      ? requireString(req.body.firstName, 'First name', { min: 2, max: 80 })
+      : '',
+    lastName: req.body.lastName
+      ? requireString(req.body.lastName, 'Last name', { min: 2, max: 80 })
+      : '',
+    email: req.body.email ? requireEmail(req.body.email) : '',
+    phone: req.body.phone === undefined ? undefined : optionalString(req.body.phone, 50),
+    gender: req.body.gender === undefined ? undefined : optionalString(req.body.gender, 20),
+    dateOfBirth:
+      req.body.dateOfBirth === undefined ? undefined : optionalString(req.body.dateOfBirth, 20),
+    guardianName:
+      req.body.guardianName === undefined ? undefined : optionalString(req.body.guardianName, 140),
+    guardianPhone:
+      req.body.guardianPhone === undefined ? undefined : optionalString(req.body.guardianPhone, 50),
+    guardianEmail:
+      req.body.guardianEmail === undefined ? undefined : optionalString(req.body.guardianEmail, 160),
+    address: req.body.address === undefined ? undefined : optionalString(req.body.address, 255),
+    medicalNotes:
+      req.body.medicalNotes === undefined ? undefined : optionalString(req.body.medicalNotes, 255),
+    status: req.body.status
+      ? requireEnum(req.body.status, ['active', 'inactive', 'suspended', 'graduated'], 'Status')
+      : '',
+    classId: req.body.classId === undefined ? undefined : optionalPositiveInt(req.body.classId),
+    newPassword: rawPw ? requireStrongPassword(rawPw, 'New password') : '',
+    actor: req.user,
+    ipAddress: req.ip,
+  });
+  return res.json({ ok: true, ...updated });
+}
+
+async function updateTeacher(req, res) {
+  const teacherId = requirePositiveInt(req.params.id, 'Teacher ID');
+  const rawPw = optionalString(req.body.password, 160);
+  const updated = await superadminService.updateTeacherRecord({
+    teacherId,
+    staffNumber: optionalString(req.body.staffNumber, 50),
+    firstName: req.body.firstName
+      ? requireString(req.body.firstName, 'First name', { min: 2, max: 80 })
+      : '',
+    lastName: req.body.lastName
+      ? requireString(req.body.lastName, 'Last name', { min: 2, max: 80 })
+      : '',
+    email: req.body.email ? requireEmail(req.body.email) : '',
+    phone: req.body.phone === undefined ? undefined : optionalString(req.body.phone, 50),
+    qualification:
+      req.body.qualification === undefined ? undefined : optionalString(req.body.qualification, 120),
+    specialization:
+      req.body.specialization === undefined
+        ? undefined
+        : optionalString(req.body.specialization, 120),
+    department:
+      req.body.department === undefined ? undefined : optionalString(req.body.department, 100),
+    hireDate: req.body.hireDate === undefined ? undefined : optionalString(req.body.hireDate, 20),
+    status: req.body.status
+      ? requireEnum(req.body.status, ['active', 'inactive', 'suspended'], 'Status')
+      : '',
+    newPassword: rawPw ? requireStrongPassword(rawPw, 'New password') : '',
+    actor: req.user,
+    ipAddress: req.ip,
+  });
+  return res.json({ ok: true, ...updated });
+}
+
+async function updateStaff(req, res) {
+  const targetUserId = requirePositiveInt(req.params.id, 'User ID');
+  const rawPw = optionalString(req.body.password, 160);
+  const updated = await superadminService.updateStaffAccount({
+    targetUserId,
+    fullName: req.body.fullName
+      ? requireString(req.body.fullName, 'Full name', { min: 2, max: 160 })
+      : '',
+    email: req.body.email ? requireEmail(req.body.email) : '',
+    username: req.body.username ? optionalString(req.body.username, 80) : '',
+    phone: req.body.phone === undefined ? undefined : optionalString(req.body.phone, 50),
+    roleSlug: req.body.role
+      ? requireEnum(req.body.role, ['superadmin', 'teacher', 'student', 'financial'], 'Role')
+      : '',
+    status: req.body.status
+      ? requireEnum(req.body.status, ['active', 'inactive', 'suspended'], 'Status')
+      : '',
+    newPassword: rawPw ? requireStrongPassword(rawPw, 'New password') : '',
+    actor: req.user,
+    ipAddress: req.ip,
+  });
+  return res.json({ ok: true, ...updated });
+}
+
 async function listTimetables(req, res) {
   const items = await superadminService.listTimetables(req.query);
   return res.json({ ok: true, items });
@@ -615,6 +710,9 @@ module.exports = {
   assignTeacher,
   listStudents,
   enrolStudent,
+  updateStudent,
+  updateTeacher,
+  updateStaff,
   listStudentRequests,
   reviewStudentRequest,
   listTimetables,

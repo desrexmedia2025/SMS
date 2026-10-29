@@ -15,6 +15,8 @@ router.get('/analytics', ctrl.getAnalytics);
 router.get('/users', ctrl.listUsers);
 router.post('/users', verifyCsrfToken, ctrl.createUser);
 router.patch('/users/:id', verifyCsrfToken, ctrl.updateUser);
+// Centralised record editing: staff accounts, teacher records and student records.
+router.patch('/users/:id/profile', verifyCsrfToken, ctrl.updateStaff);
 router.post('/users/:id/unlock', verifyCsrfToken, ctrl.unlockUser);
 router.post('/users/:id/avatar', verifyCsrfToken, uploadAvatar, profileCtrl.setUserAvatar);
 router.delete('/users/:id/avatar', verifyCsrfToken, profileCtrl.clearUserAvatar);
@@ -29,10 +31,12 @@ router.post('/academic/subjects', verifyCsrfToken, ctrl.createSubject);
 router.get('/teachers', ctrl.listTeachers);
 router.post('/teachers', verifyCsrfToken, ctrl.createTeacher);
 router.put('/teachers/:id/subjects', verifyCsrfToken, ctrl.updateTeacherSubjects);
+router.patch('/teachers/:id', verifyCsrfToken, ctrl.updateTeacher);
 router.post('/teachers/assign', verifyCsrfToken, ctrl.assignTeacher);
 
 router.get('/students', ctrl.listStudents);
 router.post('/students', verifyCsrfToken, ctrl.enrolStudent);
+router.patch('/students/:id', verifyCsrfToken, ctrl.updateStudent);
 router.get('/student-requests', ctrl.listStudentRequests);
 router.post('/student-requests/:id/review', verifyCsrfToken, ctrl.reviewStudentRequest);
 

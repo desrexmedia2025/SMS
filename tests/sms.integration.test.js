@@ -1810,7 +1810,7 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
   // Every dashboard includes Show/Hide Menu button, modern action tiles & clean v3.x assets
   for (const html of [saHtml, tcHtml, stHtml, fnHtml]) {
     assert.match(html, /id="mobile-menu-btn"/);
-    assert.match(html, /\?v=3\.15/);
+    assert.match(html, /\?v=3\.16/);
     assert.match(html, /class="action-tile-grid"/);
     assert.doesNotMatch(html, /Hide Figures/i);
     assert.doesNotMatch(html, /Audit Log/i);
@@ -2428,3 +2428,293 @@ test('25. Profile photos across all four dashboards (upload, serving, admin cont
 
 
 
+
+test('26. Superadmin can edit student records, teacher records and staff accounts end-to-end', async () => {
+  const admin = new SessionClient();
+  await admin.login('admin@school.edu.gh', 'Admin@2026!');
+
+  const acad = (await admin.request('/api/superadmin/academic')).json;
+  const classes = acad.classes || [];
+  assert.ok(classes.length >= 1, 'demo academic setup must expose at least one class');
+
+  // ---------- STUDENTS ----------
+  const seedEmail = 'edit.target.student@school.edu.gh';
+  const otherStudent = ((await admin.request('/api/superadmin/students')).json.items || []).find(
+    (s) => s.email !== seedEmail
+  );
+  assert.ok(otherStudent, 'a demo student must exist for conflict checks');
+
+  const created = await admin.request('/api/superadmin/students', {
+    method: 'POST',
+    body: {
+      firstName: 'Edit',
+      lastName: 'Target',
+      email: seedEmail,
+      classId: null,
+    },
+  });
+  assert.equal(created.status, 201);
+  const studentId = created.json.student?.id || created.json.studentId;
+  assert.ok(Number(studentId) > 0, 'created student must expose an id');
+
+  const targetClass = classes[classes.length - 1];
+  const patchStudent = await admin.request(`/api/superadmin/students/${studentId}`, {
+    method: 'PATCH',
+    body: {
+      admissionNumber: 'ADM-EDIT-9001',
+      firstName: 'Akosua',
+      lastName: 'Boateng',
+      email: 'akosua.boateng@school.edu.gh',
+      phone: '+233240001111',
+      gender: 'Female',
+      dateOfBirth: '2011-04-18',
+      guardianName: 'Nana Boateng',
+      guardianPhone: '+233247778889',
+      guardianEmail: 'nana.boateng@example.com',
+      address: '12 Liberation Road, Accra',
+      medicalNotes: 'Asthma - inhaler in school bag',
+      status: 'active',
+      classId: targetClass.id,
+      password: 'NewStudent@2026!',
+    },
+  });
+  assert.equal(patchStudent.status, 200);
+  const st = patchStudent.json.student;
+  assert.equal(st.first_name, 'Akosua');
+  assert.equal(st.last_name, 'Boateng');
+  assert.equal(st.email, 'akosua.boateng@school.edu.gh');
+  assert.equal(st.phone, '+233240001111');
+  assert.equal(st.admission_number, 'ADM-EDIT-9001');
+  assert.equal(st.gender, 'Female');
+  assert.equal(st.guardian_name, 'Nana Boateng');
+  assert.equal(st.guardian_phone, '+233247778889');
+  assert.equal(st.guardian_email, 'nana.boateng@example.com');
+  assert.equal(st.address, '12 Liberation Road, Accra');
+  assert.equal(st.medical_notes, 'Asthma - inhaler in school bag');
+  assert.equal(Number(st.class_id), Number(targetClass.id));
+  assert.equal(st.class_name, targetClass.name);
+
+  const relisted = ((await admin.request('/api/superadmin/students?search=Akosua')).json.items || []).find(
+    (s) => Number(s.id) === Number(studentId)
+  );
+  assert.ok(relisted, 'edited student must be searchable by the new name');
+  assert.equal(relisted.class_name, targetClass.name);
+  assert.equal(relisted.guardian_phone, '+233247778889');
+
+  const dupEmail = await admin.request(`/api/superadmin/students/${studentId}`, {
+    method: 'PATCH',
+    body: { email: otherStudent.email },
+  });
+  assert.equal(dupEmail.status, 409);
+
+  const dupAdmission = await admin.request(`/api/superadmin/students/${studentId}`, {
+    method: 'PATCH',
+    body: { admissionNumber: otherStudent.admission_number },
+  });
+  assert.equal(dupAdmission.status, 409);
+
+  const missingStudent = await admin.request('/api/superadmin/students/99999999', {
+    method: 'PATCH',
+    body: { firstName: 'Ghost' },
+  });
+  assert.equal(missingStudent.status, 404);
+
+  const noCsrf = await admin.request(`/api/superadmin/students/${studentId}`, {
+    method: 'PATCH',
+    body: { firstName: 'Nocsrf' },
+    sendCsrf: false,
+  });
+  assert.equal(noCsrf.status, 403);
+
+  // the password issued during the edit must work for the student portal
+  const studentClient = new SessionClient();
+  const relogin = await studentClient.login('akosua.boateng@school.edu.gh', 'NewStudent@2026!');
+  assert.equal(relogin.status, 200);
+  assert.equal(relogin.json.user.role, 'student');
+
+  // ---------- TEACHERS ----------
+  const existingTeacher = ((await admin.request('/api/superadmin/teachers')).json.teachers || [])[0];
+  assert.ok(existingTeacher, 'a demo teacher must exist for conflict checks');
+
+  const tCreated = await admin.request('/api/superadmin/teachers', {
+    method: 'POST',
+    body: {
+      firstName: 'Kwesi',
+      lastName: 'Editme',
+      email: 'kwesi.editme@school.edu.gh',
+      phone: '',
+      qualification: 'B.Ed',
+    },
+  });
+  assert.equal(tCreated.status, 201);
+  const teacherId = tCreated.json.teacher?.id || tCreated.json.teacherId;
+  assert.ok(Number(teacherId) > 0, 'created teacher must expose an id');
+
+  const patchTeacher = await admin.request(`/api/superadmin/teachers/${teacherId}`, {
+    method: 'PATCH',
+    body: {
+      staffNumber: 'STF-EDIT-7001',
+      firstName: 'Kwabena',
+      lastName: 'Osei',
+      email: 'kwabena.osei@school.edu.gh',
+      phone: '+233552223344',
+      qualification: 'M.Ed Mathematics',
+      specialization: 'Mathematics, Science',
+      department: 'Sciences',
+      hireDate: '2024-01-15',
+      status: 'active',
+      password: 'NewTeacher@2026!',
+    },
+  });
+  assert.equal(patchTeacher.status, 200);
+  const tc = patchTeacher.json.teacher;
+  assert.equal(tc.first_name, 'Kwabena');
+  assert.equal(tc.last_name, 'Osei');
+  assert.equal(tc.email, 'kwabena.osei@school.edu.gh');
+  assert.equal(tc.phone, '+233552223344');
+  assert.equal(tc.staff_number, 'STF-EDIT-7001');
+  assert.equal(tc.qualification, 'M.Ed Mathematics');
+  assert.equal(tc.specialization, 'Mathematics, Science');
+  assert.equal(tc.department, 'Sciences');
+  assert.equal(tc.hire_date, '2024-01-15');
+
+  const tRelisted = ((await admin.request('/api/superadmin/teachers?search=Kwabena')).json.teachers || []).find(
+    (t) => Number(t.id) === Number(teacherId)
+  );
+  assert.ok(tRelisted, 'edited teacher must be searchable by the new name');
+  assert.equal(tRelisted.department, 'Sciences');
+  assert.equal(tRelisted.phone, '+233552223344');
+
+  const dupStaff = await admin.request(`/api/superadmin/teachers/${teacherId}`, {
+    method: 'PATCH',
+    body: { staffNumber: existingTeacher.staff_number },
+  });
+  assert.equal(dupStaff.status, 409);
+
+  const tDupEmail = await admin.request(`/api/superadmin/teachers/${teacherId}`, {
+    method: 'PATCH',
+    body: { email: existingTeacher.email },
+  });
+  assert.equal(tDupEmail.status, 409);
+
+  const teacherClient = new SessionClient();
+  const tRelogin = await teacherClient.login('kwabena.osei@school.edu.gh', 'NewTeacher@2026!');
+  assert.equal(tRelogin.status, 200);
+  assert.equal(tRelogin.json.user.role, 'teacher');
+
+  // ---------- STAFF / USER ACCOUNTS ----------
+  const uCreated = await admin.request('/api/superadmin/users', {
+    method: 'POST',
+    body: {
+      username: 'edit.staff',
+      email: 'edit.staff@school.edu.gh',
+      fullName: 'Edit Staff',
+      role: 'financial',
+      phone: '',
+    },
+  });
+  assert.equal(uCreated.status, 201);
+  const userId = uCreated.json.user?.id || uCreated.json.userId || uCreated.json.id;
+  assert.ok(Number(userId) > 0, 'created staff account must expose an id');
+
+  const patchStaff = await admin.request(`/api/superadmin/users/${userId}/profile`, {
+    method: 'PATCH',
+    body: {
+      fullName: 'Ama Serwaa',
+      username: 'ama.serwaa',
+      email: 'ama.serwaa@school.edu.gh',
+      phone: '+233201234567',
+      role: 'financial',
+      status: 'active',
+      password: 'NewStaff@2026!',
+    },
+  });
+  assert.equal(patchStaff.status, 200);
+  const uc = patchStaff.json.user;
+  assert.equal(uc.full_name, 'Ama Serwaa');
+  assert.equal(uc.username, 'ama.serwaa');
+  assert.equal(uc.email, 'ama.serwaa@school.edu.gh');
+  assert.equal(uc.phone, '+233201234567');
+  assert.equal(uc.role, 'financial');
+  assert.equal(uc.status, 'active');
+
+  const uRelisted = ((await admin.request('/api/superadmin/users?search=Ama')).json.items || []).find(
+    (u) => Number(u.id) === Number(userId)
+  );
+  assert.ok(uRelisted, 'edited staff account must be searchable by the new name');
+  assert.equal(uRelisted.phone, '+233201234567');
+  assert.equal(uRelisted.email, 'ama.serwaa@school.edu.gh');
+
+  const staffClient = new SessionClient();
+  const uRelogin = await staffClient.login('ama.serwaa@school.edu.gh', 'NewStaff@2026!');
+  assert.equal(uRelogin.status, 200);
+  assert.equal(uRelogin.json.user.role, 'financial');
+
+  const uDupEmail = await admin.request(`/api/superadmin/users/${userId}/profile`, {
+    method: 'PATCH',
+    body: { email: 'admin@school.edu.gh' },
+  });
+  assert.equal(uDupEmail.status, 409);
+
+  // a superadmin cannot strip their own superadmin role
+  const selfRow = ((await admin.request('/api/superadmin/users?search=admin@school.edu.gh')).json.items || []).find(
+    (u) => u.role === 'superadmin'
+  );
+  assert.ok(selfRow, 'the superadmin account must be listed');
+  const selfDemote = await admin.request(`/api/superadmin/users/${selfRow.id}/profile`, {
+    method: 'PATCH',
+    body: { role: 'teacher' },
+  });
+  assert.equal(selfDemote.status, 400);
+
+  // ---------- ROLE GUARDS ----------
+  const teacherAttempt = new SessionClient();
+  await teacherAttempt.login('kofi.mensah@school.edu.gh', 'Teacher@2026!');
+  const forbiddenStudent = await teacherAttempt.request(`/api/superadmin/students/${studentId}`, {
+    method: 'PATCH',
+    body: { firstName: 'Nope' },
+  });
+  assert.equal(forbiddenStudent.status, 403);
+  const forbiddenTeacher = await teacherAttempt.request(`/api/superadmin/teachers/${teacherId}`, {
+    method: 'PATCH',
+    body: { firstName: 'Nope' },
+  });
+  assert.equal(forbiddenTeacher.status, 403);
+  const forbiddenStaff = await teacherAttempt.request(`/api/superadmin/users/${userId}/profile`, {
+    method: 'PATCH',
+    body: { fullName: 'Nope' },
+  });
+  assert.equal(forbiddenStaff.status, 403);
+
+  // ---------- UI WIRING ----------
+  const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'views', 'superadmin.html'), 'utf8');
+  for (const id of [
+    'edit-student-modal',
+    'edit-student-form',
+    'edit-stu-id',
+    'edit-stu-class',
+    'edit-teacher-modal',
+    'edit-teacher-form',
+    'edit-teacher-id',
+    'edit-user-modal',
+    'edit-user-form',
+    'edit-user-id',
+  ]) {
+    assert.match(html, new RegExp(`id="${id}"`), `superadmin.html must contain #${id}`);
+  }
+  assert.match(html, /Edit Student Record/);
+  assert.match(html, /Edit Teacher Record/);
+  assert.match(html, /Edit Staff Account/);
+
+  const js = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'js', 'superadmin.js'), 'utf8');
+  assert.match(js, /data-edit-stu/);
+  assert.match(js, /data-edit-tch=/);
+  assert.match(js, /data-edit-user/);
+  assert.match(js, /\/api\/superadmin\/students\/\$\{id\}/);
+  assert.match(js, /\/api\/superadmin\/teachers\/\$\{id\}/);
+  assert.match(js, /\/api\/superadmin\/users\/\$\{id\}\/profile/);
+
+  const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'css', 'styles.css'), 'utf8');
+  assert.match(css, /\.record-modal-backdrop \{/);
+  assert.match(css, /\.record-modal \{/);
+});

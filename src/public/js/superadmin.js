@@ -15,6 +15,8 @@
   let currentSettings = null;
   let acadCache = { classes: [], subjects: [], years: [], terms: [] };
   let teachersCache = [];
+  let studentsCache = [];
+  let usersCache = [];
   let customRegSubjects = [];
   let editCustomSubjects = [];
 
@@ -741,7 +743,10 @@
             <td>${esc(t.email)}</td>
             <td><div class="subject-badges-wrap">${badges || '<span class="multi-subject-hint">No subjects</span>'}</div></td>
             <td>${statusBadge(t.user_status || t.status)}</td>
-            <td><button type="button" class="btn btn-secondary btn-sm" data-edit-tch-subs="${t.id}">Edit Subjects</button></td>
+            <td style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button type="button" class="btn btn-secondary btn-sm" data-edit-tch="${t.id}">Edit Info</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-edit-tch-subs="${t.id}">Subjects</button>
+            </td>
           </tr>`;
         })
         .join('') || '<tr><td colspan="6" class="empty-state">No teachers registered yet.</td></tr>';
@@ -767,6 +772,7 @@
     const search = document.getElementById('stu-search').value.trim();
     const data = await api(`/api/superadmin/students?search=${encodeURIComponent(search)}`);
     const items = data.items || [];
+    studentsCache = items;
     document.getElementById('students-tbody').innerHTML =
       items
         .map(
@@ -777,9 +783,10 @@
             <td>${esc(s.email)}</td>
             <td>${esc(s.guardian_phone || '-')}</td>
             <td>${statusBadge(s.status)}</td>
+            <td><button type="button" class="btn btn-secondary btn-sm" data-edit-stu="${s.id}">Edit</button></td>
           </tr>`
         )
-        .join('') || '<tr><td colspan="6" class="empty-state">No students enrolled yet.</td></tr>';
+        .join('') || '<tr><td colspan="7" class="empty-state">No students enrolled yet.</td></tr>';
   }
 
   async function loadStudentRequests() {
@@ -954,6 +961,7 @@
     if (search) qs.set('search', search);
     if (role) qs.set('role', role);
     const data = await api(`/api/superadmin/users${qs.toString() ? `?${qs.toString()}` : ''}`);
+    usersCache = data.items || [];
     document.getElementById('users-tbody').innerHTML =
       (data.items || [])
         .map(
@@ -964,6 +972,7 @@
             <td>${statusBadge(u.status)}</td>
             <td style="display:flex;gap:6px;flex-wrap:wrap;">
               <button type="button" class="btn btn-secondary btn-sm" data-set-avatar="${u.id}" data-user-name="${esc(u.full_name)}">Photo</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-edit-user="${u.id}">Edit</button>
               ${
                 u.role !== 'superadmin'
                   ? `<button type="button" class="btn btn-secondary btn-sm" data-toggle-user="${u.id}" data-cur-status="${esc(u.status)}">${u.status === 'active' ? 'Suspend' : 'Activate'}</button>`
@@ -974,6 +983,257 @@
         )
         .join('') || '<tr><td colspan="5" class="empty-state">No user accounts found.</td></tr>';
   }
+
+  // ---------------- EDIT RECORD MODALS (Students / Teachers / Staff) ----------------
+  function openRecordModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    const first = modal.querySelector('input[type="text"], input[type="email"], select');
+    if (first) setTimeout(() => first.focus(), 30);
+  }
+
+  function closeRecordModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.add('hidden');
+  }
+
+  function bindRecordModalChrome() {
+    document.querySelectorAll('[data-close-edit-modal]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const backdrop = btn.closest('.record-modal-backdrop');
+        if (backdrop) backdrop.classList.add('hidden');
+      });
+    });
+    document.querySelectorAll('.record-modal-backdrop').forEach((backdrop) => {
+      backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) backdrop.classList.add('hidden');
+      });
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      document.querySelectorAll('.record-modal-backdrop').forEach((b) => b.classList.add('hidden'));
+    });
+  }
+  bindRecordModalChrome();
+
+  function fillClassSelect(selectEl, selectedId) {
+    if (!selectEl) return;
+    const opts = ['<option value="">Unassigned</option>'].concat(
+      (acadCache.classes || []).map(
+        (c) => `<option value="${c.id}"${Number(c.id) === Number(selectedId) ? ' selected' : ''}>${esc(c.name)}</option>`
+      )
+    );
+    selectEl.innerHTML = opts.join('');
+  }
+
+  function dateOnly(value) {
+    return value ? String(value).slice(0, 10) : '';
+  }
+
+  // ---- Students ----
+  document.getElementById('students-tbody').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-edit-stu]');
+    if (!btn) return;
+    openStudentEditor(Number(btn.dataset.editStu)).catch((error) => toast(error.message, 'error'));
+  });
+
+  async function openStudentEditor(studentId) {
+    await loadAcademicAndTeachers();
+    let s = studentsCache.find((x) => Number(x.id) === studentId);
+    if (!s) {
+      const res = await api(`/api/superadmin/students?search=${encodeURIComponent('')}`);
+      s = (res.items || []).find((x) => Number(x.id) === studentId) || null;
+    }
+    if (!s) {
+      toast('Student record could not be loaded.', 'error');
+      return;
+    }
+    document.getElementById('edit-stu-id').value = String(studentId);
+    document.getElementById('edit-student-modal-title').textContent =
+      `Edit Student — ${s.first_name} ${s.last_name}`;
+    document.getElementById('edit-stu-admission').value = s.admission_number || '';
+    document.getElementById('edit-stu-first').value = s.first_name || '';
+    document.getElementById('edit-stu-last').value = s.last_name || '';
+    document.getElementById('edit-stu-email').value = s.email || '';
+    document.getElementById('edit-stu-phone').value = s.phone || '';
+    document.getElementById('edit-stu-gender').value = s.gender || '';
+    document.getElementById('edit-stu-dob').value = dateOnly(s.date_of_birth);
+    document.getElementById('edit-stu-guardian').value = s.guardian_name || '';
+    document.getElementById('edit-stu-guardian-phone').value = s.guardian_phone || '';
+    document.getElementById('edit-stu-guardian-email').value = s.guardian_email || '';
+    document.getElementById('edit-stu-address').value = s.address || '';
+    document.getElementById('edit-stu-medical').value = s.medical_notes || '';
+    document.getElementById('edit-stu-password').value = '';
+    document.getElementById('edit-stu-status').value = s.status || 'active';
+    fillClassSelect(document.getElementById('edit-stu-class'), s.class_id);
+    document.getElementById('edit-student-error').textContent = '';
+    openRecordModal('edit-student-modal');
+  }
+
+  document.getElementById('edit-student-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('edit-stu-id').value;
+    const btn = document.getElementById('edit-student-save');
+    const err = document.getElementById('edit-student-error');
+    err.textContent = '';
+    btn.disabled = true;
+    try {
+      const res = await api(`/api/superadmin/students/${id}`, {
+        method: 'PATCH',
+        body: {
+          admissionNumber: document.getElementById('edit-stu-admission').value.trim(),
+          firstName: document.getElementById('edit-stu-first').value.trim(),
+          lastName: document.getElementById('edit-stu-last').value.trim(),
+          email: document.getElementById('edit-stu-email').value.trim(),
+          phone: document.getElementById('edit-stu-phone').value.trim(),
+          gender: document.getElementById('edit-stu-gender').value,
+          dateOfBirth: document.getElementById('edit-stu-dob').value,
+          guardianName: document.getElementById('edit-stu-guardian').value.trim(),
+          guardianPhone: document.getElementById('edit-stu-guardian-phone').value.trim(),
+          guardianEmail: document.getElementById('edit-stu-guardian-email').value.trim(),
+          address: document.getElementById('edit-stu-address').value.trim(),
+          medicalNotes: document.getElementById('edit-stu-medical').value.trim(),
+          status: document.getElementById('edit-stu-status').value,
+          classId: document.getElementById('edit-stu-class').value,
+          password: document.getElementById('edit-stu-password').value.trim(),
+        },
+      });
+      closeRecordModal('edit-student-modal');
+      toast(res.message || 'Student record updated.', 'success');
+      await loadStudents();
+      await loadStudentRequests();
+    } catch (error) {
+      err.textContent = error.message;
+      toast(error.message, 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ---- Teachers ----
+  document.getElementById('teachers-list-tbody').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-edit-tch]');
+    if (!btn) return;
+    const teacher = teachersCache.find((t) => Number(t.id) === Number(btn.dataset.editTch));
+    if (!teacher) return;
+    document.getElementById('edit-teacher-id').value = String(teacher.id);
+    document.getElementById('edit-teacher-modal-title').textContent =
+      `Edit Teacher — ${teacher.first_name} ${teacher.last_name}`;
+    document.getElementById('edit-teacher-staff-number').value = teacher.staff_number || '';
+    document.getElementById('edit-teacher-first').value = teacher.first_name || '';
+    document.getElementById('edit-teacher-last').value = teacher.last_name || '';
+    document.getElementById('edit-teacher-email').value = teacher.email || '';
+    document.getElementById('edit-teacher-phone').value = teacher.phone || '';
+    document.getElementById('edit-teacher-qualification').value = teacher.qualification || '';
+    document.getElementById('edit-teacher-specialization').value = teacher.specialization || '';
+    document.getElementById('edit-teacher-department').value = teacher.department || '';
+    document.getElementById('edit-teacher-hire-date').value = dateOnly(teacher.hire_date);
+    document.getElementById('edit-teacher-password').value = '';
+    document.getElementById('edit-teacher-status').value = teacher.user_status || teacher.status || 'active';
+    document.getElementById('edit-teacher-error').textContent = '';
+    openRecordModal('edit-teacher-modal');
+  });
+
+  document.getElementById('edit-teacher-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('edit-teacher-id').value;
+    const btn = document.getElementById('edit-teacher-save');
+    const err = document.getElementById('edit-teacher-error');
+    err.textContent = '';
+    btn.disabled = true;
+    try {
+      const res = await api(`/api/superadmin/teachers/${id}`, {
+        method: 'PATCH',
+        body: {
+          staffNumber: document.getElementById('edit-teacher-staff-number').value.trim(),
+          firstName: document.getElementById('edit-teacher-first').value.trim(),
+          lastName: document.getElementById('edit-teacher-last').value.trim(),
+          email: document.getElementById('edit-teacher-email').value.trim(),
+          phone: document.getElementById('edit-teacher-phone').value.trim(),
+          qualification: document.getElementById('edit-teacher-qualification').value.trim(),
+          specialization: document.getElementById('edit-teacher-specialization').value.trim(),
+          department: document.getElementById('edit-teacher-department').value.trim(),
+          hireDate: document.getElementById('edit-teacher-hire-date').value,
+          status: document.getElementById('edit-teacher-status').value,
+          password: document.getElementById('edit-teacher-password').value.trim(),
+        },
+      });
+      closeRecordModal('edit-teacher-modal');
+      toast(res.message || 'Teacher record updated.', 'success');
+      await loadAcademicAndTeachers();
+    } catch (error) {
+      err.textContent = error.message;
+      toast(error.message, 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ---- Staff / user accounts ----
+  document.getElementById('users-tbody').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-edit-user]');
+    if (!btn) return;
+    const userId = Number(btn.dataset.editUser);
+    let u = usersCache.find((x) => Number(x.id) === userId);
+    try {
+      if (!u) {
+        const emailCell = btn.closest('tr')?.children[1]?.textContent?.trim() || '';
+        const res = await api(`/api/superadmin/users?search=${encodeURIComponent(emailCell)}`);
+        u = (res.items || []).find((x) => Number(x.id) === userId) || null;
+      }
+    } catch (error) {
+      toast(error.message, 'error');
+      return;
+    }
+    if (!u) {
+      toast('Account could not be loaded.', 'error');
+      return;
+    }
+    document.getElementById('edit-user-id').value = String(userId);
+    document.getElementById('edit-user-modal-title').textContent = `Edit Account — ${u.full_name}`;
+    document.getElementById('edit-user-full-name').value = u.full_name || '';
+    document.getElementById('edit-user-username').value = u.username || '';
+    document.getElementById('edit-user-email').value = u.email || '';
+    document.getElementById('edit-user-phone').value = u.phone || '';
+    document.getElementById('edit-user-role').value = u.role || 'teacher';
+    document.getElementById('edit-user-status').value = u.status || 'active';
+    document.getElementById('edit-user-password').value = '';
+    document.getElementById('edit-user-error').textContent = '';
+    openRecordModal('edit-user-modal');
+  });
+
+  document.getElementById('edit-user-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('edit-user-id').value;
+    const btn = document.getElementById('edit-user-save');
+    const err = document.getElementById('edit-user-error');
+    err.textContent = '';
+    btn.disabled = true;
+    try {
+      const res = await api(`/api/superadmin/users/${id}/profile`, {
+        method: 'PATCH',
+        body: {
+          fullName: document.getElementById('edit-user-full-name').value.trim(),
+          username: document.getElementById('edit-user-username').value.trim(),
+          email: document.getElementById('edit-user-email').value.trim(),
+          phone: document.getElementById('edit-user-phone').value.trim(),
+          role: document.getElementById('edit-user-role').value,
+          status: document.getElementById('edit-user-status').value,
+          password: document.getElementById('edit-user-password').value.trim(),
+        },
+      });
+      closeRecordModal('edit-user-modal');
+      toast(res.message || 'Staff account updated.', 'success');
+      await loadUsers();
+      await loadAcademicAndTeachers();
+    } catch (error) {
+      err.textContent = error.message;
+      toast(error.message, 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  });
 
   // ---------------- NAVIGATION ----------------
   async function loadSectionData(sec) {
