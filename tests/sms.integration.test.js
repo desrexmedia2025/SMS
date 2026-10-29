@@ -1791,7 +1791,7 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
   // Every dashboard includes Show/Hide Menu button, modern action tiles & clean v3.x assets
   for (const html of [saHtml, tcHtml, stHtml, fnHtml]) {
     assert.match(html, /id="mobile-menu-btn"/);
-    assert.match(html, /\?v=3\.3/);
+    assert.match(html, /\?v=3\.4/);
     assert.match(html, /class="action-tile-grid"/);
     assert.doesNotMatch(html, /Hide Figures/i);
     assert.doesNotMatch(html, /Audit Log/i);
@@ -1902,6 +1902,53 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
   });
   assert.equal(billRes.status, 201);
   assert.equal(billRes.json.assignedCount, 1);
+});
+
+test('21. Superadmin Lite Site Analytics & Usage Graphs: real-time page hits, sessions, daily trend, role breakdown & RBAC', async () => {
+  const admin = new SessionClient();
+  const teacher = new SessionClient();
+  const student = new SessionClient();
+
+  await admin.login('admin@school.edu.gh', 'Admin@2026!');
+  await teacher.login('kofi.mensah@school.edu.gh', 'Teacher@2026!');
+  await student.login('kwame.asante@student.school.edu.gh', 'Student@2026!');
+
+  // Non-superadmin roles must be denied access to /api/superadmin/analytics
+  const tcDenied = await teacher.request('/api/superadmin/analytics?days=14');
+  assert.equal(tcDenied.status, 403);
+  const stDenied = await student.request('/api/superadmin/analytics?days=14');
+  assert.equal(stDenied.status, 403);
+
+  // Trigger real page visits across /login and role dashboards
+  const beforeRes = await admin.request('/api/superadmin/analytics?days=7');
+  assert.equal(beforeRes.status, 200);
+  assert.equal(beforeRes.json.analytics.windowDays, 7);
+  assert.equal(beforeRes.json.analytics.dailyTrend.length, 7);
+  const beforeViews = beforeRes.json.analytics.summary.pageViewsToday;
+
+  await fetch(`${baseUrl}/login`);
+  await admin.request('/dashboard/superadmin');
+  await teacher.request('/dashboard/teacher');
+  await student.request('/dashboard/student');
+
+  const afterRes = await admin.request('/api/superadmin/analytics?days=30');
+  assert.equal(afterRes.status, 200);
+  const an = afterRes.json.analytics;
+  assert.equal(an.windowDays, 30);
+  assert.equal(an.dailyTrend.length, 30);
+  assert.equal(an.summary.pageViewsToday >= beforeViews + 4, true);
+  assert.equal(an.summary.activeSessions >= 3, true);
+  assert.equal(an.summary.signInsPeriod >= 3, true);
+  assert.equal(an.portalUsageByRole.length, 4);
+  assert.equal(an.moduleActivity.length, 5);
+  assert.equal(Array.isArray(an.classSnapshot), true);
+  assert.equal(an.liveFeed.length > 0, true);
+
+  // Overview payload also embeds 14-day analytics for instant landing graphs
+  const ovRes = await admin.request('/api/superadmin/overview');
+  assert.equal(ovRes.status, 200);
+  assert.ok(ovRes.json.analytics);
+  assert.equal(ovRes.json.analytics.dailyTrend.length, 14);
 });
 
 

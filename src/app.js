@@ -29,6 +29,7 @@ const studentRoutes = require('./routes/student.routes');
 const financialRoutes = require('./routes/financial.routes');
 const paystackService = require('./services/paystack.service');
 const courseworkService = require('./services/coursework.service');
+const { recordSiteHit } = require('./services/analytics.service');
 
 function createApp() {
   const app = express();
@@ -198,21 +199,26 @@ function createApp() {
         return res.redirect(userModel.dashboardPathForRole(fresh.role));
       }
     }
+    await recordSiteHit('login', null);
     return res.sendFile(path.join(__dirname, 'views', 'login.html'));
   });
 
   // Strictly role-protected Four Dashboards
   const viewsDir = path.join(__dirname, 'views');
-  app.get('/dashboard/superadmin', authenticate, authorizeRole('superadmin'), (_req, res) => {
+  app.get('/dashboard/superadmin', authenticate, authorizeRole('superadmin'), async (req, res) => {
+    await recordSiteHit('dashboard:superadmin', req.user);
     res.sendFile(path.join(viewsDir, 'superadmin.html'));
   });
-  app.get('/dashboard/teacher', authenticate, authorizeRole('teacher'), (_req, res) => {
+  app.get('/dashboard/teacher', authenticate, authorizeRole('teacher'), async (req, res) => {
+    await recordSiteHit('dashboard:teacher', req.user);
     res.sendFile(path.join(viewsDir, 'teacher.html'));
   });
-  app.get('/dashboard/student', authenticate, authorizeRole('student'), (_req, res) => {
+  app.get('/dashboard/student', authenticate, authorizeRole('student'), async (req, res) => {
+    await recordSiteHit('dashboard:student', req.user);
     res.sendFile(path.join(viewsDir, 'student.html'));
   });
-  app.get('/dashboard/financial', authenticate, authorizeRole('financial'), (_req, res) => {
+  app.get('/dashboard/financial', authenticate, authorizeRole('financial'), async (req, res) => {
+    await recordSiteHit('dashboard:financial', req.user);
     res.sendFile(path.join(viewsDir, 'financial.html'));
   });
 

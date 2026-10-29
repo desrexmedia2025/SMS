@@ -9,6 +9,7 @@ const router = express.Router();
 router.use(authenticate, authorizeRole('superadmin'));
 
 router.get('/overview', ctrl.getOverview);
+router.get('/analytics', ctrl.getAnalytics);
 router.get('/users', ctrl.listUsers);
 router.post('/users', verifyCsrfToken, ctrl.createUser);
 router.patch('/users/:id', verifyCsrfToken, ctrl.updateUser);

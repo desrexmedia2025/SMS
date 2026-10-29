@@ -3,6 +3,7 @@ const db = require('../config/database');
 const systemModel = require('../models/system.model');
 const academicModel = require('../models/academic.model');
 const financialService = require('./financial.service');
+const analyticsService = require('./analytics.service');
 const { isCurrentlyLocked } = require('./auth.service');
 const { recordAudit } = require('./audit.service');
 const { AppError } = require('../middleware/errorHandler');
@@ -23,6 +24,7 @@ async function getOverview() {
     managedFinance,
     recentAudits,
     announcements,
+    analytics,
   ] = await Promise.all([
     db.get("SELECT COUNT(*) AS cnt FROM students WHERE status = 'active'"),
     db.get("SELECT COUNT(*) AS cnt FROM teachers WHERE status = 'active'"),
@@ -45,6 +47,7 @@ async function getOverview() {
        ORDER BY al.id DESC LIMIT 10`
     ),
     systemModel.listAnnouncementsForAudience(['all', 'superadmin', 'teachers', 'students', 'financial', 'class']),
+    analyticsService.getSiteAnalytics({ days: 14 }),
   ]);
 
   const totalAtt = Number(attSummary?.total_records || 0);
@@ -75,6 +78,7 @@ async function getOverview() {
     },
     recentAudits,
     announcements,
+    analytics,
   };
 }
 
@@ -1854,8 +1858,13 @@ async function reviewStudentRegistrationRequest({
   });
 }
 
+async function getSiteAnalytics(query = {}) {
+  return analyticsService.getSiteAnalytics({ days: query.days });
+}
+
 module.exports = {
   getOverview,
+  getSiteAnalytics,
   listUsers,
   createUserAccount,
   updateUserRoleOrStatus,

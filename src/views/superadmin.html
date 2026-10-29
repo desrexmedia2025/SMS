@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Superadmin - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=3.3">
+  <link rel="stylesheet" href="/css/styles.css?v=3.4">
 </head>
 <body>
   <div class="app-layout">
@@ -18,6 +18,9 @@
         <div class="nav-section-label">Academics</div>
         <button class="nav-btn active" data-section="overview" data-title="Overview">
           <span class="nav-item-label">Overview</span>
+        </button>
+        <button class="nav-btn" data-section="analytics" data-title="Site Analytics">
+          <span class="nav-item-label">Site Analytics</span>
         </button>
         <button class="nav-btn" data-section="academic" data-title="Classes &amp; Subjects">
           <span class="nav-item-label">Classes &amp; Subjects</span>
@@ -88,11 +91,49 @@
 
           <div class="kpi-grid" id="ov-kpis"></div>
 
+          <!-- Live Site Usage Graphs on Overview -->
+          <div class="analytics-split-grid">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Site Usage &amp; Sign-Ins (Last 14 Days)</h2>
+                  <div class="card-subtitle">Real-time portal visits and logged site actions</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <div class="analytics-pulse-pills" id="ov-pulse-pills"></div>
+                  <button type="button" class="btn btn-secondary btn-sm" data-jump-section="analytics">Full Analytics</button>
+                </div>
+              </div>
+              <div id="ov-usage-chart" class="analytics-svg-wrap"></div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Module Activity</h2>
+                  <div class="card-subtitle">Where activity is happening on the site</div>
+                </div>
+              </div>
+              <div id="ov-module-bars"></div>
+            </div>
+          </div>
+
           <div class="card">
             <div class="card-header">
               <h2 class="card-title">Shortcuts</h2>
             </div>
             <div class="action-tile-grid">
+              <button type="button" class="action-tile" data-jump-section="analytics">
+                <span class="action-tile-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                </span>
+                <span class="action-tile-copy">
+                  <span class="action-tile-title">Site Analytics</span>
+                  <span class="action-tile-desc">Traffic graphs &amp; live activity</span>
+                </span>
+                <span class="action-tile-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </button>
+
               <button type="button" class="action-tile" data-jump-section="academic">
                 <span class="action-tile-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
@@ -156,6 +197,66 @@
               <button type="button" class="btn btn-secondary btn-sm" data-jump-section="announcements">All Announcements</button>
             </div>
             <div id="ov-announcements"></div>
+          </div>
+        </section>
+
+        <!-- 1B. SITE ANALYTICS -->
+        <section id="sec-analytics" class="module-panel hidden">
+          <div class="subnav-bar">
+            <div class="subnav-tabs" id="an-window-tabs">
+              <button type="button" class="subtab-btn" data-an-days="7">Last 7 Days</button>
+              <button type="button" class="subtab-btn active" data-an-days="14">Last 14 Days</button>
+              <button type="button" class="subtab-btn" data-an-days="30">Last 30 Days</button>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" id="an-refresh-btn">Refresh Stats</button>
+          </div>
+
+          <div class="kpi-grid" id="an-kpis"></div>
+
+          <div class="analytics-split-grid">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title" id="an-trend-title">Daily Traffic &amp; Site Actions (14 Days)</h2>
+                  <div class="card-subtitle">Portal page visits, user actions, and successful sign-ins</div>
+                </div>
+              </div>
+              <div id="an-trend-chart" class="analytics-svg-wrap"></div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Usage by Dashboard Role</h2>
+                  <div class="card-subtitle">Share of visits, actions, and active accounts</div>
+                </div>
+              </div>
+              <div id="an-role-donut"></div>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Module Breakdown &amp; Class Activity</h2>
+                  <div class="card-subtitle">Events by feature area and enrolled class activity</div>
+                </div>
+              </div>
+              <div id="an-module-chart"></div>
+              <div class="form-section-divider" style="margin-top:22px;">Students &amp; Works per Class</div>
+              <div id="an-class-bars"></div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Live Site Activity</h2>
+                  <div class="card-subtitle">Latest events happening across the school portal</div>
+                </div>
+              </div>
+              <div id="an-live-feed"></div>
+            </div>
           </div>
         </section>
 
@@ -802,7 +903,7 @@
     </div>
   </div>
 
-  <script src="/js/common.js?v=3.3"></script>
-  <script src="/js/superadmin.js?v=3.3"></script>
+  <script src="/js/common.js?v=3.4"></script>
+  <script src="/js/superadmin.js?v=3.4"></script>
 </body>
 </html>

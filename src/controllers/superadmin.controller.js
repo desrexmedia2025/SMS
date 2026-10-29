@@ -27,6 +27,11 @@ async function getOverview(_req, res) {
   return res.json({ ok: true, ...data });
 }
 
+async function getAnalytics(req, res) {
+  const data = await superadminService.getSiteAnalytics(req.query);
+  return res.json({ ok: true, analytics: data });
+}
+
 async function listUsers(req, res) {
   const data = await superadminService.listUsers(req.query);
   return res.json({ ok: true, ...data });
@@ -593,6 +598,7 @@ async function reviewStudentRequest(req, res) {
 
 module.exports = {
   getOverview,
+  getAnalytics,
   listUsers,
   createUser,
   updateUser,

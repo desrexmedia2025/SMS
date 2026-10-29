@@ -283,7 +283,314 @@
     document.getElementById('ov-announcements').innerHTML = annHtml;
     document.getElementById('ann-list').innerHTML = annHtml;
 
+    if (data.analytics) {
+      renderOverviewAnalytics(data.analytics);
+    }
+
     populateSettingsForm(data);
+  }
+
+  // ---------------- LITE SITE ANALYTICS & VECTOR GRAPHS ----------------
+  let currentAnalyticsDays = 14;
+
+  function renderTrendSvgChart(series = [], uid = 'ov') {
+    const pts = Array.isArray(series) && series.length ? series : [{ date: '', label: 'Today', views: 0, actions: 0, signIns: 0 }];
+    const W = 680;
+    const H = 228;
+    const padL = 38;
+    const padR = 16;
+    const padT = 16;
+    const padB = 32;
+    const plotW = W - padL - padR;
+    const plotH = H - padT - padB;
+
+    const rawMax = Math.max(1, ...pts.map((d) => Math.max(d.views || 0, d.actions || 0, d.signIns || 0)));
+    const step = Math.max(1, Math.ceil(rawMax / 4));
+    const yMax = step * 4;
+
+    const xAt = (idx) =>
+      pts.length === 1 ? padL + plotW / 2 : padL + (idx / (pts.length - 1)) * plotW;
+    const yAt = (val) => padT + plotH - (Math.max(0, Number(val || 0)) / yMax) * plotH;
+
+    let gridSvg = '';
+    for (let t = 0; t <= 4; t += 1) {
+      const val = t * step;
+      const y = yAt(val).toFixed(1);
+      gridSvg += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="${t === 0 ? '#cbd9ee' : '#e6eef9'}" stroke-width="1" ${t === 0 ? '' : 'stroke-dasharray="3 3"'} />`;
+      gridSvg += `<text x="${padL - 8}" y="${(Number(y) + 3.5).toFixed(1)}" text-anchor="end" fill="#647c9e" font-size="11" font-family="inherit">${val}</text>`;
+    }
+
+    const viewCoords = pts.map((d, i) => [xAt(i), yAt(d.views || 0)]);
+    const actCoords = pts.map((d, i) => [xAt(i), yAt(d.actions || 0)]);
+
+    const buildLine = (coords) =>
+      coords.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+
+    const baselineY = (padT + plotH).toFixed(1);
+    const viewLine = buildLine(viewCoords);
+    const viewArea = `${viewLine} L${viewCoords[viewCoords.length - 1][0].toFixed(1)},${baselineY} L${viewCoords[0][0].toFixed(1)},${baselineY} Z`;
+    const actLine = buildLine(actCoords);
+    const actArea = `${actLine} L${actCoords[actCoords.length - 1][0].toFixed(1)},${baselineY} L${actCoords[0][0].toFixed(1)},${baselineY} Z`;
+
+    const labelStride = pts.length > 20 ? 4 : pts.length > 10 ? 2 : 1;
+    let xLabelsSvg = '';
+    pts.forEach((d, i) => {
+      if (i % labelStride !== 0 && i !== pts.length - 1) return;
+      const x = xAt(i).toFixed(1);
+      xLabelsSvg += `<text x="${x}" y="${H - 8}" text-anchor="middle" fill="#647c9e" font-size="10.5" font-family="inherit">${esc(d.label)}</text>`;
+    });
+
+    let dotsSvg = '';
+    pts.forEach((d, i) => {
+      const vx = viewCoords[i][0].toFixed(1);
+      const vy = viewCoords[i][1].toFixed(1);
+      const ax = actCoords[i][0].toFixed(1);
+      const ay = actCoords[i][1].toFixed(1);
+      const tip = `${esc(d.label)}: ${d.views || 0} visit(s), ${d.actions || 0} action(s), ${d.signIns || 0} sign-in(s)`;
+      dotsSvg += `<circle cx="${vx}" cy="${vy}" r="3.6" fill="#ffffff" stroke="#1d4ed8" stroke-width="2"><title>${tip}</title></circle>`;
+      dotsSvg += `<circle cx="${ax}" cy="${ay}" r="3" fill="#0d9488"><title>${tip}</title></circle>`;
+    });
+
+    return `
+      <div class="chart-legend-row">
+        <span class="chart-legend-item"><span class="chart-legend-swatch" style="background:#1d4ed8;"></span>Portal Visits</span>
+        <span class="chart-legend-item"><span class="chart-legend-swatch" style="background:#0d9488;"></span>Site Actions &amp; Sign-Ins</span>
+      </div>
+      <svg class="analytics-svg-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Site traffic and activity trend graph">
+        <defs>
+          <linearGradient id="smsViewGrad-${esc(uid)}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#2563eb" stop-opacity="0.24"/>
+            <stop offset="100%" stop-color="#2563eb" stop-opacity="0.01"/>
+          </linearGradient>
+          <linearGradient id="smsActGrad-${esc(uid)}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#0d9488" stop-opacity="0.14"/>
+            <stop offset="100%" stop-color="#0d9488" stop-opacity="0.0"/>
+          </linearGradient>
+        </defs>
+        ${gridSvg}
+        <path d="${viewArea}" fill="url(#smsViewGrad-${esc(uid)})" />
+        <path d="${actArea}" fill="url(#smsActGrad-${esc(uid)})" />
+        <path d="${viewLine}" fill="none" stroke="#1d4ed8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="${actLine}" fill="none" stroke="#0d9488" stroke-width="2" stroke-dasharray="4 3" stroke-linecap="round" stroke-linejoin="round" />
+        ${dotsSvg}
+        ${xLabelsSvg}
+      </svg>
+    `;
+  }
+
+  function renderModuleActivityBars(modules = []) {
+    if (!modules.length) {
+      return '<div class="empty-state">No module usage recorded yet.</div>';
+    }
+    const maxWeight = Math.max(
+      1,
+      ...modules.map((m) => Number(m.events || 0) + Number(m.records || 0))
+    );
+    return `<div class="analytics-bar-list">${modules
+      .map((m) => {
+        const combined = Number(m.events || 0) + Number(m.records || 0);
+        const pct = combined > 0 ? Math.max(6, Math.round((combined / maxWeight) * 100)) : 0;
+        return `<div class="analytics-bar-row">
+          <div class="analytics-bar-head">
+            <span class="analytics-bar-label">${esc(m.label)}</span>
+            <span class="analytics-bar-meta"><strong>${m.events || 0}</strong> event(s) &middot; ${esc(m.recordLabel || '')}</span>
+          </div>
+          <div class="analytics-bar-track">
+            <div class="analytics-bar-fill" style="width:${pct}%;"></div>
+          </div>
+        </div>`;
+      })
+      .join('')}</div>`;
+  }
+
+  function renderRoleDonut(roles = []) {
+    const palette = ['#1d4ed8', '#0284c7', '#0f766e', '#4f46e5'];
+    const activitySum = roles.reduce((acc, r) => acc + Number(r.visits || 0) + Number(r.actions || 0), 0);
+    const useActivity = activitySum > 0;
+    const weights = roles.map((r) =>
+      useActivity ? Number(r.visits || 0) + Number(r.actions || 0) : Number(r.accounts || 0)
+    );
+    const total = weights.reduce((a, b) => a + b, 0);
+
+    const r = 62;
+    const cx = 90;
+    const cy = 90;
+    const circ = 2 * Math.PI * r;
+    let offset = 0;
+
+    const arcs =
+      total > 0
+        ? weights
+            .map((w, idx) => {
+              if (w <= 0) return '';
+              const len = (w / total) * circ;
+              const seg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${palette[idx % palette.length]}" stroke-width="18" stroke-dasharray="${len.toFixed(2)} ${(circ - len).toFixed(2)}" stroke-dashoffset="${(-offset).toFixed(2)}" transform="rotate(-90 ${cx} ${cy})"><title>${esc(roles[idx].label)}: ${w}</title></circle>`;
+              offset += len;
+              return seg;
+            })
+            .join('')
+        : '';
+
+    const centerLabel = useActivity ? 'Interactions' : 'Accounts';
+
+    return `<div class="donut-layout">
+      <svg class="analytics-donut-svg" viewBox="0 0 180 180" role="img" aria-label="Usage by dashboard role">
+        <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#e8f0fc" stroke-width="18" />
+        ${arcs}
+        <text x="${cx}" y="${cy - 3}" text-anchor="middle" fill="#0e2242" font-size="24" font-weight="700" font-family="inherit">${total}</text>
+        <text x="${cx}" y="${cy + 16}" text-anchor="middle" fill="#647c9e" font-size="11" font-weight="600" font-family="inherit">${centerLabel}</text>
+      </svg>
+      <div class="donut-legend-list">
+        ${roles
+          .map(
+            (role, idx) => `<div class="donut-legend-row">
+              <span class="donut-legend-name">
+                <span class="chart-legend-swatch" style="background:${palette[idx % palette.length]};"></span>
+                ${esc(role.label)}
+              </span>
+              <span class="donut-legend-stats">
+                <strong>${Number(role.visits || 0) + Number(role.actions || 0)}</strong> activity &middot; ${role.accounts || 0} acct &middot; ${role.activeSessions || 0} online
+              </span>
+            </div>`
+          )
+          .join('')}
+      </div>
+    </div>`;
+  }
+
+  function renderClassSnapshotBars(classes = []) {
+    if (!classes.length) {
+      return '<div class="empty-state" style="padding:18px 14px;">Create a class to view student enrolment and coursework bars per class.</div>';
+    }
+    const maxVal = Math.max(1, ...classes.map((c) => Math.max(c.students || 0, c.coursework || 0)));
+    return `
+      <div class="chart-legend-row" style="margin-bottom:4px;">
+        <span class="chart-legend-item"><span class="chart-legend-swatch" style="background:#1d4ed8;"></span>Students</span>
+        <span class="chart-legend-item"><span class="chart-legend-swatch" style="background:#0284c7;"></span>Works &amp; Exams</span>
+      </div>
+      <div class="class-col-chart">
+        ${classes
+          .map((c) => {
+            const sH = c.students > 0 ? Math.max(10, Math.round((c.students / maxVal) * 100)) : 4;
+            const wH = c.coursework > 0 ? Math.max(10, Math.round((c.coursework / maxVal) * 100)) : 4;
+            return `<div class="class-col-item">
+              <div class="class-col-bars">
+                <div class="class-col-bar students" style="height:${sH}%;" title="${esc(c.name)}: ${c.students} student(s)"></div>
+                <div class="class-col-bar works" style="height:${wH}%;" title="${esc(c.name)}: ${c.coursework} work(s)"></div>
+              </div>
+              <div class="class-col-name" title="${esc(c.name)}">${esc(c.name)}</div>
+              <div class="class-col-counts">${c.students}S / ${c.coursework}W</div>
+            </div>`;
+          })
+          .join('')}
+      </div>
+    `;
+  }
+
+  function formatShortTime(ts) {
+    if (!ts) return '';
+    const raw = String(ts).trim().replace('T', ' ').replace(/\.\d+Z?$/, '');
+    return raw.slice(0, 16);
+  }
+
+  function renderLiveFeed(feed = []) {
+    if (!feed.length) {
+      return '<div class="empty-state">No recent site activity recorded yet.</div>';
+    }
+    return `<div class="activity-stream">${feed
+      .map(
+        (item) => `<div class="activity-stream-item">
+          <div class="activity-stream-left">
+            <span class="activity-stream-dot" aria-hidden="true"></span>
+            <div>
+              <div class="activity-stream-title">${esc(item.label)}</div>
+              <div class="activity-stream-sub">${esc(item.actorName)} &middot; <span class="badge badge-neutral" style="padding:1px 6px;font-size:10.5px;">${esc(item.actorRole)}</span></div>
+            </div>
+          </div>
+          <div class="activity-stream-time">${esc(formatShortTime(item.createdAt))}</div>
+        </div>`
+      )
+      .join('')}</div>`;
+  }
+
+  function renderOverviewAnalytics(an) {
+    const s = an.summary || {};
+    const pillsEl = document.getElementById('ov-pulse-pills');
+    if (pillsEl) {
+      pillsEl.innerHTML = `
+        <span class="pulse-chip pulse-chip-live"><span class="pulse-dot" aria-hidden="true"></span>${s.activeSessions || 0} online</span>
+        <span class="pulse-chip">${s.pageViewsToday || 0} visit(s) today</span>
+        <span class="pulse-chip">${s.signInsPeriod || 0} sign-in(s)</span>
+      `;
+    }
+    const ovChartEl = document.getElementById('ov-usage-chart');
+    if (ovChartEl) {
+      ovChartEl.innerHTML = renderTrendSvgChart(an.dailyTrend || [], 'ov');
+    }
+    const ovModEl = document.getElementById('ov-module-bars');
+    if (ovModEl) {
+      ovModEl.innerHTML = renderModuleActivityBars(an.moduleActivity || []);
+    }
+  }
+
+  async function loadAnalytics(days = currentAnalyticsDays) {
+    currentAnalyticsDays = Number(days) || 14;
+    document.querySelectorAll('#an-window-tabs [data-an-days]').forEach((btn) => {
+      btn.classList.toggle('active', Number(btn.dataset.anDays) === currentAnalyticsDays);
+    });
+
+    const res = await api(`/api/superadmin/analytics?days=${encodeURIComponent(currentAnalyticsDays)}`);
+    const an = res.analytics || {};
+    const s = an.summary || {};
+
+    document.getElementById('an-trend-title').textContent =
+      `Daily Traffic & Site Actions (${an.windowDays || currentAnalyticsDays} Days)`;
+
+    document.getElementById('an-kpis').innerHTML = [
+      SMS.kpiCard({
+        label: 'Online Now',
+        value: s.activeSessions || 0,
+        sub: `${s.onlineUsers || 0} signed-in user(s)`,
+        icon: 'users',
+        tone: 'teal',
+      }),
+      SMS.kpiCard({
+        label: 'Portal Visits',
+        value: s.pageViewsPeriod || 0,
+        sub: `${s.pageViewsToday || 0} visit(s) today`,
+        icon: 'trending',
+        tone: 'blue',
+      }),
+      SMS.kpiCard({
+        label: 'Sign-Ins',
+        value: s.signInsPeriod || 0,
+        sub: `${s.failedLoginsPeriod || 0} failed / blocked`,
+        icon: 'check',
+        tone: 'indigo',
+      }),
+      SMS.kpiCard({
+        label: 'Site Actions',
+        value: s.actionsPeriod || 0,
+        sub: `${s.actionsToday || 0} today · ${s.mediaUploadsCount || 0} file upload(s)`,
+        icon: 'clipboard',
+        tone: 'sky',
+      }),
+    ].join('');
+
+    document.getElementById('an-trend-chart').innerHTML = renderTrendSvgChart(
+      an.dailyTrend || [],
+      'full'
+    );
+    document.getElementById('an-role-donut').innerHTML = renderRoleDonut(
+      an.portalUsageByRole || []
+    );
+    document.getElementById('an-module-chart').innerHTML = renderModuleActivityBars(
+      an.moduleActivity || []
+    );
+    document.getElementById('an-class-bars').innerHTML = renderClassSnapshotBars(
+      an.classSnapshot || []
+    );
+    document.getElementById('an-live-feed').innerHTML = renderLiveFeed(an.liveFeed || []);
   }
 
   async function loadAcademicAndTeachers() {
@@ -649,6 +956,7 @@
   // ---------------- NAVIGATION ----------------
   async function loadSectionData(sec) {
     if (sec === 'overview') await loadOverview();
+    if (sec === 'analytics') await loadAnalytics(currentAnalyticsDays);
     if (sec === 'academic' || sec === 'teachers') await loadAcademicAndTeachers();
     if (sec === 'students') {
       await loadAcademicAndTeachers();
@@ -689,6 +997,18 @@
       activateSubtab('students', 'stu-proposals');
       loadSectionData('students').catch((err) => toast(err.message, 'error'));
     }
+  });
+
+  // Site Analytics period switcher & manual refresh
+  document.getElementById('an-window-tabs').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-an-days]');
+    if (!btn) return;
+    loadAnalytics(Number(btn.dataset.anDays)).catch((err) => toast(err.message, 'error'));
+  });
+  document.getElementById('an-refresh-btn').addEventListener('click', () => {
+    loadAnalytics(currentAnalyticsDays)
+      .then(() => toast('Analytics refreshed.', 'info'))
+      .catch((err) => toast(err.message, 'error'));
   });
 
   // Topbar currency switcher
