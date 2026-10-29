@@ -27,6 +27,7 @@ const superadminRoutes = require('./routes/superadmin.routes');
 const teacherRoutes = require('./routes/teacher.routes');
 const studentRoutes = require('./routes/student.routes');
 const financialRoutes = require('./routes/financial.routes');
+const calendarRoutes = require('./routes/calendar.routes');
 const paystackService = require('./services/paystack.service');
 const courseworkService = require('./services/coursework.service');
 const { recordSiteHit } = require('./services/analytics.service');
@@ -234,6 +235,9 @@ function createApp() {
   app.use('/api/teacher', teacherRoutes);
   app.use('/api/student', studentRoutes);
   app.use('/api/financial', financialRoutes);
+
+  // Role-scoped Overview Calendar feed (Superadmin, Teacher, Student & Financial)
+  app.use('/api/calendar', calendarRoutes);
 
   // Non-reflecting 404 handler (never echoes arbitrary URLs back into responses)
   app.use((_req, _res, next) => {

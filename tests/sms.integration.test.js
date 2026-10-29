@@ -1810,7 +1810,7 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
   // Every dashboard includes Show/Hide Menu button, modern action tiles & clean v3.x assets
   for (const html of [saHtml, tcHtml, stHtml, fnHtml]) {
     assert.match(html, /id="mobile-menu-btn"/);
-    assert.match(html, /\?v=3\.9/);
+    assert.match(html, /\?v=3\.10/);
     assert.match(html, /class="action-tile-grid"/);
     assert.doesNotMatch(html, /Hide Figures/i);
     assert.doesNotMatch(html, /Audit Log/i);
@@ -2131,6 +2131,156 @@ test('23. Terms & Conditions (Registration + First Dashboard Visit), Themes, Lan
     assert.match(bottom, /id="sb-theme-select"/);
     assert.match(bottom, /id="sb-lang-select"/);
   }
+});
+
+test('24. Overview Calendar on all four dashboards: first card, left corner & role-scoped event feed', async () => {
+  const admin = new SessionClient();
+  const teacher = new SessionClient();
+  const student = new SessionClient();
+  const finance = new SessionClient();
+  await admin.login('admin@school.edu.gh', 'Admin@2026!');
+  await teacher.login('kofi.mensah@school.edu.gh', 'Teacher@2026!');
+  await student.login('kwame.asante@student.school.edu.gh', 'Student@2026!');
+  await finance.login('finance@school.edu.gh', 'Finance@2026!');
+
+  const pages = {
+    superadmin: await admin.request('/dashboard/superadmin'),
+    teacher: await teacher.request('/dashboard/teacher'),
+    student: await student.request('/dashboard/student'),
+    financial: await finance.request('/dashboard/financial'),
+  };
+
+  // The Calendar card is the FIRST card of every Overview (left corner) across all 4 dashboards
+  for (const [role, p] of Object.entries(pages)) {
+    assert.equal(p.status, 200, `${role} dashboard must load`);
+    const start = p.text.indexOf('id="sec-overview"');
+    assert.ok(start > -1, `${role} overview section exists`);
+    const nextSection = p.text.indexOf('id="sec-', start + 10);
+    const overview = p.text.slice(start, nextSection === -1 ? undefined : nextSection);
+    assert.match(overview, /overview-calendar-card/, `${role} has a calendar card`);
+    assert.match(overview, /id="ov-calendar"/, `${role} has a calendar mount`);
+    assert.match(overview, /id="ov-calendar-agenda"/, `${role} has a calendar agenda`);
+    assert.ok(
+      overview.indexOf('overview-calendar-card') < overview.indexOf('kpi-grid'),
+      `${role} calendar must appear before the KPI cards`
+    );
+    assert.ok(
+      overview.indexOf('class="calendar-pane"') < overview.indexOf('class="calendar-agenda"'),
+      `${role} calendar grid must sit to the left of the agenda`
+    );
+  }
+
+  // Month range used by the client grid
+  const now = new Date();
+  const monthFrom = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const monthTo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+    lastDay
+  ).padStart(2, '0')}`;
+  const rangeQuery = `from=${monthFrom}&to=${monthTo}`;
+
+  // Teacher publishes work due inside the current month so the calendar has a real entry
+  const tcOv = await teacher.request('/api/teacher/overview');
+  const mathSub = tcOv.json.registeredSubjects.find((s) => s.code === 'MTH101');
+  const dueDay = String(Math.min(28, Math.max(2, now.getDate() + 1))).padStart(2, '0');
+  const dueDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${dueDay}`;
+
+  const cwForm = new FormData();
+  cwForm.set('workType', 'homework');
+  cwForm.set('subjectId', String(mathSub.id));
+  cwForm.set('title', 'Calendar Deadline Homework');
+  cwForm.set('instructions', 'Confirm this work shows on the overview calendar.');
+  cwForm.set('maxScore', '20');
+  cwForm.set('dueAt', `${dueDate}T16:00`);
+  cwForm.set('applyToAllClasses', '1');
+
+  const cwRes = await teacher.request('/api/teacher/coursework', { method: 'POST', body: cwForm });
+  assert.equal(cwRes.status, 201);
+
+  // Role-scoped feeds: teacher & student see the coursework; every role gets a valid payload
+  const feedRoles = [
+    ['superadmin', admin],
+    ['teacher', teacher],
+    ['student', student],
+    ['financial', finance],
+  ];
+  for (const [role, client] of feedRoles) {
+    const res = await client.request(`/api/calendar/events?${rangeQuery}`);
+    assert.equal(res.status, 200, `${role} calendar feed must load`);
+    assert.equal(res.json.ok, true);
+    assert.equal(res.json.role, role);
+    assert.equal(res.json.range.from, monthFrom);
+    assert.equal(res.json.range.to, monthTo);
+    assert.ok(Array.isArray(res.json.events), `${role} events must be an array`);
+    assert.ok(Array.isArray(res.json.days), `${role} days must be an array`);
+    res.json.events.forEach((ev) => {
+      assert.match(ev.date, /^\d{4}-\d{2}-\d{2}$/);
+      assert.ok(['coursework', 'announcement', 'fee', 'payment'].includes(ev.kind));
+      assert.ok(ev.title.length > 0);
+      assert.ok(ev.date >= monthFrom && ev.date <= monthTo, 'events stay inside the range');
+    });
+  }
+
+  const teacherFeed = await teacher.request(`/api/calendar/events?${rangeQuery}`);
+  const teacherHit = teacherFeed.json.events.find((ev) => ev.title === 'Calendar Deadline Homework');
+  assert.ok(teacherHit, 'teacher calendar shows their coursework deadline');
+  assert.equal(teacherHit.date, dueDate);
+  assert.equal(teacherHit.kind, 'coursework');
+
+  const studentFeed = await student.request(`/api/calendar/events?${rangeQuery}`);
+  assert.ok(
+    studentFeed.json.events.some((ev) => ev.title === 'Calendar Deadline Homework'),
+    'student calendar shows deadlines for their class'
+  );
+
+  const adminFeed = await admin.request(`/api/calendar/events?${rangeQuery}`);
+  assert.ok(
+    adminFeed.json.events.some((ev) => ev.title === 'Calendar Deadline Homework'),
+    'superadmin calendar shows school-wide deadlines'
+  );
+
+  // Financial feed must never expose another role's private coursework deadlines
+  const finFeed = await finance.request(`/api/calendar/events?${rangeQuery}`);
+  assert.equal(
+    finFeed.json.events.some((ev) => ev.title === 'Calendar Deadline Homework'),
+    false,
+    'financial calendar is scoped to fees & payments only'
+  );
+
+  // Unauthenticated access is rejected
+  const anon = new SessionClient();
+  const anonRes = await anon.request(`/api/calendar/events?${rangeQuery}`);
+  assert.equal(anonRes.status, 401);
+
+  // Invalid ranges are rejected
+  const badRange = await teacher.request('/api/calendar/events?from=2026-05-20&to=2026-05-01');
+  assert.equal(badRange.status, 400);
+
+  // Calendar styles are defined for grid, agenda & event tones
+  const cssText = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'public', 'css', 'styles.css'),
+    'utf8'
+  );
+  assert.match(cssText, /\.calendar-layout \{/);
+  assert.match(cssText, /\.cal-day\.is-today \{/);
+  assert.match(cssText, /\.cal-agenda-item \{/);
+
+  // Client widget is initialised from every dashboard script
+  for (const jsRel of [
+    'src/public/js/superadmin.js',
+    'src/public/js/teacher.js',
+    'src/public/js/student.js',
+    'src/public/js/financial.js',
+  ]) {
+    const jsSrc = fs.readFileSync(path.join(__dirname, '..', jsRel), 'utf8');
+    assert.match(jsSrc, /initOverviewCalendar\(\)/);
+  }
+  const commonSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'public', 'js', 'common.js'),
+    'utf8'
+  );
+  assert.match(commonSrc, /\/api\/calendar\/events/);
+  assert.match(commonSrc, /initOverviewCalendar/);
 });
 
 

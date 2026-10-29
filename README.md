@@ -1,6 +1,6 @@
 # School Management System (SMS)
 
-A modular **Node.js + Express.js + MySQL/MariaDB** (with built-in SQLite development/preview support) **School Management System** featuring **Real-Time Google OAuth 2.0 Sign-In**, **Paystack Payment Gateway Integration (Receive, Send & Reverse)**, **Student Join Proposal Approvals**, **Tabular Weekly Timetables**, and **Switchable Multi-Currency Support**, scoped strictly to **four role-based dashboards**:
+A modular **Node.js + Express.js + MySQL/MariaDB** (with built-in SQLite development/preview support) **School Management System** featuring **Real-Time Google OAuth 2.0 Sign-In**, **Paystack Payment Gateway Integration (Receive, Send & Reverse)**, **Student Join Proposal Approvals**, **Overview Calendars**, **Tabular Weekly Timetables**, and **Switchable Multi-Currency Support**, scoped strictly to **four role-based dashboards**:
 
 1. **Superadmin Dashboard (`/dashboard/superadmin`)** - Clean, streamlined school administration: Overview, **Classes & Subjects** (with automatic academic period bootstrapping and zero class streams), **Teachers** (multi-subject registration `Subject 1..N` and multi-class/all-classes assignments), **Students & Join Proposals** (enrol students or Accept/Reject student join proposals), **Tabular Timetable**, **Finance & Paystack** (fee items, billing, Paystack collection, outbound transfers, and payment reversals), **Staff Accounts** (provision Teacher and Financial Officer logins), **Announcements**, and **Settings** (school profile, currency switcher, Paystack keys for receiving/sending/reversing, and Google OAuth 2.0 keys).
 2. **Teachers Dashboard (`/dashboard/teacher`)** - Clean teaching workspace scoped strictly to assigned classes & subjects: Overview, **Classwork, Homework, Tests & Exams** (publish to any selected assigned class(es) or all assigned classes, upload **PDFs, pictures/images, documents, and videos**, and view/grade student answers & uploads), **My Classes & Students**, **Tabular Timetable**, **Announcements** (send to any selected assigned class(es) or all assigned classes), and **Profile**.
@@ -8,6 +8,12 @@ A modular **Node.js + Express.js + MySQL/MariaDB** (with built-in SQLite develop
 4. **Financial Dashboard (`/dashboard/financial`)** - Clean multi-currency finance workspace: Overview, **Fees & Billing** (fee items + class/student billing), **Payments & Receipts** (Paystack fee collection, outbound transfers, payment reversals, and printable `RCP-YYYY-NNNNN` receipts), **Student Balances**, and **Tabular Timetable**.
 
 Every dashboard includes a responsive **Show Menu / Hide Menu** sidebar toggle and enterprise security protections.
+
+**Overview Calendar (All Four Dashboards)**: The first card of every Overview, anchored in the top-left corner, is a live month calendar with **Previous / Next / Today** navigation, colour-coded event markers, and a side agenda listing the selected day's items plus everything upcoming. Its role-scoped feed comes from `GET /api/calendar/events?from=YYYY-MM-DD&to=YYYY-MM-DD`:
+- **Superadmin** - school-wide coursework/exam deadlines, published announcements, fee due dates, and payments collected.
+- **Teacher** - their own classwork, homework, test and exam deadlines plus the class announcements they published.
+- **Student** - deadlines for their enrolled class (with submitted / not-submitted status), school & class announcements, and their own fee due dates.
+- **Financial** - fee bills falling due and payments received, with no access to academic coursework data.
 
 ---
 
@@ -40,7 +46,7 @@ Every dashboard includes a responsive **Show Menu / Hide Menu** sidebar toggle a
 │   ├── models/                                      # user.model.js, academic.model.js, finance.model.js, system.model.js
 │   ├── services/                                    # paystack.service.js, financial.service.js, superadmin.service.js, etc.
 │   ├── controllers/                                 # Thin HTTP controllers per dashboard
-│   ├── routes/                                      # auth, superadmin, teacher, student, financial routers
+│   ├── routes/                                      # auth, calendar, superadmin, teacher, student, financial routers
 │   ├── validators/                                  # Server-side input & monetary validation
 │   ├── views/                                       # Server-protected HTML shells (login + 4 dashboards)
 │   └── public/                                      # Responsive institutional CSS & modular client JS

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Superadmin - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=3.9">
+  <link rel="stylesheet" href="/css/styles.css?v=3.10">
 </head>
 <body>
   <div class="app-layout">
@@ -123,6 +123,19 @@
 
         <!-- 1. OVERVIEW -->
         <section id="sec-overview" class="module-panel">
+        <section class="card overview-calendar-card">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title">Calendar</h2>
+              <div class="card-subtitle">Deadlines, announcements and fee dates at a glance</div>
+            </div>
+          </div>
+          <div class="calendar-layout">
+            <div class="calendar-pane" id="ov-calendar"></div>
+            <div class="calendar-agenda" id="ov-calendar-agenda"></div>
+          </div>
+        </section>
+
           <div id="ov-pending-banner" class="hidden" style="margin-bottom:16px;"></div>
 
           <div class="kpi-grid" id="ov-kpis"></div>
@@ -1025,7 +1038,7 @@
     </div>
   </div>
 
-  <script src="/js/common.js?v=3.9"></script>
-  <script src="/js/superadmin.js?v=3.9"></script>
+  <script src="/js/common.js?v=3.10"></script>
+  <script src="/js/superadmin.js?v=3.10"></script>
 </body>
 </html>

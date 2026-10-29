@@ -319,6 +319,12 @@ window.SMS = (() => {
       if (!orig) return;
       inp.setAttribute('placeholder', normalized === 'en' ? orig : translateText(orig, normalized));
     });
+
+    try {
+      window.dispatchEvent(new CustomEvent('sms:languagechange', { detail: { lang: normalized } }));
+    } catch (_) {
+      // ignore
+    }
   }
 
   // Bootstrap saved theme & language before first paint to prevent flash
@@ -1713,6 +1719,282 @@ window.SMS = (() => {
       .join('')}</div>`;
   }
 
+  /* ---------------- OVERVIEW CALENDAR (All Four Dashboards) ---------------- */
+  const CAL_EVENT_CACHE = new Map();
+  const CAL_STATE = { year: null, month: null, selected: null, events: [], loading: false };
+  let calMountEl = null;
+  let calAgendaEl = null;
+
+  function pad2(n) {
+    return String(n).padStart(2, '0');
+  }
+
+  function todayKey() {
+    const d = new Date();
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  }
+
+  function calLang() {
+    return activeLangPref && activeLangPref !== 'system' ? activeLangPref : 'en';
+  }
+
+  function monthTitle(year, month) {
+    try {
+      const fmt = new Intl.DateTimeFormat(calLang(), { month: 'long', year: 'numeric' });
+      return fmt.format(new Date(year, month, 1));
+    } catch (_) {
+      const names = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December',
+      ];
+      return `${names[month]} ${year}`;
+    }
+  }
+
+  function weekdayNames() {
+    const fallback = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    try {
+      const fmt = new Intl.DateTimeFormat(calLang(), { weekday: 'short' });
+      return fallback.map((fb, i) => {
+        try {
+          return fmt.format(new Date(2024, 8, 1 + i));
+        } catch (_) {
+          return fb;
+        }
+      });
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  function formatDayLong(dateKeyStr) {
+    try {
+      const fmt = new Intl.DateTimeFormat(calLang(), {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+      });
+      const [y, m, d] = dateKeyStr.split('-').map(Number);
+      return fmt.format(new Date(y, m - 1, d));
+    } catch (_) {
+      return dateKeyStr;
+    }
+  }
+
+  function calGridRange(year, month) {
+    const first = new Date(year, month, 1);
+    const start = new Date(first);
+    start.setDate(1 - first.getDay());
+    const end = new Date(start);
+    end.setDate(start.getDate() + 41);
+    const key = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+    return { from: key(start), to: key(end), start };
+  }
+
+  async function loadCalendarEvents(year, month) {
+    const range = calGridRange(year, month);
+    const cacheKey = `${range.from}_${range.to}`;
+    const cached = CAL_EVENT_CACHE.get(cacheKey);
+    if (cached && Date.now() - cached.at < 45000) {
+      CAL_STATE.events = cached.events;
+      return;
+    }
+    CAL_STATE.loading = true;
+    try {
+      const data = await api(`/api/calendar/events?from=${range.from}&to=${range.to}`);
+      const events = Array.isArray(data.events) ? data.events : [];
+      CAL_EVENT_CACHE.set(cacheKey, { at: Date.now(), events });
+      CAL_STATE.events = events;
+    } catch (_) {
+      CAL_STATE.events = (cached && cached.events) || [];
+    } finally {
+      CAL_STATE.loading = false;
+    }
+  }
+
+  function eventsByDate() {
+    const map = new Map();
+    CAL_STATE.events.forEach((ev) => {
+      const key = String(ev.date || '').slice(0, 10);
+      if (!key) return;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(ev);
+    });
+    return map;
+  }
+
+  function renderCalendar() {
+    if (!calMountEl) return;
+    const { year, month } = CAL_STATE;
+    const range = calGridRange(year, month);
+    const byDate = eventsByDate();
+    const today = todayKey();
+    const dow = weekdayNames();
+
+    const dowHtml = dow
+      .map((d) => `<div class="cal-dow" aria-hidden="true">${esc(d)}</div>`)
+      .join('');
+
+    let cells = '';
+    const cursor = new Date(range.start);
+    for (let i = 0; i < 42; i += 1) {
+      const key = `${cursor.getFullYear()}-${pad2(cursor.getMonth() + 1)}-${pad2(cursor.getDate())}`;
+      const outside = cursor.getMonth() !== month;
+      const dayEvents = byDate.get(key) || [];
+      const tones = Array.from(new Set(dayEvents.map((e) => e.tone || e.kind))).slice(0, 3);
+      const dots = tones
+        .map((t) => `<span class="cal-dot cal-dot-${esc(t)}"></span>`)
+        .join('');
+      cells += `<button type="button" class="cal-day${outside ? ' is-outside' : ''}${
+        key === today ? ' is-today' : ''
+      }${CAL_STATE.selected === key ? ' is-selected' : ''}" data-cal-date="${key}" aria-label="${key}${
+        dayEvents.length ? `, ${dayEvents.length} item(s)` : ''
+      }">
+        <span class="cal-day-num">${cursor.getDate()}</span>
+        <span class="cal-dots">${dots}</span>
+      </button>`;
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    calMountEl.innerHTML = `
+      <div class="cal-head">
+        <button type="button" class="cal-nav-btn" id="cal-prev-btn" aria-label="Previous month">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div class="cal-title" id="cal-month-label">${esc(monthTitle(year, month))}</div>
+        <div class="cal-head-actions">
+          <button type="button" class="cal-today-btn" id="cal-today-btn">Today</button>
+          <button type="button" class="cal-nav-btn" id="cal-next-btn" aria-label="Next month">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="cal-grid" role="grid" aria-label="${esc(monthTitle(year, month))}">
+        ${dowHtml}
+        ${cells}
+      </div>
+      <div class="cal-legend">
+        <span class="cal-legend-item"><span class="cal-dot cal-dot-coursework"></span>Classwork &amp; Exams</span>
+        <span class="cal-legend-item"><span class="cal-dot cal-dot-announcement"></span>Announcements</span>
+        <span class="cal-legend-item"><span class="cal-dot cal-dot-fee"></span>Fees Due</span>
+        <span class="cal-legend-item"><span class="cal-dot cal-dot-payment"></span>Payments</span>
+      </div>
+    `;
+
+    calMountEl.querySelector('#cal-prev-btn')?.addEventListener('click', () => shiftCalendarMonth(-1));
+    calMountEl.querySelector('#cal-next-btn')?.addEventListener('click', () => shiftCalendarMonth(1));
+    calMountEl.querySelector('#cal-today-btn')?.addEventListener('click', () => jumpCalendarToToday());
+    calMountEl.querySelectorAll('.cal-day').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        CAL_STATE.selected = btn.dataset.calDate;
+        renderCalendar();
+        renderCalendarAgenda();
+      });
+    });
+  }
+
+  function renderCalendarAgenda() {
+    if (!calAgendaEl) return;
+    const selected = CAL_STATE.selected || todayKey();
+    const byDate = eventsByDate();
+    const dayEvents = byDate.get(selected) || [];
+    const today = todayKey();
+
+    const upcoming = CAL_STATE.events
+      .filter((ev) => String(ev.date).slice(0, 10) >= today)
+      .sort((a, b) => (String(a.date) < String(b.date) ? -1 : 1))
+      .slice(0, 6);
+
+    const itemHtml = (ev) => `
+      <div class="cal-agenda-item">
+        <span class="cal-dot cal-dot-${esc(ev.tone || ev.kind)}"></span>
+        <div class="cal-agenda-copy">
+          <div class="cal-agenda-title">${esc(ev.title)}</div>
+          <div class="cal-agenda-meta">${esc(ev.date)} &middot; ${esc(ev.meta || ev.kindLabel || '')}</div>
+        </div>
+      </div>`;
+
+    calAgendaEl.innerHTML = `
+      <div class="cal-agenda-head">
+        <span class="cal-agenda-label">Selected Day</span>
+        <span class="cal-agenda-date">${esc(formatDayLong(selected))}</span>
+      </div>
+      <div class="cal-agenda-list">
+        ${
+          dayEvents.length
+            ? dayEvents.map(itemHtml).join('')
+            : '<div class="empty-state-sm">No items scheduled on this day.</div>'
+        }
+      </div>
+      <div class="cal-agenda-head cal-agenda-head-spaced">
+        <span class="cal-agenda-label">Upcoming</span>
+      </div>
+      <div class="cal-agenda-list">
+        ${
+          upcoming.length
+            ? upcoming.map(itemHtml).join('')
+            : '<div class="empty-state-sm">Nothing upcoming in this period.</div>'
+        }
+      </div>
+    `;
+  }
+
+  async function shiftCalendarMonth(delta) {
+    const next = new Date(CAL_STATE.year, CAL_STATE.month + delta, 1);
+    CAL_STATE.year = next.getFullYear();
+    CAL_STATE.month = next.getMonth();
+    CAL_STATE.selected = `${CAL_STATE.year}-${pad2(CAL_STATE.month + 1)}-01`;
+    renderCalendar();
+    renderCalendarAgenda();
+    await loadCalendarEvents(CAL_STATE.year, CAL_STATE.month);
+    renderCalendar();
+    renderCalendarAgenda();
+  }
+
+  async function jumpCalendarToToday() {
+    const now = new Date();
+    CAL_STATE.year = now.getFullYear();
+    CAL_STATE.month = now.getMonth();
+    CAL_STATE.selected = todayKey();
+    renderCalendar();
+    renderCalendarAgenda();
+    await loadCalendarEvents(CAL_STATE.year, CAL_STATE.month);
+    renderCalendar();
+    renderCalendarAgenda();
+  }
+
+  async function initOverviewCalendar(options = {}) {
+    const mountId = options.mountId || 'ov-calendar';
+    const agendaId = options.agendaId || 'ov-calendar-agenda';
+    calMountEl = document.getElementById(mountId);
+    calAgendaEl = document.getElementById(agendaId);
+    if (!calMountEl) return;
+
+    const now = new Date();
+    CAL_STATE.year = now.getFullYear();
+    CAL_STATE.month = now.getMonth();
+    CAL_STATE.selected = todayKey();
+
+    renderCalendar();
+    renderCalendarAgenda();
+    await loadCalendarEvents(CAL_STATE.year, CAL_STATE.month);
+    renderCalendar();
+    renderCalendarAgenda();
+
+    if (!window.__smsCalLangBound) {
+      window.__smsCalLangBound = true;
+      window.addEventListener('sms:languagechange', () => {
+        if (!calMountEl) return;
+        renderCalendar();
+        renderCalendarAgenda();
+      });
+    }
+  }
+
+  function clearCalendarCache() {
+    CAL_EVENT_CACHE.clear();
+  }
+
   return {
     esc,
     money,
@@ -1746,6 +2028,8 @@ window.SMS = (() => {
     openPaystackCheckout,
     withNavSession,
     navigateAuthenticated,
+    initOverviewCalendar,
+    clearCalendarCache,
     setSessionToken,
     getSessionToken,
     getUser: () => currentUser,

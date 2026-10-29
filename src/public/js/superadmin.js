@@ -3,6 +3,7 @@
 
   await SMS.initSession();
   SMS.configureGoogleLinkButton('google-link-btn');
+  SMS.initOverviewCalendar();
   document.getElementById('logout-btn').addEventListener('click', SMS.logout);
 
   const user = SMS.getUser();

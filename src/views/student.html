@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Students Dashboard - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=3.9">
+  <link rel="stylesheet" href="/css/styles.css?v=3.10">
 </head>
 <body>
   <div class="app-layout">
@@ -79,6 +79,19 @@
       <main class="content-body">
         <!-- 1. OVERVIEW -->
         <section id="sec-overview" class="module-panel">
+        <section class="card overview-calendar-card">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title">Calendar</h2>
+              <div class="card-subtitle">Deadlines, announcements and fee dates at a glance</div>
+            </div>
+          </div>
+          <div class="calendar-layout">
+            <div class="calendar-pane" id="ov-calendar"></div>
+            <div class="calendar-agenda" id="ov-calendar-agenda"></div>
+          </div>
+        </section>
+
           <div class="kpi-grid" id="st-kpis"></div>
 
           <div class="card">
@@ -340,7 +353,7 @@
     </div>
   </div>
 
-  <script src="/js/common.js?v=3.9"></script>
-  <script src="/js/student.js?v=3.9"></script>
+  <script src="/js/common.js?v=3.10"></script>
+  <script src="/js/student.js?v=3.10"></script>
 </body>
 </html>
