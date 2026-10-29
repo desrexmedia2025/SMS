@@ -4,15 +4,15 @@
   --surface-subtle: #f7faff;
   --sidebar-top: #163f8c;
   --sidebar-bottom: #102f6e;
-  --sidebar-border: rgba(255, 255, 255, 0.16);
-  --glass-sidebar-bg: linear-gradient(180deg, rgba(22, 63, 140, 0.80) 0%, rgba(15, 45, 108, 0.84) 100%);
-  --glass-sidebar-cap-bg: rgba(19, 55, 126, 0.56);
-  --glass-sidebar-foot-bg: rgba(11, 32, 78, 0.52);
-  --glass-topbar-bg: rgba(255, 255, 255, 0.52);
-  --glass-topbar-scrolled-bg: rgba(255, 255, 255, 0.44);
-  --glass-topbar-border: rgba(255, 255, 255, 0.68);
-  --glass-topbar-shadow: 0 8px 28px rgba(14, 34, 66, 0.06), inset 0 -1px 0 rgba(195, 214, 240, 0.65);
-  --glass-subnav-bg: rgba(255, 255, 255, 0.50);
+  --sidebar-border: rgba(255, 255, 255, 0.14);
+  --glass-sidebar-bg: linear-gradient(180deg, rgba(21, 61, 138, 0.93) 0%, rgba(15, 44, 106, 0.96) 100%);
+  --glass-sidebar-cap-bg: rgba(16, 48, 112, 0.45);
+  --glass-sidebar-foot-bg: rgba(9, 28, 70, 0.42);
+  --glass-topbar-bg: rgba(255, 255, 255, 0.58);
+  --glass-topbar-scrolled-bg: rgba(255, 255, 255, 0.50);
+  --glass-topbar-border: rgba(210, 225, 246, 0.82);
+  --glass-topbar-shadow: 0 6px 24px rgba(14, 34, 66, 0.055);
+  --glass-subnav-bg: rgba(255, 255, 255, 0.62);
   --text: #0e2242;
   --text-muted: #455c80;
   --text-light: #647c9e;
@@ -448,38 +448,32 @@ html, body {
 }
 
 .sidebar {
-  width: 266px;
+  width: 264px;
   flex-shrink: 0;
   background: var(--glass-sidebar-bg);
-  backdrop-filter: blur(22px) saturate(180%);
-  -webkit-backdrop-filter: blur(22px) saturate(180%);
-  border-right: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: 6px 0 28px rgba(10, 26, 58, 0.12);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-right: 1px solid rgba(14, 42, 98, 0.35);
   color: #f0f6ff;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   position: sticky;
   top: 0;
   height: 100vh;
-  overflow-y: auto;
+  overflow: hidden;
   z-index: 40;
 }
 
 .sidebar-header {
-  position: sticky;
-  top: 0;
-  z-index: 4;
-  padding: 22px 20px 16px;
+  flex-shrink: 0;
+  padding: 18px 18px 14px;
   background: var(--glass-sidebar-cap-bg);
-  backdrop-filter: blur(18px) saturate(175%);
-  -webkit-backdrop-filter: blur(18px) saturate(175%);
   border-bottom: 1px solid var(--sidebar-border);
 }
 
 .sidebar-title {
   font-weight: 700;
-  font-size: 15.5px;
+  font-size: 15px;
   color: #ffffff;
   line-height: 1.3;
   letter-spacing: -0.01em;
@@ -487,8 +481,8 @@ html, body {
 
 .sidebar-role-tag {
   display: block;
-  margin-top: 4px;
-  font-size: 12.5px;
+  margin-top: 3px;
+  font-size: 12px;
   font-weight: 500;
   color: #b7d0fb;
   background: none;
@@ -499,24 +493,38 @@ html, body {
 }
 
 .sidebar-nav {
-  padding: 20px 14px;
+  padding: 12px 12px;
   flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 4px;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+  width: 5px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
 }
 
 .nav-section-label {
-  padding: 14px 12px 4px;
-  font-size: 11.5px;
+  padding: 10px 12px 3px;
+  font-size: 11px;
   font-weight: 600;
   color: rgba(191, 216, 255, 0.72);
-  letter-spacing: 0.01em;
-  text-transform: none;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .sidebar-nav > .nav-section-label:first-child {
-  padding-top: 0;
+  padding-top: 2px;
 }
 
 .nav-btn {
@@ -524,28 +532,29 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 10.5px 14px;
+  gap: 8px;
+  padding: 9px 12px;
   border: none;
   border-left: 3px solid transparent;
   background: transparent;
   color: rgba(235, 243, 255, 0.88);
   font-family: inherit;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 500;
   text-align: left;
   border-radius: 0 8px 8px 0;
   cursor: pointer;
+  flex-shrink: 0;
   transition: background 0.14s ease, color 0.14s ease, border-color 0.14s ease;
 }
 
 .nav-btn:hover {
-  background: rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.10);
   color: #ffffff;
 }
 
 .nav-btn.active {
-  background: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.17);
   border-left-color: #93c5fd;
   color: #ffffff;
   font-weight: 600;
@@ -567,43 +576,43 @@ html, body {
 
 /* Bottom Side-Pane Controls: Currency, Theme, Language, Active Session, Google Link & Logout */
 .sidebar-bottom {
-  position: sticky;
-  bottom: 0;
-  z-index: 4;
-  margin-top: auto;
-  padding: 14px 16px 18px;
+  flex-shrink: 0;
+  padding: 11px 14px 14px;
   border-top: 1px solid var(--sidebar-border);
   background: var(--glass-sidebar-foot-bg);
-  backdrop-filter: blur(18px) saturate(175%);
-  -webkit-backdrop-filter: blur(18px) saturate(175%);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .sidebar-control-group {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 3px;
+  min-width: 0;
 }
 
 .sidebar-control-label {
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
   color: #b7d0fb;
+  line-height: 1.2;
 }
 
 .sidebar-bottom select {
   width: 100%;
-  padding: 7.5px 10px;
+  min-width: 0;
+  height: 31px;
+  padding: 4px 8px;
   border-radius: 7px;
-  border: 1px solid rgba(255, 255, 255, 0.24);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
+  text-overflow: ellipsis;
 }
 
 .sidebar-bottom select:focus {
@@ -621,11 +630,12 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 7px 10px;
+  height: 31px;
+  padding: 4px 9px;
   border-radius: 7px;
   background: rgba(255, 255, 255, 0.09);
   border: 1px solid rgba(255, 255, 255, 0.16);
-  font-size: 12.5px;
+  font-size: 12px;
   color: #e6f0ff;
 }
 
@@ -635,18 +645,18 @@ html, body {
 }
 
 .sidebar-session-box {
-  padding: 10px 11px;
+  padding: 7px 10px;
   border-radius: 7px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.13);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .sidebar-footer {
-  font-size: 12px;
-  line-height: 1.4;
+  font-size: 11.5px;
+  line-height: 1.35;
   color: #dbeafe;
   word-break: break-word;
 }
@@ -679,13 +689,13 @@ html, body {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 9px 14px;
+  padding: 7.5px 12px;
   border-radius: 7px;
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.26);
   background: rgba(255, 255, 255, 0.13);
   color: #ffffff;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.14s ease, border-color 0.14s ease;
@@ -696,7 +706,7 @@ html, body {
   border-color: rgba(255, 255, 255, 0.45);
 }
 
-/* ---------------- MODERN MAIN WORKSPACE & FROSTED TOPBAR ---------------- */
+/* ---------------- MODERN MAIN WORKSPACE & GLASS TOPBAR ---------------- */
 .main-area {
   flex: 1;
   min-width: 0;
@@ -709,17 +719,17 @@ html, body {
 }
 
 .topbar {
-  min-height: 62px;
+  min-height: 60px;
   background: var(--glass-topbar-bg);
   backdrop-filter: blur(20px) saturate(185%);
   -webkit-backdrop-filter: blur(20px) saturate(185%);
   border-bottom: 1px solid var(--glass-topbar-border);
   box-shadow: var(--glass-topbar-shadow);
-  padding: 10px 26px;
+  padding: 10px 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
   position: sticky;
   top: 0;
   z-index: 35;
@@ -733,8 +743,8 @@ body.is-scrolled .topbar {
 .topbar-left {
   display: flex;
   align-items: center;
-  gap: 14px;
-  min-width: 0;
+  gap: 12px;
+  min-width: 140px;
   flex: 1 1 auto;
 }
 
@@ -1090,22 +1100,12 @@ body.is-scrolled .topbar {
 
 /* Segmented Modern Glass Sub-Tabs */
 .subnav-bar {
-  position: sticky;
-  top: 70px;
-  z-index: 24;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
   margin-bottom: 20px;
-  padding: 7px 10px;
-  border-radius: 14px;
-  background: var(--glass-subnav-bg);
-  backdrop-filter: blur(18px) saturate(180%);
-  -webkit-backdrop-filter: blur(18px) saturate(180%);
-  border: 1px solid var(--glass-topbar-border);
-  box-shadow: 0 4px 18px rgba(14, 34, 66, 0.045);
 }
 
 .subnav-tabs {
@@ -2117,12 +2117,20 @@ table.timetable-matrix tbody tr:last-child td {
   }
   .sidebar {
     position: fixed;
-    left: -275px;
-    z-index: 40;
-    transition: left 0.2s ease;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    transform: translateX(-105%);
+    box-shadow: none;
+    z-index: 45;
+    background: linear-gradient(180deg, rgba(20, 58, 134, 0.84) 0%, rgba(13, 39, 94, 0.88) 100%);
+    backdrop-filter: blur(22px) saturate(185%);
+    -webkit-backdrop-filter: blur(22px) saturate(185%);
+    transition: transform 0.22s ease, box-shadow 0.22s ease;
   }
   .sidebar.open {
-    left: 0;
+    transform: translateX(0);
+    box-shadow: 14px 0 38px rgba(8, 20, 48, 0.34);
   }
   .sidebar-backdrop.open {
     display: block;
@@ -2138,6 +2146,12 @@ table.timetable-matrix tbody tr:last-child td {
   }
 }
 
+@media (max-width: 1120px) {
+  .topbar-date-chip {
+    display: none;
+  }
+}
+
 @media (min-width: 901px) {
   .sidebar {
     transition: width 0.2s ease, opacity 0.16s ease;
@@ -2148,6 +2162,7 @@ table.timetable-matrix tbody tr:last-child td {
     opacity: 0;
     overflow: hidden;
     border-right: none;
+    box-shadow: none !important;
     pointer-events: none;
   }
 }
@@ -2482,23 +2497,24 @@ table.timetable-matrix tbody tr:last-child td {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
   margin-left: auto;
-  margin-right: 10px;
 }
 
 .topbar-search-input {
-  width: 220px;
-  height: 35px;
-  padding: 6px 12px;
-  font-size: 13px;
+  width: 190px;
+  height: 34px;
+  padding: 5px 11px;
+  font-size: 12.8px;
   border-radius: 9px;
-  border: 1px solid #d5e0f0;
-  background: #f8fafd;
+  border: 1px solid rgba(197, 214, 238, 0.9);
+  background: rgba(255, 255, 255, 0.72);
   color: var(--text);
-  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, width 0.18s ease;
 }
 
 .topbar-search-input:focus {
+  width: 225px;
   background: #ffffff;
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
@@ -2506,7 +2522,7 @@ table.timetable-matrix tbody tr:last-child td {
 }
 
 .topbar .topbar-search-form + .topbar-date-chip {
-  margin-left: 0;
+  margin-left: 2px;
 }
 
 .search-bar {
@@ -2764,34 +2780,11 @@ html[data-theme="ocean"] .action-tile {
   border-color: rgba(255, 255, 255, 0.78);
 }
 
-/* Sidebar & Topbar Theme + Language Controls */
+/* Sidebar Theme + Language Controls */
 .sidebar-pref-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px;
-}
-
-.topbar-prefs-bar {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.topbar-pref-select {
-  width: auto;
-  min-width: 96px;
-  height: 34px;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 600;
-  border-radius: 9px;
-  border: 1px solid rgba(197, 214, 238, 0.85);
-  background: rgba(255, 255, 255, 0.66);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  color: var(--text);
-  cursor: pointer;
 }
 
 .sidebar-terms-btn {

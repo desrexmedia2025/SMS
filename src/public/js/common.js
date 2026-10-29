@@ -251,10 +251,8 @@ window.SMS = (() => {
         // ignore storage errors
       }
     }
-    ['sb-theme-select', 'topbar-theme-select'].forEach((id) => {
-      const sel = document.getElementById(id);
-      if (sel && sel.value !== normalized) sel.value = normalized;
-    });
+    const sbTheme = document.getElementById('sb-theme-select');
+    if (sbTheme && sbTheme.value !== normalized) sbTheme.value = normalized;
   }
 
   function translateText(str, lang) {
@@ -280,10 +278,8 @@ window.SMS = (() => {
       }
     }
 
-    ['sb-lang-select', 'topbar-lang-select'].forEach((id) => {
-      const sel = document.getElementById(id);
-      if (sel && sel.value !== normalized) sel.value = normalized;
-    });
+    const sbLang = document.getElementById('sb-lang-select');
+    if (sbLang && sbLang.value !== normalized) sbLang.value = normalized;
 
     const selectors = [
       '.nav-item-label',
@@ -306,8 +302,7 @@ window.SMS = (() => {
     ];
 
     document.querySelectorAll(selectors.join(',')).forEach((el) => {
-      if (el.children.length > 0 && !el.classList.contains('nav-btn')) return;
-      if (el.classList.contains('nav-btn') && el.querySelector('.nav-item-label')) return;
+      if (el.children.length > 0) return;
       if (el.dataset.i18nOrig === undefined) {
         el.dataset.i18nOrig = el.textContent.trim();
       }
@@ -1240,56 +1235,25 @@ window.SMS = (() => {
   }
 
   function initThemeAndLanguageControls() {
-    const topbar = document.querySelector('.topbar');
-    if (topbar && !document.getElementById('topbar-prefs-bar')) {
-      const prefsWrap = document.createElement('div');
-      prefsWrap.id = 'topbar-prefs-bar';
-      prefsWrap.className = 'topbar-prefs-bar';
-      prefsWrap.innerHTML = `
-        <select id="topbar-theme-select" class="topbar-pref-select" aria-label="Theme">
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-          <option value="ocean">Ocean Glass</option>
-          <option value="system">System</option>
-        </select>
-        <select id="topbar-lang-select" class="topbar-pref-select" aria-label="Language">
-          <option value="en">English</option>
-          <option value="fr">Français</option>
-          <option value="es">Español</option>
-          <option value="pt">Português</option>
-          <option value="tw">Twi</option>
-          <option value="ar">العربية</option>
-        </select>
-      `;
-      const dateChip = topbar.querySelector('.topbar-date-chip');
-      if (dateChip) {
-        topbar.insertBefore(prefsWrap, dateChip);
-      } else {
-        topbar.appendChild(prefsWrap);
-      }
+    const themeSel = document.getElementById('sb-theme-select');
+    if (themeSel && themeSel.dataset.prefBound !== '1') {
+      themeSel.dataset.prefBound = '1';
+      themeSel.value = activeThemePref;
+      themeSel.addEventListener('change', () => {
+        applyTheme(themeSel.value, { persistLocal: true });
+        savePreferencesRemote({ theme: themeSel.value });
+      });
     }
 
-    ['sb-theme-select', 'topbar-theme-select'].forEach((id) => {
-      const sel = document.getElementById(id);
-      if (!sel || sel.dataset.prefBound === '1') return;
-      sel.dataset.prefBound = '1';
-      sel.value = activeThemePref;
-      sel.addEventListener('change', () => {
-        applyTheme(sel.value, { persistLocal: true });
-        savePreferencesRemote({ theme: sel.value });
+    const langSel = document.getElementById('sb-lang-select');
+    if (langSel && langSel.dataset.prefBound !== '1') {
+      langSel.dataset.prefBound = '1';
+      langSel.value = activeLangPref;
+      langSel.addEventListener('change', () => {
+        applyLanguage(langSel.value, { persistLocal: true });
+        savePreferencesRemote({ language: langSel.value });
       });
-    });
-
-    ['sb-lang-select', 'topbar-lang-select'].forEach((id) => {
-      const sel = document.getElementById(id);
-      if (!sel || sel.dataset.prefBound === '1') return;
-      sel.dataset.prefBound = '1';
-      sel.value = activeLangPref;
-      sel.addEventListener('change', () => {
-        applyLanguage(sel.value, { persistLocal: true });
-        savePreferencesRemote({ language: sel.value });
-      });
-    });
+    }
 
     applyTheme(activeThemePref, { persistLocal: false });
     applyLanguage(activeLangPref, { persistLocal: false });
