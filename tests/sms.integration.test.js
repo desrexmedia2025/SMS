@@ -1810,7 +1810,7 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
   // Every dashboard includes Show/Hide Menu button, modern action tiles & clean v3.x assets
   for (const html of [saHtml, tcHtml, stHtml, fnHtml]) {
     assert.match(html, /id="mobile-menu-btn"/);
-    assert.match(html, /\?v=3\.19/);
+    assert.match(html, /\?v=3\.20/);
     assert.match(html, /class="action-tile-grid"/);
     assert.doesNotMatch(html, /Hide Figures/i);
     assert.doesNotMatch(html, /Audit Log/i);
@@ -1878,6 +1878,32 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
   assert.equal(cssSrc.includes('.kpi-icon-box'), true);
   assert.equal(cssSrc.includes('.action-tile-grid'), true);
   assert.equal(cssSrc.includes('.topbar-date-chip'), true);
+
+  // Styled form system: full-width fields must span the grid and fields must be themed
+  assert.match(cssSrc, /\.form-grid-full/, 'full-width form fields need a spanning CSS rule');
+  assert.match(cssSrc, /\.form-group > label/, 'form labels are styled');
+  assert.match(cssSrc, /\.form-group:focus-within > label/, 'focused fields highlight their label');
+  assert.match(cssSrc, /appearance: none;/, 'selects use a custom chevron');
+  assert.match(cssSrc, /file-selector-button/, 'file inputs are styled');
+  assert.match(cssSrc, /user-invalid/, 'invalid fields are highlighted after interaction');
+
+  for (const hRel of [
+    'src/views/superadmin.html',
+    'src/views/teacher.html',
+    'src/views/student.html',
+    'src/views/financial.html',
+  ]) {
+    const hSrc = fs.readFileSync(path.join(__dirname, '..', hRel), 'utf8');
+    assert.match(hSrc, /class="form-group"/, `${hRel} must use .form-group field wrappers`);
+    const fullWidthFields = (hSrc.match(/form-grid-full/g) || []).length;
+    if (fullWidthFields > 0) {
+      assert.match(
+        cssSrc,
+        /\.form-group\.form-grid-full[\s\S]{0,80}grid-column: 1 \/ -1;/,
+        `${hRel} uses .form-grid-full which must span every grid column`
+      );
+    }
+  }
 
   // Simulate a fresh school with no active academic year/term and verify auto-bootstrap
   await db.run('UPDATE academic_years SET is_active = 0');

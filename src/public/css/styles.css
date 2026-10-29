@@ -3893,3 +3893,482 @@ html[dir="rtl"] .nav-btn.active {
   .rc-sheet { box-shadow: none !important; border: none !important; max-width: none; padding: 0; }
   .rc-remark p, .rc-table tr { page-break-inside: avoid; }
 }
+
+/* =============================================================================
+   FORM SYSTEM - modern, calm, blue-accented fields
+   Scoped to .form-group / .form-grid so search bars, topbar selects and the
+   login pill layout keep their own designs.
+   ============================================================================= */
+
+.form-grid {
+  grid-template-columns: repeat(auto-fit, minmax(212px, 1fr));
+  gap: 16px 18px;
+}
+
+/* Full-width fields (message bodies, descriptions, action rows) */
+.form-grid > .form-group.form-grid-full,
+.form-grid > .form-grid-full,
+.form-group.form-grid-full {
+  grid-column: 1 / -1;
+}
+
+.form-group {
+  position: relative;
+  gap: 7px;
+  margin-bottom: 0;
+}
+
+.form-group > label,
+.record-modal-grid .form-group > label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-light);
+  transition: color 0.16s ease;
+}
+
+.form-group:focus-within > label {
+  color: var(--primary);
+}
+
+.form-group > label .hint-inline {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+/* Checkbox / radio rows read as sentences, not as uppercase micro-labels */
+.form-group > label:has(input[type="checkbox"]),
+.form-group > label:has(input[type="radio"]),
+label:has(> input[type="checkbox"]),
+label:has(> input[type="radio"]) {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  gap: 9px;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"],
+.form-group input[type="number"],
+.form-group input[type="tel"],
+.form-group input[type="url"],
+.form-group input[type="date"],
+.form-group input[type="time"],
+.form-group input[type="datetime-local"],
+.form-group select,
+.form-group textarea,
+.form-grid input[type="text"],
+.form-grid input[type="email"],
+.form-grid input[type="password"],
+.form-grid input[type="number"],
+.form-grid input[type="tel"],
+.form-grid input[type="date"],
+.form-grid input[type="time"],
+.form-grid select,
+.form-grid textarea,
+.card-header select {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--text);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: inset 0 1px 2px rgba(14, 34, 66, 0.035);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease,
+    transform 0.16s ease;
+}
+
+.form-group input:hover,
+.form-group select:hover,
+.form-group textarea:hover,
+.form-grid input:hover,
+.form-grid select:hover,
+.form-grid textarea:hover,
+.card-header select:hover {
+  border-color: #a9c3ea;
+  background: #ffffff;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus,
+.form-grid input:focus,
+.form-grid select:focus,
+.form-grid textarea:focus,
+.card-header select:focus {
+  outline: none;
+  background: #ffffff;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(26, 79, 214, 0.13), inset 0 1px 2px rgba(14, 34, 66, 0.03);
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder,
+.form-grid input::placeholder,
+.form-grid textarea::placeholder {
+  color: #93a7c4;
+  opacity: 1;
+}
+
+.form-group textarea,
+.form-grid textarea {
+  min-height: 96px;
+  resize: vertical;
+  border-radius: 12px;
+  line-height: 1.55;
+}
+
+.form-group input:disabled,
+.form-group select:disabled,
+.form-group textarea:disabled,
+.form-grid input:disabled,
+.form-grid select:disabled,
+.form-grid textarea:disabled {
+  background: #f1f5fb;
+  color: var(--text-light);
+  cursor: not-allowed;
+}
+
+/* Invalid once the user has actually touched the field */
+.form-group input:user-invalid,
+.form-group select:user-invalid,
+.form-group textarea:user-invalid,
+.form-grid input:user-invalid {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(201, 42, 42, 0.12);
+}
+
+/* Dropdowns get a soft chevron instead of the native arrow */
+.form-group select,
+.form-grid select,
+.card-header select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 34px;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23455c80' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  background-repeat: no-repeat, no-repeat;
+  background-position: right 11px center, center;
+  background-size: 15px 15px, auto;
+}
+
+.form-group select:focus,
+.form-grid select:focus,
+.card-header select:focus {
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%231a4fd6' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #ffffff 0%, #ffffff 100%);
+}
+
+select option,
+.form-group select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* Compact inline selectors used in card headers stay narrow */
+.card-header select {
+  width: auto;
+  min-width: 148px;
+  padding: 8px 32px 8px 11px;
+  font-size: 12.8px;
+}
+
+/* File upload row */
+.form-group input[type="file"],
+.form-grid input[type="file"] {
+  width: 100%;
+  padding: 10px 11px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 10px;
+  background: #f8fbff;
+  font-size: 12.6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+
+.form-group input[type="file"]:hover,
+.form-grid input[type="file"]:hover {
+  border-color: var(--primary);
+  background: #ffffff;
+}
+
+.form-group input[type="file"]::file-selector-button,
+.form-grid input[type="file"]::file-selector-button {
+  margin-right: 11px;
+  padding: 6px 12px;
+  border: 1px solid #cddbef;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #162e57;
+  font-family: inherit;
+  font-size: 12.4px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.form-group input[type="file"]::file-selector-button:hover,
+.form-grid input[type="file"]::file-selector-button:hover {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* Colour pickers */
+.form-group input[type="color"],
+.form-grid input[type="color"] {
+  height: 42px;
+  padding: 3px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.sev-colour-row input[type="color"] {
+  width: 46px;
+  height: 34px;
+}
+
+/* Checkboxes & radios inherit the brand accent */
+.form-group input[type="checkbox"],
+.form-group input[type="radio"],
+.form-grid input[type="checkbox"],
+.form-grid input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+/* Section dividers inside long forms */
+.form-section-divider {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin: 22px 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.form-section-divider::before {
+  content: '';
+  width: 4px;
+  height: 14px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--primary) 0%, #60a5fa 100%);
+}
+
+/* Action rows get a calm separator above them */
+.form-actions-end {
+  padding-top: 13px;
+  margin-top: 15px;
+  border-top: 1px solid var(--border);
+  gap: 10px;
+}
+
+/* Buttons: press feedback + keyboard focus ring */
+.btn {
+  box-shadow: 0 1px 2px rgba(14, 34, 66, 0.05);
+  white-space: nowrap;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0.5px) scale(0.994);
+  box-shadow: 0 1px 2px rgba(14, 34, 66, 0.08);
+}
+
+.btn-secondary {
+  background: linear-gradient(180deg, #ffffff 0%, #f6faff 100%);
+  box-shadow: 0 1px 2px rgba(14, 34, 66, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.btn-secondary:focus-visible {
+  outline-color: var(--primary);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--danger-soft);
+  border-color: #e08a8a;
+  color: #b02020;
+}
+
+.btn-success:hover:not(:disabled) {
+  background: linear-gradient(180deg, #149a69 0%, #0b6b48 100%);
+  box-shadow: 0 4px 12px rgba(13, 122, 82, 0.26);
+}
+
+/* Error text under a form */
+.form-error {
+  margin-top: 10px;
+  font-size: 12.6px;
+  font-weight: 600;
+  color: var(--danger);
+}
+
+.form-error:empty {
+  display: none;
+}
+
+/* ------------- Dark theme ------------- */
+html[data-theme="dark"] .form-group input,
+html[data-theme="dark"] .form-group select,
+html[data-theme="dark"] .form-group textarea,
+html[data-theme="dark"] .form-grid input,
+html[data-theme="dark"] .form-grid select,
+html[data-theme="dark"] .form-grid textarea,
+html[data-theme="dark"] .card-header select {
+  background: #0e182c;
+  border-color: var(--border-strong);
+  box-shadow: inset 0 1px 2px rgba(2, 6, 18, 0.25);
+}
+
+html[data-theme="dark"] .form-group input:hover,
+html[data-theme="dark"] .form-group select:hover,
+html[data-theme="dark"] .form-group textarea:hover,
+html[data-theme="dark"] .form-grid input:hover,
+html[data-theme="dark"] .form-grid select:hover,
+html[data-theme="dark"] .form-grid textarea:hover {
+  background: #13213c;
+  border-color: #3b82f6;
+}
+
+html[data-theme="dark"] .form-group input:focus,
+html[data-theme="dark"] .form-group select:focus,
+html[data-theme="dark"] .form-group textarea:focus,
+html[data-theme="dark"] .form-grid input:focus,
+html[data-theme="dark"] .form-grid select:focus,
+html[data-theme="dark"] .form-grid textarea:focus,
+html[data-theme="dark"] .card-header select:focus {
+  background: #13213c;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.22);
+}
+
+html[data-theme="dark"] .form-group select,
+html[data-theme="dark"] .form-grid select,
+html[data-theme="dark"] .card-header select {
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239eb2d0' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #0e182c 0%, #0e182c 100%);
+}
+
+html[data-theme="dark"] .form-group input[type="file"],
+html[data-theme="dark"] .form-grid input[type="file"] {
+  background: #0e182c;
+  border-color: var(--border-strong);
+  color: var(--text-muted);
+}
+
+html[data-theme="dark"] .form-group input[type="file"]::file-selector-button,
+html[data-theme="dark"] .form-grid input[type="file"]::file-selector-button {
+  background: #162440;
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .form-group input:disabled,
+html[data-theme="dark"] .form-group select:disabled,
+html[data-theme="dark"] .form-group textarea:disabled {
+  background: #0b1425;
+  color: var(--text-light);
+}
+
+html[data-theme="dark"] .btn-secondary {
+  background: linear-gradient(180deg, #162440 0%, #142139 100%);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .btn-secondary:hover:not(:disabled) {
+  background: #1b2c4d;
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .form-actions-end {
+  border-top-color: var(--border);
+}
+
+/* Subject picker rows inside forms share the modern field look */
+.multi-subject-box input[type="text"],
+.subject-row-item input[type="text"],
+.subject-inline-adder input[type="text"] {
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13.2px;
+  color: var(--text);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: inset 0 1px 2px rgba(14, 34, 66, 0.035);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.multi-subject-box input[type="text"]:focus,
+.subject-row-item input[type="text"]:focus,
+.subject-inline-adder input[type="text"]:focus {
+  outline: none;
+  background: #ffffff;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(26, 79, 214, 0.13);
+}
+
+html[data-theme="dark"] .multi-subject-box input[type="text"],
+html[data-theme="dark"] .subject-row-item input[type="text"],
+html[data-theme="dark"] .subject-inline-adder input[type="text"] {
+  background: #0e182c;
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .multi-subject-box input[type="text"]:focus,
+html[data-theme="dark"] .subject-row-item input[type="text"]:focus,
+html[data-theme="dark"] .subject-inline-adder input[type="text"]:focus {
+  background: #13213c;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.22);
+}
+
+/* Cards that hold a form get a soft brand accent bar */
+.card:has(> form) {
+  position: relative;
+}
+
+.card:has(> form)::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 20px;
+  right: 20px;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: linear-gradient(90deg, var(--primary) 0%, #60a5fa 58%, rgba(96, 165, 250, 0) 100%);
+  opacity: 0.85;
+  pointer-events: none;
+}
