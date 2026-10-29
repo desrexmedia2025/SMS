@@ -285,13 +285,8 @@ async function listClassReportCards({ classId, academicYearId, termId }) {
   const { years, terms } = await listPeriods();
 
   return {
-    years: years.map((y) => ({ id: Number(y.id), name: y.name, isActive: Boolean(y.is_active) })),
-    terms: terms.map((t) => ({
-      id: Number(t.id),
-      name: t.name,
-      academicYearId: Number(t.academic_year_id),
-      isActive: Boolean(t.is_active),
-    })),
+    years,
+    terms,
     items: rows.map((r) => ({
       id: Number(r.id),
       studentId: Number(r.student_id),
