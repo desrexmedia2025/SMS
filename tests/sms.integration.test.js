@@ -1810,7 +1810,7 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
   // Every dashboard includes Show/Hide Menu button, modern action tiles & clean v3.x assets
   for (const html of [saHtml, tcHtml, stHtml, fnHtml]) {
     assert.match(html, /id="mobile-menu-btn"/);
-    assert.match(html, /\?v=3\.12/);
+    assert.match(html, /\?v=3\.13/);
     assert.match(html, /class="action-tile-grid"/);
     assert.doesNotMatch(html, /Hide Figures/i);
     assert.doesNotMatch(html, /Audit Log/i);
@@ -2269,6 +2269,15 @@ test('24. Overview Calendar on all four dashboards: small widget in the right co
   assert.match(cssText, /html\[dir="rtl"\] #sec-overview > \.overview-calendar-card \{[^}]*grid-column:\s*1;/s);
   assert.match(cssText, /html\[dir="rtl"\] #sec-overview > \*:not\(\.overview-calendar-card\) \{[^}]*grid-column:\s*2;/s);
   assert.match(cssText, /\.calendar-layout \{[^}]*display:\s*block/s);
+  // The side-by-side layout is kept down to narrow widths so no gap is left beside the calendar
+  assert.match(
+    cssText,
+    /@media \(max-width: 1120px\) \{\s*#sec-overview \{\s*grid-template-columns:\s*minmax\(0, 1fr\) 236px;/s
+  );
+  assert.match(
+    cssText,
+    /@media \(max-width: 880px\) \{\s*#sec-overview \{\s*grid-template-columns:\s*minmax\(0, 1fr\);/s
+  );
 
   // Calendar styles are defined for grid, agenda & event tones
   assert.match(cssText, /\.cal-day\.is-today \{/);

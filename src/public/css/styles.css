@@ -1757,7 +1757,35 @@ html[dir="rtl"] #sec-overview > *:not(.overview-calendar-card) {
   text-align: center;
 }
 
-@media (max-width: 1200px) {
+/* Keep the calendar docked beside the content for as long as there is room for it */
+@media (max-width: 1120px) {
+  #sec-overview {
+    grid-template-columns: minmax(0, 1fr) 236px;
+    column-gap: 16px;
+  }
+  .cal-day {
+    min-height: 26px;
+    font-size: 11px;
+  }
+  .cal-title {
+    font-size: 12px;
+  }
+  .cal-legend {
+    font-size: 9.6px;
+    gap: 4px 8px;
+  }
+  /* Let the overview content reflow to use every pixel left beside the calendar */
+  #sec-overview > *:not(.overview-calendar-card) .kpi-grid {
+    grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
+    gap: 14px;
+  }
+  #sec-overview > *:not(.overview-calendar-card) .analytics-split-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Only stack once the viewport is too narrow for two usable columns */
+@media (max-width: 880px) {
   #sec-overview {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1765,20 +1793,41 @@ html[dir="rtl"] #sec-overview > *:not(.overview-calendar-card) {
     grid-column: 1;
     grid-row: auto;
     position: static;
-    max-width: 300px;
-    margin-bottom: 22px;
-    margin-left: auto;
+    max-width: none;
+    margin: 0 0 22px;
   }
   #sec-overview > *:not(.overview-calendar-card) {
     grid-column: 1;
   }
-  html[dir="rtl"] #sec-overview > .overview-calendar-card {
-    grid-column: 1;
-    margin-left: 0;
-    margin-right: auto;
-  }
+  html[dir="rtl"] #sec-overview > .overview-calendar-card,
   html[dir="rtl"] #sec-overview > *:not(.overview-calendar-card) {
     grid-column: 1;
+  }
+  /* Once stacked, the calendar spreads out: grid left, agenda right */
+  .calendar-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 292px) minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+  }
+  .calendar-agenda {
+    margin-top: 0;
+    padding-top: 0;
+    padding-left: 18px;
+    border-top: none;
+    border-left: 1px solid var(--border);
+  }
+}
+
+@media (max-width: 620px) {
+  .calendar-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .calendar-agenda {
+    padding-left: 0;
+    border-left: none;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
   }
 }
 
