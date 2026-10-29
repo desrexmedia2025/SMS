@@ -15,7 +15,6 @@ const { generateCsrfToken, isSameOrigin } = require('../middleware/csrfProtectio
 const { applySessionCookiePolicy } = require('../middleware/securityHeaders');
 const { computeUserAgentHash } = require('../middleware/authenticate');
 const { uploadAvatar } = require('../config/upload');
-const otpService = require('../services/otp.service');
 const profileService = require('../services/profile.service');
 const { signSessionId } = require('../utils/sessionToken');
 const {
@@ -267,61 +266,6 @@ async function requestReset(req, res) {
     ok: true,
     message:
       'If an active school account matches that email, a one-time password reset code has been dispatched through School Administration.',
-  });
-}
-
-// ---------------- One-Time Code (OTP) Sign-In: Email or Phone ----------------
-async function requestLoginCode(req, res) {
-  const identifier = requireString(req.body.identifier, 'Email, username or phone', {
-    min: 3,
-    max: 160,
-  });
-  const channelRaw = String(req.body.channel || 'email').toLowerCase();
-  const channel = channelRaw === 'phone' ? 'phone' : 'email';
-
-  const result = await otpService.requestLoginCode({
-    identifier,
-    channel,
-    ipAddress: req.ip,
-  });
-
-  return res.json({
-    ok: true,
-    issued: result.issued,
-    channel: result.channel,
-    destination: result.destinationHint,
-    expiresInSeconds: result.expiresInSeconds,
-    mode: result.mode,
-    delivered: result.delivered,
-    // Populated only in interactive sandbox mode (no gateway configured, non-production)
-    sandboxCode: result.sandboxCode || '',
-    message: result.delivered
-      ? `We sent a 6-digit sign-in code to ${result.destinationHint}.`
-      : `Sign-in code ready for ${result.destinationHint}. Enter it below to continue.`,
-  });
-}
-
-async function verifyLoginCode(req, res) {
-  const identifier = requireString(req.body.identifier, 'Email, username or phone', {
-    min: 3,
-    max: 160,
-  });
-  const code = requireString(req.body.code, 'Sign-in code', { min: 4, max: 12 });
-
-  const { user, redirectTo } = await otpService.verifyLoginCode({
-    identifier,
-    code,
-    ipAddress: req.ip,
-  });
-
-  await regenerateSessionWithUser(req, user);
-
-  return res.json({
-    ok: true,
-    user,
-    csrfToken: req.session.csrfToken,
-    sessionToken: signSessionId(req.sessionID),
-    redirectTo,
   });
 }
 
@@ -803,8 +747,6 @@ module.exports = {
   changePassword,
   acceptTerms,
   updatePreferences,
-  requestLoginCode,
-  verifyLoginCode,
   uploadOwnAvatar,
   removeOwnAvatar,
   startGoogleOAuth,

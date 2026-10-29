@@ -23,16 +23,6 @@ router.post('/password/change', authenticate, verifyCsrfToken, authController.ch
 router.post('/terms/accept', authenticate, verifyCsrfToken, authController.acceptTerms);
 router.patch('/preferences', authenticate, verifyCsrfToken, authController.updatePreferences);
 
-// One-Time Code (OTP) sign-in by email or phone — sits beside password sign-in
-const otpRateLimit = createRateLimiter({
-  windowMs: 10 * 60 * 1000,
-  max: 20,
-  keyPrefix: 'otp',
-  message: 'Too many one-time code requests from this network. Please wait a few minutes.',
-});
-router.post('/otp/request', otpRateLimit, verifyCsrfToken, authController.requestLoginCode);
-router.post('/otp/verify', otpRateLimit, verifyCsrfToken, authController.verifyLoginCode);
-
 // Own profile photo upload / removal
 const avatarRateLimit = createRateLimiter({
   windowMs: 10 * 60 * 1000,

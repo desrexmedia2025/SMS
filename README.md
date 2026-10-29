@@ -11,8 +11,6 @@ Every dashboard includes a responsive **Show Menu / Hide Menu** sidebar toggle a
 
 **Profile Photos**: Every account has a profile photo shown in the side panel session box, with a **Change Photo / Remove** control and a larger **Profile Photo** card on the Teacher and Student Profile pages. Uploads accept JPG, PNG, WEBP or GIF images up to **2 MB**, are stored outside the web root (`data/uploads/avatars`), and are served only to signed-in users through the authenticated, `no-store` endpoint `GET /api/users/:id/avatar`. The Superadmin can additionally set or clear any portal account's photo from **Staff Accounts**.
 
-**One-Time Code (OTP) Sign-In**: Alongside password sign-in, `/login` offers **Sign in with a one-time code** — the user enters an email, username or phone number, chooses **email** or **phone (SMS)** delivery, and receives a 6-digit code that signs them straight into their own dashboard. Codes are hashed (bcrypt), single-use, expire in 10 minutes, allow at most 5 verification attempts, are throttled to 3 requests per 10 minutes per account, and never reveal whether an account exists. Delivery goes to your configured gateway (`OTP_EMAIL_WEBHOOK_URL` / `OTP_SMS_WEBHOOK_URL`); when none is configured the system runs in **interactive sandbox mode** (non-production) and surfaces the code in the UI, exactly like the Paystack sandbox.
-
 **Overview Calendar (All Four Dashboards)**: The first card of every Overview, anchored in the top-left corner, is a live month calendar with **Previous / Next / Today** navigation, colour-coded event markers, and a side agenda listing the selected day's items plus everything upcoming. Its role-scoped feed comes from `GET /api/calendar/events?from=YYYY-MM-DD&to=YYYY-MM-DD`:
 - **Superadmin** - school-wide coursework/exam deadlines, published announcements, fee due dates, and payments collected.
 - **Teacher** - their own classwork, homework, test and exam deadlines plus the class announcements they published.
@@ -40,7 +38,8 @@ Every dashboard includes a responsive **Show Menu / Hide Menu** sidebar toggle a
 │   │   ├── 010_coursework_media_and_class_announcements.sql # Coursework, exams, media uploads & class announcements
 │   │   ├── 011_site_usage_analytics.sql             # Lite site usage analytics & daily activity rollups
 │   │   ├── 012_terms_theme_and_language.sql         # Terms acceptance, theme & language preferences
-│   │   └── 013_profile_photo_and_otp.sql            # Profile photo storage & hashed one-time sign-in codes
+│   │   ├── 013_profile_photo_and_otp.sql            # Profile photo storage (OTP table dropped by 014)
+│   │   └── 014_remove_otp_login.sql                  # Retires the one-time code sign-in store
 │   └── seeds/
 │       └── seed.js                                  # Core RBAC foundation bootstrap (clean DB by default)
 ├── docs/
@@ -58,7 +57,7 @@ Every dashboard includes a responsive **Show Menu / Hide Menu** sidebar toggle a
 │   ├── views/                                       # Server-protected HTML shells (login + 4 dashboards)
 │   └── public/                                      # Responsive institutional CSS & modular client JS
 └── tests/
-    └── sms.integration.test.js                      # 25 end-to-end RBAC, IDOR, OAuth, Paystack, calendar, OTP, profile photo & security suites
+    └── sms.integration.test.js                      # 25 end-to-end RBAC, IDOR, OAuth, Paystack, calendar, profile photo & security suites
 ```
 
 ---

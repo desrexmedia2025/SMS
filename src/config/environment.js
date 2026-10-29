@@ -67,20 +67,6 @@ const env = {
     },
   },
 
-  otp: {
-    // Optional outbound gateways. When left blank, one-time sign-in codes are issued in
-    // interactive sandbox mode (non-production only) instead of being emailed/texted.
-    emailWebhookUrl: (process.env.OTP_EMAIL_WEBHOOK_URL || '').trim(),
-    smsWebhookUrl: (process.env.OTP_SMS_WEBHOOK_URL || '').trim(),
-    codeTtlSeconds: parseInt(process.env.OTP_CODE_TTL_SECONDS || '600', 10),
-    get isEmailGatewayConfigured() {
-      return Boolean(this.emailWebhookUrl);
-    },
-    get isSmsGatewayConfigured() {
-      return Boolean(this.smsWebhookUrl);
-    },
-  },
-
   paystack: {
     publicKey: (process.env.PAYSTACK_PUBLIC_KEY || '').trim(),
     secretKey: (process.env.PAYSTACK_SECRET_KEY || '').trim(),
