@@ -28,6 +28,7 @@ const teacherRoutes = require('./routes/teacher.routes');
 const studentRoutes = require('./routes/student.routes');
 const financialRoutes = require('./routes/financial.routes');
 const calendarRoutes = require('./routes/calendar.routes');
+const messageRoutes = require('./routes/message.routes');
 const paystackService = require('./services/paystack.service');
 const courseworkService = require('./services/coursework.service');
 const profileController = require('./controllers/profile.controller');
@@ -242,6 +243,9 @@ function createApp() {
 
   // Role-scoped Overview Calendar feed (Superadmin, Teacher, Student & Financial)
   app.use('/api/calendar', calendarRoutes);
+
+  // Internal messaging & the topbar notification bell (all four roles)
+  app.use('/api/messages', messageRoutes);
 
   // Non-reflecting 404 handler (never echoes arbitrary URLs back into responses)
   app.use((_req, _res, next) => {

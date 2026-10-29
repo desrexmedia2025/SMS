@@ -922,6 +922,16 @@ async function getAuthorizedMediaAttachment(user, attachmentId) {
     return att;
   }
 
+  // Message attachments: only participants of the owning conversation may stream them
+  if (att.owner_type === 'message') {
+    const message = await db.get('SELECT id, thread_id FROM messages WHERE id = ?', [att.owner_id]);
+    const messagingService = require('./messaging.service');
+    if (message && (await messagingService.isThreadParticipant(user.id, message.thread_id))) {
+      return att;
+    }
+    throw new AppError(403, 'You do not have permission to access this file.');
+  }
+
   if (user.role === 'teacher') {
     const teacher = await requireTeacherRecord(user);
     if (att.owner_type === 'coursework') {

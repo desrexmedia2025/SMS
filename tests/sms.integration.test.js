@@ -1810,7 +1810,7 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
   // Every dashboard includes Show/Hide Menu button, modern action tiles & clean v3.x assets
   for (const html of [saHtml, tcHtml, stHtml, fnHtml]) {
     assert.match(html, /id="mobile-menu-btn"/);
-    assert.match(html, /\?v=3\.17/);
+    assert.match(html, /\?v=3\.18/);
     assert.match(html, /class="action-tile-grid"/);
     assert.doesNotMatch(html, /Hide Figures/i);
     assert.doesNotMatch(html, /Audit Log/i);
@@ -2959,4 +2959,277 @@ test('27. Superadmin publishes school events that appear on all four dashboard c
     'utf8'
   );
   assert.match(migration, /CREATE TABLE IF NOT EXISTS school_events/);
+});
+
+test('28. Messaging & notification bell: Superadmin to everyone, teacher to classes, student to teacher', async () => {
+  const admin = new SessionClient();
+  await admin.login('admin@school.edu.gh', 'Admin@2026!');
+  const teacher = new SessionClient();
+  await teacher.login('kofi.mensah@school.edu.gh', 'Teacher@2026!');
+  const student = new SessionClient();
+  await student.login('kwame.asante@student.school.edu.gh', 'Student@2026!');
+  const finance = new SessionClient();
+  await finance.login('finance@school.edu.gh', 'Finance@2026!');
+
+  const adminId = (await admin.request('/api/auth/session')).json.user.id;
+  const teacherUserId = (await teacher.request('/api/auth/session')).json.user.id;
+  const studentUserId = (await student.request('/api/auth/session')).json.user.id;
+
+  // ---------- RECIPIENT OPTIONS ARE ROLE-SCOPED ----------
+  const adminOptions = (await admin.request('/api/messages/recipients')).json;
+  assert.ok(
+    (adminOptions.options || []).some((o) => o.type === 'all'),
+    'only the Superadmin gets the "Everyone" audience'
+  );
+  assert.equal(adminOptions.canBroadcast, true);
+
+  const teacherOptions = (await teacher.request('/api/messages/recipients')).json;
+  assert.ok(
+    !(teacherOptions.options || []).some((o) => o.type === 'all'),
+    'teachers cannot broadcast to everyone'
+  );
+  assert.equal(teacherOptions.canBroadcast, false);
+
+  const studentOptions = (await student.request('/api/messages/recipients')).json;
+  assert.ok((studentOptions.options || []).length > 0, 'students must have at least one teacher to message');
+  assert.ok(
+    (studentOptions.options || []).every((o) => o.type === 'user'),
+    'students may only message individual teachers/admins'
+  );
+
+  // ---------- SUPERADMIN -> EVERYONE ----------
+  const broadcast = await admin.request('/api/messages/threads', {
+    method: 'POST',
+    body: {
+      subject: 'School reopens Monday',
+      body: 'All staff, teachers and students should report by 7:30am.',
+      audienceType: 'all',
+      audienceValue: '',
+    },
+  });
+  assert.equal(broadcast.status, 201);
+  assert.ok(broadcast.json.recipients >= 3, 'the broadcast must reach several accounts');
+  const broadcastId = broadcast.json.threadId;
+
+  for (const [name, client] of [['teacher', teacher], ['student', student], ['finance', finance]]) {
+    const unread = (await client.request('/api/messages/unread')).json;
+    assert.equal(unread.unreadThreads, 1, `${name} must have one unread notification`);
+    assert.equal(unread.items[0].subject, 'School reopens Monday');
+    assert.equal(unread.items[0].unreadCount, 1);
+  }
+
+  // Sender does not see their own message as unread
+  const adminUnread = (await admin.request('/api/messages/unread')).json;
+  assert.equal(adminUnread.unreadThreads, 0, 'the sender has no unread notification from their own message');
+
+  // ---------- TEACHER REPLIES IN THE THREAD ----------
+  const teacherInbox = (await teacher.request('/api/messages/threads')).json;
+  assert.equal(teacherInbox.unreadThreads, 1);
+  assert.equal(teacherInbox.items[0].subject, 'School reopens Monday');
+
+  const opened = await teacher.request(`/api/messages/threads/${broadcastId}`);
+  assert.equal(opened.status, 200);
+  assert.equal(opened.json.thread.id, broadcastId);
+  assert.equal(opened.json.messages.length, 1);
+  assert.equal(opened.json.messages[0].senderName, 'Superadmin');
+
+  const afterRead = (await teacher.request('/api/messages/unread')).json;
+  assert.equal(afterRead.unreadThreads, 0, 'opening a conversation clears its unread badge');
+
+  const reply = await teacher.request(`/api/messages/threads/${broadcastId}/reply`, {
+    method: 'POST',
+    body: { body: 'Noted, thank you.' },
+  });
+  assert.equal(reply.status, 200);
+  assert.equal(reply.json.messages.length, 2);
+
+  const adminAfterReply = (await admin.request('/api/messages/unread')).json;
+  assert.equal(adminAfterReply.unreadThreads, 1, 'the admin is notified about the reply');
+  assert.match(adminAfterReply.items[0].lastSender, /Kofi Mensah/);
+
+  // ---------- TEACHER -> THEIR CLASS ----------
+  const teacherClasses = (await teacher.request('/api/messages/recipients')).json.options.filter(
+    (o) => o.type === 'class'
+  );
+  assert.ok(teacherClasses.length > 0, 'the teacher must have at least one assigned class');
+  const classMessage = await teacher.request('/api/messages/threads', {
+    method: 'POST',
+    body: {
+      subject: 'Maths test on Friday',
+      body: 'Please revise chapter 3 and 4.',
+      audienceType: 'class',
+      audienceValue: teacherClasses[0].value,
+    },
+  });
+  assert.equal(classMessage.status, 201);
+  assert.ok(classMessage.json.recipients >= 1);
+  const classThreadId = classMessage.json.threadId;
+
+  const studentUnread = (await student.request('/api/messages/unread')).json;
+  assert.ok(
+    studentUnread.items.some((i) => i.subject === 'Maths test on Friday'),
+    'students in the addressed class receive the class message'
+  );
+
+  // A teacher may not message a class they do not teach
+  const allClasses = (await admin.request('/api/superadmin/academic')).json.classes || [];
+  const foreignClass = allClasses.find(
+    (c) => !teacherClasses.some((t) => String(t.value) === String(c.id))
+  );
+  if (foreignClass) {
+    const notMine = await teacher.request('/api/messages/threads', {
+      method: 'POST',
+      body: {
+        subject: 'Wrong class',
+        body: 'Should be rejected.',
+        audienceType: 'class',
+        audienceValue: String(foreignClass.id),
+      },
+    });
+    assert.equal(notMine.status, 403);
+  }
+
+  // ---------- STUDENT -> TEACHER ----------
+  const studentTargets = (await student.request('/api/messages/recipients')).json.options;
+  const teacherOption = studentTargets.find((o) => String(o.value) === String(teacherUserId));
+  assert.ok(teacherOption, 'the student must be able to message one of their teachers');
+
+  const toTeacher = await student.request('/api/messages/threads', {
+    method: 'POST',
+    body: {
+      subject: 'Question about homework',
+      body: 'Please could you explain question 4 again?',
+      audienceType: teacherOption.type,
+      audienceValue: teacherOption.value,
+    },
+  });
+  assert.equal(toTeacher.status, 201);
+  const studentThreadId = toTeacher.json.threadId;
+
+  const teacherUnread2 = (await teacher.request('/api/messages/unread')).json;
+  assert.ok(
+    teacherUnread2.items.some((i) => i.subject === 'Question about homework'),
+    'the teacher is notified about the student message'
+  );
+
+  // A student cannot address the whole school or another student
+  const illegalBroadcast = await student.request('/api/messages/threads', {
+    method: 'POST',
+    body: { subject: 'Nope', body: 'Should be rejected.', audienceType: 'all', audienceValue: '' },
+  });
+  assert.equal(illegalBroadcast.status, 403);
+
+  const toSelf = await student.request('/api/messages/threads', {
+    method: 'POST',
+    body: {
+      subject: 'Me',
+      body: 'Should be rejected.',
+      audienceType: 'user',
+      audienceValue: String(studentUserId),
+    },
+  });
+  assert.equal(toSelf.status, 400);
+
+  // ---------- ATTACHMENTS REUSE THE MEDIA PIPELINE ----------
+  const png = Buffer.from(
+    '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a49444154789c6360000002000100ffff03000006000557bfabd40000000049454e44ae426082',
+    'hex'
+  );
+  const fd = new FormData();
+  fd.append('subject', 'Timetable attached');
+  fd.append('body', 'Please find the new timetable attached.');
+  fd.append('audienceType', 'user');
+  fd.append('audienceValue', String(teacherUserId));
+  fd.append('attachments', new Blob([png], { type: 'image/png' }), 'timetable.png');
+  const withFile = await admin.request('/api/messages/threads', { method: 'POST', body: fd });
+  assert.equal(withFile.status, 201);
+  const fileThreadId = withFile.json.threadId;
+
+  const fileThread = (await teacher.request(`/api/messages/threads/${fileThreadId}`)).json;
+  const attachments = fileThread.messages[0].attachments || [];
+  assert.equal(attachments.length, 1);
+  assert.equal(attachments[0].originalName, 'timetable.png');
+  assert.equal(attachments[0].mediaKind, 'image');
+
+  const mediaRes = await teacher.request(attachments[0].url);
+  assert.equal(mediaRes.status, 200);
+
+  // Non-participants cannot stream the attachment
+  const outsiderMedia = await finance.request(attachments[0].url);
+  assert.equal(outsiderMedia.status, 403);
+
+  // A non-participant cannot open or reply to the thread
+  const outsiderOpen = await finance.request(`/api/messages/threads/${studentThreadId}`);
+  assert.equal(outsiderOpen.status, 404);
+  const outsiderReply = await finance.request(`/api/messages/threads/${studentThreadId}/reply`, {
+    method: 'POST',
+    body: { body: 'Not my conversation.' },
+  });
+  assert.equal(outsiderReply.status, 404);
+
+  // ---------- VALIDATION & SECURITY ----------
+  const emptyBody = await admin.request('/api/messages/threads', {
+    method: 'POST',
+    body: { subject: 'Empty', body: '   ', audienceType: 'all', audienceValue: '' },
+  });
+  assert.equal(emptyBody.status, 400);
+
+  const noCsrf = await admin.request('/api/messages/threads', {
+    method: 'POST',
+    body: { subject: 'No csrf', body: 'Should fail.', audienceType: 'all', audienceValue: '' },
+    sendCsrf: false,
+  });
+  assert.equal(noCsrf.status, 403);
+
+  const anon = new SessionClient();
+  const anonUnread = await anon.request('/api/messages/unread');
+  assert.equal(anonUnread.status, 401);
+
+  // ---------- MARK READ ----------
+  const readAll = await student.request('/api/messages/read-all', { method: 'POST' });
+  assert.equal(readAll.status, 200);
+  const studentCleared = (await student.request('/api/messages/unread')).json;
+  assert.equal(studentCleared.unreadThreads, 0);
+
+  const markOne = await student.request(`/api/messages/threads/${classThreadId}/read`, {
+    method: 'POST',
+  });
+  assert.equal(markOne.status, 200);
+
+  // ---------- UI WIRING ----------
+  for (const view of ['superadmin', 'teacher', 'student', 'financial']) {
+    const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'views', `${view}.html`), 'utf8');
+    for (const id of [
+      'msg-bell-btn',
+      'msg-bell-badge',
+      'msg-bell-panel',
+      'msg-bell-list',
+      'msg-bell-open',
+      'msg-bell-read-all',
+      'sec-messages',
+      'msg-compose-form',
+      'msg-audience',
+      'msg-body',
+      'msg-files',
+      'msg-thread-list',
+      'msg-conversation',
+    ]) {
+      assert.match(html, new RegExp(`id="${id}"`), `${view}.html must contain #${id}`);
+    }
+    assert.match(html, /data-section="messages"/, `${view}.html needs the Messages nav entry`);
+
+    const js = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'js', `${view}.js`), 'utf8');
+    assert.match(js, /initMessageBell\(\)/, `${view}.js must initialise the bell`);
+    assert.match(js, /initMessaging\(\)/, `${view}.js must initialise the inbox`);
+  }
+
+  const common = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'js', 'common.js'), 'utf8');
+  assert.match(common, /\/api\/messages\/unread/);
+  assert.match(common, /initMessageBell/);
+  assert.match(common, /initMessaging/);
+  assert.match(common, /msg-bell-panel/);
+
+  const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'css', 'styles.css'), 'utf8');
+  assert.match(css, /\.msg-bell-btn \{/);
+  assert.match(css, /\.msg-layout \{/);
 });

@@ -911,7 +911,10 @@ window.SMS = (() => {
     if (onSectionChange) onSectionChange(sec);
   }
 
+  let navSectionHandler = null;
+
   function initNavigation(onSectionChange) {
+    navSectionHandler = onSectionChange || navSectionHandler;
     const navBtns = document.querySelectorAll('.nav-btn[data-section]');
     const sidebar = document.getElementById('sidebar');
     const mobileBtn = document.getElementById('mobile-menu-btn');
@@ -2127,6 +2130,301 @@ window.SMS = (() => {
     CAL_EVENT_CACHE.clear();
   }
 
+  // ---------------- NOTIFICATION BELL & INTERNAL MESSAGING ----------------
+  let msgBellState = { unreadThreads: 0, items: [] };
+  let msgBellTimer = null;
+  let msgState = { threads: [], activeId: null, recipients: [] };
+
+  function renderMediaChip(att) {
+    return `<a class="msg-attachment" href="${esc(att.url)}" target="_blank" rel="noopener">
+      <span class="msg-attachment-kind">${esc(String(att.mediaKind || 'file').toUpperCase())}</span>
+      <span class="msg-attachment-name">${esc(att.originalName)}</span>
+    </a>`;
+  }
+
+  async function refreshMessageBell() {
+    const badge = document.getElementById('msg-bell-badge');
+    if (!badge) return;
+    try {
+      const data = await api('/api/messages/unread');
+      msgBellState = data;
+      const count = Number(data.unreadThreads || 0);
+      badge.textContent = String(count);
+      badge.classList.toggle('hidden', count === 0);
+      const navPill = document.getElementById('nav-unread-pill');
+      if (navPill) {
+        navPill.textContent = String(count);
+        navPill.classList.toggle('hidden', count === 0);
+      }
+      const list = document.getElementById('msg-bell-list');
+      if (list) {
+        list.innerHTML = (data.items || []).length
+          ? data.items
+              .map(
+                (it) => `<button type="button" class="msg-bell-item" data-msg-thread="${it.id}">
+                  <span class="msg-bell-item-top">
+                    <strong>${esc(it.subject)}</strong>
+                    <span class="msg-bell-count">${esc(String(it.unreadCount))}</span>
+                  </span>
+                  <span class="msg-bell-item-meta">${esc(it.lastSender)} &middot; ${esc(
+                    String(it.lastAt || '').slice(0, 16)
+                  )}</span>
+                  <span class="msg-bell-item-body">${esc(it.lastBody)}</span>
+                </button>`
+              )
+              .join('')
+          : '<div class="msg-bell-empty">You are all caught up. No new messages.</div>';
+      }
+    } catch (_) {
+      // bell failures must never break the dashboard
+    }
+  }
+
+  function closeMessageBell() {
+    const panel = document.getElementById('msg-bell-panel');
+    const btn = document.getElementById('msg-bell-btn');
+    if (panel) panel.classList.add('hidden');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  }
+
+  function openMessagesSection(threadId) {
+    closeMessageBell();
+    if (document.querySelector('.nav-btn[data-section="messages"]')) {
+      activateSection('messages', navSectionHandler);
+    }
+    if (threadId) {
+      setTimeout(() => openMessageThread(threadId), 120);
+    }
+  }
+
+  function initMessageBell() {
+    const btn = document.getElementById('msg-bell-btn');
+    const panel = document.getElementById('msg-bell-panel');
+    if (!btn || !panel) return;
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const willOpen = panel.classList.contains('hidden');
+      panel.classList.toggle('hidden');
+      btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+      if (willOpen) refreshMessageBell();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!panel.classList.contains('hidden') && !panel.contains(e.target) && e.target !== btn) {
+        closeMessageBell();
+      }
+    });
+
+    document.getElementById('msg-bell-read-all')?.addEventListener('click', async () => {
+      try {
+        const res = await api('/api/messages/read-all', { method: 'POST' });
+        toast(res.message || 'Notifications cleared.', 'success');
+        await refreshMessageBell();
+        if (typeof window.refreshMessages === 'function') await window.refreshMessages();
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    });
+
+    document.getElementById('msg-bell-open')?.addEventListener('click', () => openMessagesSection(null));
+
+    document.getElementById('msg-bell-list')?.addEventListener('click', (e) => {
+      const item = e.target.closest('[data-msg-thread]');
+      if (!item) return;
+      openMessagesSection(Number(item.dataset.msgThread));
+    });
+
+    refreshMessageBell();
+    if (!msgBellTimer) {
+      msgBellTimer = window.setInterval(refreshMessageBell, 60000);
+    }
+  }
+
+  async function loadMessageRecipients() {
+    const select = document.getElementById('msg-audience');
+    if (!select) return;
+    const data = await api('/api/messages/recipients');
+    msgState.recipients = data.options || [];
+    select.innerHTML = (data.options || [])
+      .map((o) => `<option value="${esc(o.type)}:${esc(o.value)}">${esc(o.label)}</option>`)
+      .join('');
+  }
+
+  function renderMessageThreads() {
+    const box = document.getElementById('msg-thread-list');
+    if (!box) return;
+    const q = (document.getElementById('msg-search-input')?.value || '').trim().toLowerCase();
+    const rows = msgState.threads.filter(
+      (t) => !q || `${t.subject} ${t.lastBody} ${t.lastSender} ${t.audienceLabel}`.toLowerCase().includes(q)
+    );
+    box.innerHTML = rows.length
+      ? rows
+          .map(
+            (t) => `<button type="button" class="msg-thread${
+              Number(msgState.activeId) === Number(t.id) ? ' is-active' : ''
+            }" data-msg-open="${t.id}">
+            <span class="msg-thread-top">
+              <strong>${esc(t.subject || '(no subject)')}</strong>
+              ${t.unreadCount ? `<span class="msg-unread-pill">${esc(String(t.unreadCount))}</span>` : ''}
+            </span>
+            <span class="msg-thread-meta">${esc(t.audienceLabel || '')}</span>
+            <span class="msg-thread-body">${esc(t.lastBody || '')}</span>
+            <span class="msg-thread-foot">${esc(t.lastSender)} &middot; ${esc(
+              String(t.lastAt || '').slice(0, 16)
+            )}</span>
+          </button>`
+          )
+          .join('')
+      : '<div class="empty-state-sm">No conversations yet.</div>';
+  }
+
+  function renderConversation(payload) {
+    const box = document.getElementById('msg-conversation');
+    if (!box) return;
+    if (!payload || !payload.thread) {
+      box.innerHTML = '<div class="empty-state-sm">Select a conversation to read it.</div>';
+      return;
+    }
+    const t = payload.thread;
+    box.innerHTML = `
+      <div class="msg-conv-head">
+        <div>
+          <strong>${esc(t.subject || '(no subject)')}</strong>
+          <div class="muted-sm">${esc(t.audienceLabel || '')} &middot; started by ${esc(t.createdByName)}</div>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" id="msg-close-thread">Close</button>
+      </div>
+      <div class="msg-conv-list">
+        ${(payload.messages || [])
+          .map(
+            (m) => `<div class="msg-bubble${m.isMine ? ' is-mine' : ''}">
+            <div class="msg-bubble-head">
+              <strong>${m.isMine ? 'You' : esc(m.senderName)}</strong>
+              <span class="muted-sm">${esc(String(m.createdAt || '').slice(0, 16))}${
+                m.senderRole ? ` &middot; ${esc(m.senderRole)}` : ''
+              }</span>
+            </div>
+            <div class="msg-bubble-body">${esc(m.body)}</div>
+            ${
+              (m.attachments || []).length
+                ? `<div class="msg-attachment-row">${m.attachments.map(renderMediaChip).join('')}</div>`
+                : ''
+            }
+          </div>`
+          )
+          .join('')}
+      </div>
+      <form id="msg-reply-form" class="msg-reply-form">
+        <textarea id="msg-reply-body" rows="2" maxlength="4000" placeholder="Write a reply..." required></textarea>
+        <input type="file" id="msg-reply-files" multiple>
+        <button type="submit" class="btn btn-primary btn-sm" id="msg-reply-btn">Reply</button>
+      </form>`;
+
+    document.getElementById('msg-close-thread')?.addEventListener('click', () => {
+      msgState.activeId = null;
+      renderMessageThreads();
+      renderConversation(null);
+    });
+
+    document.getElementById('msg-reply-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('msg-reply-btn');
+      btn.disabled = true;
+      try {
+        const fd = new FormData();
+        fd.append('body', document.getElementById('msg-reply-body').value);
+        const files = document.getElementById('msg-reply-files').files || [];
+        for (let i = 0; i < files.length; i += 1) fd.append('attachments', files[i]);
+        const res = await api(`/api/messages/threads/${t.id}/reply`, { method: 'POST', body: fd });
+        toast(res.message || 'Reply sent.', 'success');
+        await refreshMessages(res.threadId || t.id);
+        refreshMessageBell();
+      } catch (err) {
+        toast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
+
+  async function openMessageThread(threadId) {
+    msgState.activeId = Number(threadId);
+    renderMessageThreads();
+    try {
+      const data = await api(`/api/messages/threads/${threadId}`);
+      renderConversation(data);
+      await refreshMessages(threadId);
+      refreshMessageBell();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }
+
+  async function refreshMessages(activeId) {
+    const data = await api('/api/messages/threads');
+    msgState.threads = data.items || [];
+    if (activeId) msgState.activeId = Number(activeId);
+    renderMessageThreads();
+    if (msgState.activeId) {
+      const stillThere = msgState.threads.some((t) => Number(t.id) === Number(msgState.activeId));
+      if (stillThere) {
+        const payload = await api(`/api/messages/threads/${msgState.activeId}`);
+        renderConversation(payload);
+      }
+    }
+  }
+  window.refreshMessages = refreshMessages;
+
+  async function initMessaging() {
+    const section = document.getElementById('sec-messages');
+    if (!section) return;
+    try {
+      await loadMessageRecipients();
+    } catch (_) {
+      // recipient options are optional; the inbox still works
+    }
+
+    document.getElementById('msg-search-input')?.addEventListener('input', renderMessageThreads);
+
+    document.getElementById('msg-thread-list')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-msg-open]');
+      if (!btn) return;
+      openMessageThread(Number(btn.dataset.msgOpen));
+    });
+
+    document.getElementById('msg-compose-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('msg-send-btn');
+      const raw = document.getElementById('msg-audience').value || '';
+      const splitAt = raw.indexOf(':');
+      const audienceType = raw.slice(0, splitAt);
+      const audienceValue = raw.slice(splitAt + 1);
+      const fd = new FormData();
+      fd.append('subject', document.getElementById('msg-subject').value);
+      fd.append('body', document.getElementById('msg-body').value);
+      fd.append('audienceType', audienceType);
+      fd.append('audienceValue', audienceValue);
+      const files = document.getElementById('msg-files').files || [];
+      for (let i = 0; i < files.length; i += 1) fd.append('attachments', files[i]);
+      btn.disabled = true;
+      try {
+        const res = await api('/api/messages/threads', { method: 'POST', body: fd });
+        toast(res.message || 'Message sent.', 'success');
+        e.target.reset();
+        msgState.activeId = Number(res.threadId);
+        await refreshMessages(res.threadId);
+        refreshMessageBell();
+      } catch (err) {
+        toast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    refreshMessages().catch(() => {});
+  }
+
   return {
     esc,
     money,
@@ -2162,6 +2460,10 @@ window.SMS = (() => {
     navigateAuthenticated,
     initOverviewCalendar,
     clearCalendarCache,
+    initMessageBell,
+    initMessaging,
+    refreshMessageBell,
+    refreshMessages,
     initProfileAvatar,
     renderAllAvatars,
     initialsOf,

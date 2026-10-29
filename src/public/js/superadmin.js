@@ -4,6 +4,8 @@
   await SMS.initSession();
   SMS.configureGoogleLinkButton('google-link-btn');
   SMS.initOverviewCalendar();
+  SMS.initMessageBell();
+  SMS.initMessaging();
   SMS.initProfileAvatar();
   document.getElementById('logout-btn').addEventListener('click', SMS.logout);
 
@@ -1419,6 +1421,7 @@
       await loadStudentRequests();
     }
     if (sec === 'events') await loadSchoolEvents();
+    if (sec === 'messages') await window.SMS.refreshMessages();
     if (sec === 'timetables') {
       await loadAcademicAndTeachers();
       await loadTimetable();

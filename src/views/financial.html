@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Financial Dashboard - School Management System</title>
-  <link rel="stylesheet" href="/css/styles.css?v=3.17">
+  <link rel="stylesheet" href="/css/styles.css?v=3.18">
 </head>
 <body>
   <div class="app-layout">
@@ -19,6 +19,7 @@
         <button class="nav-btn" data-section="payments">Payments &amp; Receipts</button>
         <button class="nav-btn" data-section="accounts">Student Balances</button>
         <button class="nav-btn" data-section="timetable">Timetable</button>
+        <button class="nav-btn" data-section="messages" data-title="Messages">Messages</button>
       </nav>
       <div class="sidebar-bottom">
         <div class="nav-section-label">Preferences</div>
@@ -82,6 +83,20 @@
           <button type="submit" class="btn btn-primary btn-sm" id="topbar-search-btn">Search</button>
           <button type="button" class="btn btn-secondary btn-sm hidden" id="topbar-search-clear-btn">Clear</button>
         </form>
+        <div class="topbar-actions">
+          <button type="button" class="msg-bell-btn" id="msg-bell-btn" aria-label="Notifications" aria-haspopup="dialog" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <span class="msg-bell-badge hidden" id="msg-bell-badge">0</span>
+          </button>
+          <div class="msg-bell-panel hidden" id="msg-bell-panel" role="dialog" aria-label="Notifications">
+            <div class="msg-bell-head">
+              <strong>Notifications</strong>
+              <button type="button" class="btn btn-secondary btn-sm" id="msg-bell-read-all">Mark all read</button>
+            </div>
+            <div class="msg-bell-list" id="msg-bell-list"></div>
+            <button type="button" class="msg-bell-open" id="msg-bell-open">Open Messages</button>
+          </div>
+        </div>
       </header>
 
       <main class="content-body">
@@ -327,6 +342,42 @@
             <div id="fin-tt-matrix"></div>
           </div>
         </section>
+
+        <!-- MESSAGES & NOTIFICATIONS -->
+        <section id="sec-messages" class="module-panel hidden">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">New Message</h2>
+                <div class="card-subtitle">Send a message with optional attachments. Recipients see it in their inbox and notification bell.</div>
+              </div>
+            </div>
+            <form id="msg-compose-form" class="form-grid">
+              <div class="form-group"><label>Send To</label><select id="msg-audience"></select></div>
+              <div class="form-group"><label>Subject <span class="hint-inline">optional</span></label><input type="text" id="msg-subject" maxlength="160" placeholder="e.g. PTA meeting reminder"></div>
+              <div class="form-group form-grid-full"><label>Message</label><textarea id="msg-body" rows="4" maxlength="4000" placeholder="Write your message..." required></textarea></div>
+              <div class="form-group form-grid-full"><label>Attachments <span class="hint-inline">optional - PDF, image, video or document</span></label><input type="file" id="msg-files" multiple></div>
+              <div class="form-actions-end form-grid-full" style="margin-top:4px;">
+                <button class="btn btn-primary" type="submit" id="msg-send-btn">Send Message</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Inbox</h2>
+              <div class="search-bar">
+                <input type="search" id="msg-search-input" class="search-bar-input" placeholder="Search conversations...">
+                <button type="button" class="btn btn-primary btn-sm" id="msg-search-btn">Search</button>
+              </div>
+            </div>
+            <div class="msg-layout">
+              <div class="msg-thread-list" id="msg-thread-list"></div>
+              <div class="msg-conversation" id="msg-conversation"></div>
+            </div>
+          </div>
+        </section>
+
       </main>
     </div>
   </div>
@@ -342,7 +393,7 @@
     </div>
   </div>
 
-  <script src="/js/common.js?v=3.17"></script>
-  <script src="/js/financial.js?v=3.17"></script>
+  <script src="/js/common.js?v=3.18"></script>
+  <script src="/js/financial.js?v=3.18"></script>
 </body>
 </html>

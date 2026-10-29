@@ -11,6 +11,8 @@ Every dashboard includes a responsive **Show Menu / Hide Menu** sidebar toggle a
 
 **Profile Photos**: Every account has a profile photo shown in the side panel session box, with a **Change Photo / Remove** control and a larger **Profile Photo** card on the Teacher and Student Profile pages. Uploads accept JPG, PNG, WEBP or GIF images up to **2 MB**, are stored outside the web root (`data/uploads/avatars`), and are served only to signed-in users through the authenticated, `no-store` endpoint `GET /api/users/:id/avatar`. The Superadmin can additionally set or clear any portal account's photo from **Staff Accounts**.
 
+**Messaging & Notification Bell**: Every dashboard topbar has a notification bell with a live unread badge and a dropdown of unread conversations (polled every 60 seconds, with **Mark all read** and a jump straight into the thread). The **Messages** section is a full inbox: compose, conversation view with threaded replies, and attachments that reuse the existing media pipeline (PDF, image, video or document, streamed through the authenticated `/api/media/:id` endpoint so only conversation participants can open them). Reach is enforced server-side by role - **Superadmin** can message everyone, a whole role, a class or any individual; **Teachers** can only message their assigned classes and the students in them (plus admin/finance staff); **Students** can only message their own teachers or the admin; **Financial** staff message individuals. Every attempt outside those rules is rejected with `HTTP 403`.
+
 **School Events (All Four Dashboards)**: The Superadmin publishes school-wide events from **School Events** - holidays, PTA meetings, exam weeks, sports day or anything else - each with its own colour, a date range (single or multi-day) and an audience (**Everyone**, **Teachers only**, **Students only**, or **Staff only**). Events are pushed into every dashboard's Overview calendar feed through `GET /api/calendar/events`, carry their custom colour into the day dots and the agenda, and are filtered by the viewer's role, so a students-only exam week never shows on a teacher's calendar.
 
 **Edit Any Record (Superadmin)**: Every row in **Students**, **Teachers List** and **Staff Accounts** now has an **Edit** control that opens a modal for full record editing. Student edits cover admission number, names, portal email, phone, class placement, gender, date of birth, guardian details, address, medical notes, status and an optional password reset; teacher edits cover staff number, names, email, phone, qualification, specialization, department, hire date, status and optional password reset; staff account edits cover full name, username, email, phone, role, status and optional password reset. All three are validated server-side (email/admission-number/staff-number uniqueness return `HTTP 409`), require CSRF, are Superadmin-only (`HTTP 403` for every other role) and are written to the audit log as `STUDENT_RECORD_UPDATED`, `TEACHER_RECORD_UPDATED` and `STAFF_ACCOUNT_UPDATED`.
@@ -44,7 +46,8 @@ Every dashboard includes a responsive **Show Menu / Hide Menu** sidebar toggle a
 │   │   ├── 012_terms_theme_and_language.sql         # Terms acceptance, theme & language preferences
 │   │   ├── 013_profile_photo_and_otp.sql            # Profile photo storage (OTP table dropped by 014)
 │   │   ├── 014_remove_otp_login.sql                  # Retires the one-time code sign-in store
-│   │   └── 015_school_events.sql                     # School-wide calendar events (holidays, PTA, exams, sports)
+│   │   ├── 015_school_events.sql                     # School-wide calendar events (holidays, PTA, exams, sports)
+│   │   └── 016_messaging_notifications.sql           # Message threads, participants & notification bell
 │   └── seeds/
 │       └── seed.js                                  # Core RBAC foundation bootstrap (clean DB by default)
 ├── docs/
@@ -62,7 +65,7 @@ Every dashboard includes a responsive **Show Menu / Hide Menu** sidebar toggle a
 │   ├── views/                                       # Server-protected HTML shells (login + 4 dashboards)
 │   └── public/                                      # Responsive institutional CSS & modular client JS
 └── tests/
-    └── sms.integration.test.js                      # 27 end-to-end RBAC, IDOR, OAuth, Paystack, calendar, school events, profile photo, record editing & security suites
+    └── sms.integration.test.js                      # 28 end-to-end RBAC, IDOR, OAuth, Paystack, calendar, school events, messaging, profile photo, record editing & security suites
 ```
 
 ---

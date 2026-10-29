@@ -14,6 +14,8 @@
   await SMS.initSession();
   SMS.configureGoogleLinkButton('google-link-btn');
   SMS.initOverviewCalendar();
+  SMS.initMessageBell();
+  SMS.initMessaging();
   SMS.initProfileAvatar();
   SMS.initProfileAvatar({
     imgId: 'prof-avatar-img',
