@@ -1810,7 +1810,7 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
   // Every dashboard includes Show/Hide Menu button, modern action tiles & clean v3.x assets
   for (const html of [saHtml, tcHtml, stHtml, fnHtml]) {
     assert.match(html, /id="mobile-menu-btn"/);
-    assert.match(html, /\?v=3\.11/);
+    assert.match(html, /\?v=3\.12/);
     assert.match(html, /class="action-tile-grid"/);
     assert.doesNotMatch(html, /Hide Figures/i);
     assert.doesNotMatch(html, /Audit Log/i);
@@ -2133,7 +2133,7 @@ test('23. Terms & Conditions (Registration + First Dashboard Visit), Themes, Lan
   }
 });
 
-test('24. Overview Calendar on all four dashboards: first card, left corner & role-scoped event feed', async () => {
+test('24. Overview Calendar on all four dashboards: small widget in the right corner, content beside it & role-scoped feed', async () => {
   const admin = new SessionClient();
   const teacher = new SessionClient();
   const student = new SessionClient();
@@ -2261,11 +2261,13 @@ test('24. Overview Calendar on all four dashboards: first card, left corner & ro
     path.join(__dirname, '..', 'src', 'public', 'css', 'styles.css'),
     'utf8'
   );
-  assert.match(cssText, /#sec-overview \{[^}]*grid-template-columns:\s*268px/s);
-  assert.match(cssText, /#sec-overview > \.overview-calendar-card \{[^}]*grid-column:\s*1;/s);
+  // The calendar is a small widget pinned to the RIGHT column, with the rest of the Overview filling the space beside it
+  assert.match(cssText, /#sec-overview \{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 268px/s);
+  assert.match(cssText, /#sec-overview > \.overview-calendar-card \{[^}]*grid-column:\s*2;/s);
   assert.match(cssText, /#sec-overview > \.overview-calendar-card \{[^}]*position:\s*sticky/s);
-  assert.match(cssText, /#sec-overview > \*:not\(\.overview-calendar-card\) \{[^}]*grid-column:\s*2;/s);
-  assert.match(cssText, /html\[dir="rtl"\] #sec-overview > \.overview-calendar-card \{[^}]*grid-column:\s*2;/s);
+  assert.match(cssText, /#sec-overview > \*:not\(\.overview-calendar-card\) \{[^}]*grid-column:\s*1;/s);
+  assert.match(cssText, /html\[dir="rtl"\] #sec-overview > \.overview-calendar-card \{[^}]*grid-column:\s*1;/s);
+  assert.match(cssText, /html\[dir="rtl"\] #sec-overview > \*:not\(\.overview-calendar-card\) \{[^}]*grid-column:\s*2;/s);
   assert.match(cssText, /\.calendar-layout \{[^}]*display:\s*block/s);
 
   // Calendar styles are defined for grid, agenda & event tones
