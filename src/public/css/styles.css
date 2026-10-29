@@ -5,14 +5,14 @@
   --sidebar-top: #163f8c;
   --sidebar-bottom: #102f6e;
   --sidebar-border: rgba(255, 255, 255, 0.14);
-  --glass-sidebar-bg: linear-gradient(180deg, rgba(21, 61, 138, 0.93) 0%, rgba(15, 44, 106, 0.96) 100%);
-  --glass-sidebar-cap-bg: rgba(16, 48, 112, 0.45);
-  --glass-sidebar-foot-bg: rgba(9, 28, 70, 0.42);
-  --glass-topbar-bg: rgba(255, 255, 255, 0.58);
-  --glass-topbar-scrolled-bg: rgba(255, 255, 255, 0.50);
-  --glass-topbar-border: rgba(210, 225, 246, 0.82);
-  --glass-topbar-shadow: 0 6px 24px rgba(14, 34, 66, 0.055);
-  --glass-subnav-bg: rgba(255, 255, 255, 0.62);
+  --glass-sidebar-bg: linear-gradient(180deg, rgba(21, 61, 138, 0.90) 0%, rgba(15, 44, 106, 0.94) 100%);
+  --glass-sidebar-cap-bg: rgba(16, 48, 112, 0.38);
+  --glass-sidebar-foot-bg: rgba(9, 28, 70, 0.34);
+  --glass-topbar-bg: rgba(255, 255, 255, 0.30);
+  --glass-topbar-scrolled-bg: rgba(255, 255, 255, 0.24);
+  --glass-topbar-border: rgba(255, 255, 255, 0.92);
+  --glass-topbar-shadow: 0 10px 34px rgba(14, 34, 66, 0.075), inset 0 -1px 0 rgba(255, 255, 255, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --glass-subnav-bg: rgba(255, 255, 255, 0.44);
   --text: #0e2242;
   --text-muted: #455c80;
   --text-light: #647c9e;
@@ -460,14 +460,26 @@ html, body {
   position: sticky;
   top: 0;
   height: 100vh;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
   z-index: 40;
 }
 
+.sidebar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+}
+
 .sidebar-header {
-  flex-shrink: 0;
+  flex: 0 0 auto;
   padding: 18px 18px 14px;
-  background: var(--glass-sidebar-cap-bg);
+  background: transparent;
   border-bottom: 1px solid var(--sidebar-border);
 }
 
@@ -493,25 +505,11 @@ html, body {
 }
 
 .sidebar-nav {
-  padding: 12px 12px;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
+  padding: 12px 12px 4px;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-
-.sidebar-nav::-webkit-scrollbar {
-  width: 5px;
-}
-
-.sidebar-nav::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.22);
-  border-radius: 999px;
 }
 
 .nav-section-label {
@@ -525,6 +523,14 @@ html, body {
 
 .sidebar-nav > .nav-section-label:first-child {
   padding-top: 2px;
+}
+
+.sidebar-bottom > .nav-section-label:first-child {
+  padding-top: 8px;
+}
+
+.sidebar-bottom > .nav-section-label {
+  margin-top: 4px;
 }
 
 .nav-btn {
@@ -574,12 +580,12 @@ html, body {
   color: #143fb0;
 }
 
-/* Bottom Side-Pane Controls: Currency, Theme, Language, Active Session, Google Link & Logout */
+/* Side-Pane Controls: Currency, Theme, Language, Active Session, Google Link & Logout (in the same scrolling list) */
 .sidebar-bottom {
-  flex-shrink: 0;
-  padding: 11px 14px 14px;
-  border-top: 1px solid var(--sidebar-border);
-  background: var(--glass-sidebar-foot-bg);
+  flex: 0 0 auto;
+  margin-top: auto;
+  padding: 6px 12px 18px;
+  background: transparent;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -721,8 +727,8 @@ html, body {
 .topbar {
   min-height: 60px;
   background: var(--glass-topbar-bg);
-  backdrop-filter: blur(20px) saturate(185%);
-  -webkit-backdrop-filter: blur(20px) saturate(185%);
+  backdrop-filter: blur(34px) saturate(230%);
+  -webkit-backdrop-filter: blur(34px) saturate(230%);
   border-bottom: 1px solid var(--glass-topbar-border);
   box-shadow: var(--glass-topbar-shadow);
   padding: 10px 24px;
@@ -2587,11 +2593,11 @@ html[data-theme="dark"] {
   --glass-sidebar-bg: linear-gradient(180deg, rgba(15, 38, 86, 0.76) 0%, rgba(9, 24, 56, 0.82) 100%);
   --glass-sidebar-cap-bg: rgba(13, 33, 74, 0.56);
   --glass-sidebar-foot-bg: rgba(8, 20, 48, 0.56);
-  --glass-topbar-bg: rgba(15, 25, 46, 0.52);
-  --glass-topbar-scrolled-bg: rgba(15, 25, 46, 0.44);
-  --glass-topbar-border: rgba(148, 184, 255, 0.16);
-  --glass-topbar-shadow: 0 10px 30px rgba(2, 6, 18, 0.38), inset 0 -1px 0 rgba(148, 184, 255, 0.14);
-  --glass-subnav-bg: rgba(17, 29, 54, 0.52);
+  --glass-topbar-bg: rgba(15, 25, 46, 0.40);
+  --glass-topbar-scrolled-bg: rgba(15, 25, 46, 0.32);
+  --glass-topbar-border: rgba(148, 184, 255, 0.24);
+  --glass-topbar-shadow: 0 12px 36px rgba(2, 6, 18, 0.46), inset 0 -1px 0 rgba(148, 184, 255, 0.22), inset 0 1px 0 rgba(148, 184, 255, 0.16);
+  --glass-subnav-bg: rgba(17, 29, 54, 0.40);
   --text: #e6eefb;
   --text-muted: #9eb2d0;
   --text-light: #7c93b6;
@@ -2754,10 +2760,11 @@ html[data-theme="ocean"] {
   --glass-sidebar-bg: linear-gradient(180deg, rgba(14, 74, 158, 0.78) 0%, rgba(11, 52, 122, 0.84) 100%);
   --glass-sidebar-cap-bg: rgba(14, 68, 148, 0.52);
   --glass-sidebar-foot-bg: rgba(9, 44, 102, 0.50);
-  --glass-topbar-bg: rgba(235, 246, 255, 0.46);
-  --glass-topbar-scrolled-bg: rgba(228, 242, 255, 0.40);
-  --glass-topbar-border: rgba(255, 255, 255, 0.78);
-  --glass-subnav-bg: rgba(235, 246, 255, 0.48);
+  --glass-topbar-bg: rgba(232, 244, 255, 0.26);
+  --glass-topbar-scrolled-bg: rgba(226, 241, 255, 0.20);
+  --glass-topbar-border: rgba(255, 255, 255, 0.92);
+  --glass-topbar-shadow: 0 12px 34px rgba(9, 47, 104, 0.10), inset 0 -1px 0 rgba(255, 255, 255, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  --glass-subnav-bg: rgba(232, 244, 255, 0.34);
   --border: #c5dcf8;
   --border-strong: #a8caf4;
   --primary: #0b5ed7;

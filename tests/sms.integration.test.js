@@ -1810,7 +1810,7 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
   // Every dashboard includes Show/Hide Menu button, modern action tiles & clean v3.x assets
   for (const html of [saHtml, tcHtml, stHtml, fnHtml]) {
     assert.match(html, /id="mobile-menu-btn"/);
-    assert.match(html, /\?v=3\.8/);
+    assert.match(html, /\?v=3\.9/);
     assert.match(html, /class="action-tile-grid"/);
     assert.doesNotMatch(html, /Hide Figures/i);
     assert.doesNotMatch(html, /Audit Log/i);
@@ -2110,6 +2110,27 @@ test('23. Terms & Conditions (Registration + First Dashboard Visit), Themes, Lan
   assert.match(cssText, /backdrop-filter:\s*blur\(20px\)/);
   assert.match(cssText, /html\[data-theme="dark"\]/);
   assert.match(cssText, /html\[data-theme="ocean"\]/);
+
+  // Intense glass navbar: strong blur + high-saturation translucent backdrop
+  assert.match(cssText, /\.topbar \{[^}]*backdrop-filter:\s*blur\(34px\) saturate\(230%\)/s);
+  assert.match(cssText, /--glass-topbar-bg:\s*rgba\(255, 255, 255, 0\.30\)/);
+  assert.match(cssText, /body\.is-scrolled \.topbar/);
+
+  // Side panel is a single scrolling list: whole panel scrolls, nothing is pinned
+  assert.match(cssText, /\.sidebar \{[^}]*overflow-y:\s*auto/s);
+  assert.match(cssText, /\.sidebar-nav \{[^}]*flex:\s*0 0 auto/s);
+  assert.match(cssText, /\.sidebar-bottom \{[^}]*flex:\s*0 0 auto/s);
+  assert.doesNotMatch(cssText, /\.sidebar-header \{[^}]*position:\s*sticky/s);
+  assert.doesNotMatch(cssText, /\.sidebar-bottom \{[^}]*position:\s*sticky/s);
+
+  // Currency, Theme & Language sit in the same list flow as the nav items
+  for (const p of pages) {
+    assert.match(p.text, /nav-section-label">Preferences/);
+    assert.match(p.text, /nav-section-label">Session/);
+    const bottom = p.text.slice(p.text.indexOf('class="sidebar-bottom"'));
+    assert.match(bottom, /id="sb-theme-select"/);
+    assert.match(bottom, /id="sb-lang-select"/);
+  }
 });
 
 
