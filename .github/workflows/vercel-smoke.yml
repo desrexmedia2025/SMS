@@ -1,0 +1,83 @@
+name: Vercel smoke test
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Deployment URL to test
+        required: true
+        default: https://school-management-system-gamma-ebon.vercel.app
+      email:
+        description: Account email
+        required: true
+      password:
+        description: Account password
+        required: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run sign-in smoke test
+        env:
+          BASE_URL: ${{ inputs.base_url }}
+          EMAIL: ${{ inputs.email }}
+          PASSWORD: ${{ inputs.password }}
+        run: |
+          echo "::add-mask::$PASSWORD"
+          cat > /tmp/smoke.mjs <<'EOF'
+          const base = process.env.BASE_URL.replace(/\/+$/, '');
+          const jar = new Map();
+          const cookieHeader = () => [...jar].map(([k, v]) => `${k}=${v}`).join('; ');
+          const absorb = (res) => {
+            for (const raw of res.headers.getSetCookie?.() || []) {
+              const [pair] = raw.split(';');
+              const i = pair.indexOf('=');
+              if (i > 0) jar.set(pair.slice(0, i).trim(), pair.slice(i + 1).trim());
+            }
+          };
+          async function call(method, path, { body, extra = {} } = {}) {
+            const res = await fetch(base + path, {
+              method,
+              redirect: 'manual',
+              headers: {
+                ...(body ? { 'content-type': 'application/json' } : {}),
+                origin: base,
+                referer: base + '/login',
+                'user-agent': 'SMS-Vercel-Smoke/1.0',
+                cookie: cookieHeader(),
+                ...extra,
+              },
+              ...(body ? { body: JSON.stringify(body) } : {}),
+            });
+            const text = await res.text();
+            absorb(res);
+            return { status: res.status, text, instance: res.headers.get('x-vercel-id') };
+          }
+          const show = (label, r) =>
+            console.log(`${label}: status=${r.status} instance=${r.instance || '-'} body=${r.text.slice(0, 220)}`);
+
+          const health = await call('GET', '/api/health');
+          show('health', health);
+
+          const s1 = await call('GET', '/api/auth/session');
+          let csrf = '';
+          try { csrf = JSON.parse(s1.text).csrfToken || ''; } catch (_) {}
+          console.log(`session#1: status=${s1.status} csrf=${csrf ? 'yes' : 'NO'} cookies=[${[...jar.keys()].join(',')}]`);
+
+          const login = await call('POST', '/api/auth/login', {
+            body: { email: process.env.EMAIL, password: process.env.PASSWORD },
+            extra: { 'x-csrf-token': csrf },
+          });
+          show('login', login);
+
+          for (let i = 2; i <= 4; i += 1) {
+            const s = await call('GET', '/api/auth/session');
+            let ok = false, who = '-';
+            try { const j = JSON.parse(s.text); ok = j.authenticated; who = j.user ? j.user.email : '-'; } catch (_) {}
+            show(`session#${i}`, s);
+            console.log(`  -> authenticated=${ok} user=${who}`);
+            await new Promise((r) => setTimeout(r, 1500));
+          }
+          EOF
+          node /tmp/smoke.mjs
