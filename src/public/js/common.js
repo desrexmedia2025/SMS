@@ -1903,7 +1903,7 @@ window.SMS = (() => {
     const upcoming = CAL_STATE.events
       .filter((ev) => String(ev.date).slice(0, 10) >= today)
       .sort((a, b) => (String(a.date) < String(b.date) ? -1 : 1))
-      .slice(0, 6);
+      .slice(0, 4);
 
     const itemHtml = (ev) => `
       <div class="cal-agenda-item">

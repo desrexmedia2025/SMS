@@ -1810,7 +1810,7 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
   // Every dashboard includes Show/Hide Menu button, modern action tiles & clean v3.x assets
   for (const html of [saHtml, tcHtml, stHtml, fnHtml]) {
     assert.match(html, /id="mobile-menu-btn"/);
-    assert.match(html, /\?v=3\.10/);
+    assert.match(html, /\?v=3\.11/);
     assert.match(html, /class="action-tile-grid"/);
     assert.doesNotMatch(html, /Hide Figures/i);
     assert.doesNotMatch(html, /Audit Log/i);
@@ -2256,14 +2256,22 @@ test('24. Overview Calendar on all four dashboards: first card, left corner & ro
   const badRange = await teacher.request('/api/calendar/events?from=2026-05-20&to=2026-05-01');
   assert.equal(badRange.status, 400);
 
-  // Calendar styles are defined for grid, agenda & event tones
+  // The calendar stays a small widget pinned to the left column of the Overview
   const cssText = fs.readFileSync(
     path.join(__dirname, '..', 'src', 'public', 'css', 'styles.css'),
     'utf8'
   );
-  assert.match(cssText, /\.calendar-layout \{/);
+  assert.match(cssText, /#sec-overview \{[^}]*grid-template-columns:\s*268px/s);
+  assert.match(cssText, /#sec-overview > \.overview-calendar-card \{[^}]*grid-column:\s*1;/s);
+  assert.match(cssText, /#sec-overview > \.overview-calendar-card \{[^}]*position:\s*sticky/s);
+  assert.match(cssText, /#sec-overview > \*:not\(\.overview-calendar-card\) \{[^}]*grid-column:\s*2;/s);
+  assert.match(cssText, /html\[dir="rtl"\] #sec-overview > \.overview-calendar-card \{[^}]*grid-column:\s*2;/s);
+  assert.match(cssText, /\.calendar-layout \{[^}]*display:\s*block/s);
+
+  // Calendar styles are defined for grid, agenda & event tones
   assert.match(cssText, /\.cal-day\.is-today \{/);
   assert.match(cssText, /\.cal-agenda-item \{/);
+  assert.match(cssText, /\.cal-legend \{/);
 
   // Client widget is initialised from every dashboard script
   for (const jsRel of [
