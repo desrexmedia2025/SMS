@@ -122,33 +122,40 @@ The project ships ready for Vercel: `vercel.json` exposes the Express app as the
 serverless function `api/index.js`, and `middleware.js` forwards every path to
 that function.
 
-**Live production URL:** `https://school-management-system-gamma-ebon.vercel.app`
+**Live production URL:** `https://maindek.vercel.app`
 
-Environment variables are configured on the Vercel project (Settings -> Environment Variables):
+Environment variables are configured on the Vercel project (Settings ->
+Environment Variables):
 
 | Variable | Production value |
 | :--- | :--- |
 | `NODE_ENV` | `production` |
-| `APP_BASE_URL` | `https://school-management-system-gamma-ebon.vercel.app` |
+| `APP_BASE_URL` | `https://maindek.vercel.app` |
 | `SESSION_SECRET` | 48-character random secret (sensitive) |
 | `SESSION_COOKIE_NAME` | `sms.sid` |
-| `DB_DRIVER` | `sqlite` (temporary - see note below) |
-| `SQLITE_PATH` | `/tmp/sms_vercel.sqlite` |
-| `DB_AUTO_FALLBACK` | `true` |
+| `DB_DRIVER` | `mysql` |
+| `DB_HOST` / `DB_PORT` / `DB_NAME` | hosted MySQL host / `4000` / `school_management` |
+| `DB_USER` / `DB_PASSWORD` | database user (sensitive) |
+| `DB_SSL` | `true` (TLS is required by the hosted provider) |
+| `DB_CONNECTION_LIMIT` | `5` (serverless-friendly pool size) |
+| `DB_CONNECT_TIMEOUT_MS` | `25000` |
+| `DB_AUTO_FALLBACK` | `false` (never silently fall back to SQLite) |
 | `AUTO_SEED_DEMO` | `false` (the database stays clean) |
 | `SUPERADMIN_INITIAL_EMAIL` / `SUPERADMIN_INITIAL_PASSWORD` | bootstrap superadmin credentials (sensitive) |
 | `DEFAULT_CURRENCY_CODE` / `DEFAULT_CURRENCY_SYMBOL` / `SCHOOL_TIMEZONE` | `GHS` / `GH₵` / `Africa/Accra` |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_CALLBACK_URL` | OAuth 2.0 credentials (`GOOGLE_CLIENT_SECRET` is still empty) |
 | `PAYSTACK_PUBLIC_KEY` / `PAYSTACK_SECRET_KEY` / `PAYSTACK_CALLBACK_URL` | payment gateway keys (still empty) |
 
-**Important - database persistence:** Vercel's filesystem is ephemeral, so the
-current SQLite file (`/tmp/sms_vercel.sqlite`) is per-instance and is discarded
-whenever a new instance starts; uploaded coursework files behave the same way.
-For real use, point the project at a hosted MySQL/MariaDB database by setting
-`DB_DRIVER=mysql`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
-(and `DB_CONNECTION_LIMIT`) on Vercel, then redeploy. Sessions are stored in the
-database, so a shared MySQL instance is what keeps users signed in across
-serverless instances.
+**Database persistence:** production runs on a hosted MySQL-compatible database,
+so sessions, users, fees and coursework survive redeploys and are shared by every
+serverless instance. `DB_AUTO_FALLBACK=false` means a database failure surfaces as
+a visible error instead of silently starting an empty SQLite file. Local
+development still defaults to SQLite (`DB_DRIVER=sqlite`,
+`SQLITE_PATH=./data/sms_dev.sqlite`) and needs no server.
+
+Uploaded coursework files still live in `data/uploads`, which is ephemeral on
+Vercel; move that directory to Vercel Blob before relying on attachments in
+production.
 
 **How the deployment is produced:** the Vercel project's Install Command clones
 this branch (`arena/1ab5d416-sms`) into the build container and runs
