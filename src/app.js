@@ -30,6 +30,7 @@ const financialRoutes = require('./routes/financial.routes');
 const calendarRoutes = require('./routes/calendar.routes');
 const messageRoutes = require('./routes/message.routes');
 const notificationRoutes = require('./routes/notification.routes');
+const brandController = require('./controllers/brand.controller');
 const paystackService = require('./services/paystack.service');
 const courseworkService = require('./services/coursework.service');
 const profileController = require('./controllers/profile.controller');
@@ -152,6 +153,11 @@ function createApp() {
   configureGooglePassport();
   app.use(passport.initialize());
   app.use(ensureCsrfToken);
+
+  // School logo / favicons - served from embedded data so they always resolve.
+  app.get('/favicon.ico', brandController.faviconIco);
+  app.get('/favicon.svg', brandController.faviconSvg);
+  app.get('/apple-touch-icon.png', brandController.appleTouchIcon);
 
   // Static public assets (CSS & JS only — dashboard HTML views are strictly route-protected in src/views/).
   // Scripts and stylesheets are revalidated on every load so a dashboard can never keep running an

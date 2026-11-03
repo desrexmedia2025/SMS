@@ -4164,6 +4164,19 @@ test('35. Every page ships the school logo favicon and the icons are really serv
     assert.match(html, /name="theme-color" content="#1d4ed8"/, `${view} must declare the brand colour`);
   }
 
+  // They must come from the app itself, not only from disk, so serverless builds always serve them
+  const iconsSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'brand', 'brand-icons.js'),
+    'utf8'
+  );
+  assert.match(iconsSrc, /FAVICON_ICO_BASE64/, 'the icons must be embedded as data');
+  const embedded = require('../src/brand/brand-icons');
+  assert.equal(
+    Buffer.compare(embedded.faviconIco, fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'favicon.ico'))),
+    0,
+    'the embedded ICO must match the file on disk byte for byte'
+  );
+
   const ico = await anon.request('/favicon.ico');
   assert.equal(ico.status, 200, '/favicon.ico must be served for browsers that request it by default');
   const icoBuf = ico.buffer;

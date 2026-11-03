@@ -1,14 +1,15 @@
 {
   "name": "school-management-system",
   "version": "2.1.0",
-  "description": "Four-Dashboard School Management System (Superadmin, Teachers, Students, Financial) — Node.js + Express + MySQL/MariaDB + Google OAuth 2.0",
+  "description": "Four-Dashboard School Management System (Superadmin, Teachers, Students, Financial) \u2014 Node.js + Express + MySQL/MariaDB + Google OAuth 2.0",
   "main": "src/server.js",
   "scripts": {
     "start": "node --no-warnings src/server.js",
     "dev": "node --no-warnings --watch src/server.js",
     "db:migrate": "node --no-warnings database/migrate.js",
     "db:seed": "node --no-warnings database/seeds/seed.js",
-    "test": "node --no-warnings --test tests/*.test.js"
+    "test": "node --no-warnings --test tests/*.test.js",
+    "icons": "node scripts/generate-brand-icons.js"
   },
   "repository": {
     "type": "git",
