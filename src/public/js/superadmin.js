@@ -1401,6 +1401,9 @@
     if (role) params.set('role', role);
     if (status) params.set('status', status);
 
+    const clearBtn = document.getElementById('staff-clear-btn');
+    if (clearBtn) clearBtn.classList.toggle('hidden', !search);
+
     const data = await api(`/api/superadmin/staff?${params.toString()}`);
     staffCache = data.staff || [];
     renderStaffSummary(data.totals || {});
