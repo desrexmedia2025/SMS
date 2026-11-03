@@ -239,9 +239,10 @@ async function enrichAnnouncementsWithClasses(rows = []) {
 async function listAnnouncementsForAudience(audiences = ['all']) {
   const placeholders = audiences.map(() => '?').join(', ');
   const rows = await db.query(
-    `SELECT a.*, u.full_name AS author_name
+    `SELECT a.*, u.full_name AS author_name, ue.full_name AS editor_name
      FROM announcements a
      LEFT JOIN users u ON u.id = a.author_user_id
+     LEFT JOIN users ue ON ue.id = a.edited_by_user_id
      WHERE a.status = 'published' AND a.audience IN (${placeholders})
      ORDER BY a.id DESC
      LIMIT 40`,
@@ -253,9 +254,10 @@ async function listAnnouncementsForAudience(audiences = ['all']) {
 async function listAnnouncementsForStudent(classId = null) {
   if (classId) {
     const rows = await db.query(
-      `SELECT a.*, u.full_name AS author_name
+      `SELECT a.*, u.full_name AS author_name, ue.full_name AS editor_name
        FROM announcements a
        LEFT JOIN users u ON u.id = a.author_user_id
+       LEFT JOIN users ue ON ue.id = a.edited_by_user_id
        WHERE a.status = 'published'
          AND (
            a.audience IN ('all', 'students')
@@ -284,9 +286,10 @@ async function listAnnouncementsForTeacher(teacherUserId, assignedClassIds = [])
   if (cleanClassIds.length) {
     const ph = cleanClassIds.map(() => '?').join(', ');
     rows = await db.query(
-      `SELECT a.*, u.full_name AS author_name
+      `SELECT a.*, u.full_name AS author_name, ue.full_name AS editor_name
        FROM announcements a
        LEFT JOIN users u ON u.id = a.author_user_id
+       LEFT JOIN users ue ON ue.id = a.edited_by_user_id
        WHERE a.status = 'published'
          AND (
            a.audience IN ('all', 'teachers')
@@ -305,9 +308,10 @@ async function listAnnouncementsForTeacher(teacherUserId, assignedClassIds = [])
     );
   } else {
     rows = await db.query(
-      `SELECT a.*, u.full_name AS author_name
+      `SELECT a.*, u.full_name AS author_name, ue.full_name AS editor_name
        FROM announcements a
        LEFT JOIN users u ON u.id = a.author_user_id
+       LEFT JOIN users ue ON ue.id = a.edited_by_user_id
        WHERE a.status = 'published'
          AND (a.audience IN ('all', 'teachers') OR a.author_user_id = ?)
        ORDER BY a.id DESC

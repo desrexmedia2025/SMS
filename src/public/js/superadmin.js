@@ -208,6 +208,57 @@
   }
 
   // ---------------- LOADERS ----------------
+  // ---------------- ANNOUNCEMENTS (shared feed rendering + editing) ----------------
+  let annCache = [];
+
+  function audienceLabel(a) {
+    if (a.audience === 'class') {
+      const names = (a.target_classes || []).map((c) => c.name);
+      return names.length ? `Classes: ${names.join(', ')}` : 'Selected classes';
+    }
+    const labels = {
+      all: 'Everyone',
+      teachers: 'Teachers',
+      students: 'Students',
+      financial: 'Financial staff',
+    };
+    return `Audience: ${labels[a.audience] || a.audience}`;
+  }
+
+  function renderAnnouncementCards(items = [], manageable = false) {
+    if (!items.length) {
+      return '<div class="empty-state">No announcements published yet.</div>';
+    }
+    return items
+      .map((a) => {
+        const edited = a.edited_at
+          ? `<span class="badge badge-neutral">Edited${a.editor_name ? ` by ${esc(a.editor_name)}` : ''}</span>`
+          : '';
+        const actions = manageable
+          ? `<button type="button" class="btn btn-secondary btn-sm" data-edit-ann="${a.id}">Edit</button>
+             <button type="button" class="btn btn-danger btn-sm" data-del-ann="${a.id}">Delete</button>`
+          : '';
+        return `<div class="feed-item" data-ann-card="${a.id}">
+          <div class="feed-item-head">
+            <div>
+              <strong>${esc(a.title)}</strong>
+              ${a.author_name ? `<small class="feed-item-meta">by ${esc(a.author_name)}</small>` : ''}
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              ${statusBadge(a.priority)}
+              ${actions}
+            </div>
+          </div>
+          <div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;">
+            <span class="badge badge-neutral">${esc(audienceLabel(a))}</span>
+            ${edited}
+          </div>
+          <div class="feed-item-body">${esc(a.body)}</div>
+        </div>`;
+      })
+      .join('');
+  }
+
   async function loadOverview() {
     const data = await api('/api/superadmin/overview');
     SMS.setCurrency(data.settings.currency_code, data.settings.currency_symbol);
@@ -273,21 +324,9 @@
       }),
     ].join('');
 
-    const annHtml =
-      (data.announcements || [])
-        .map(
-          (a) => `<div class="feed-item">
-            <div class="feed-item-head">
-              <strong>${esc(a.title)}</strong>
-              ${statusBadge(a.priority)}
-            </div>
-            <div class="feed-item-body">${esc(a.body)}</div>
-          </div>`
-        )
-        .join('') || '<div class="empty-state">No announcements published yet.</div>';
-
-    document.getElementById('ov-announcements').innerHTML = annHtml;
-    document.getElementById('ann-list').innerHTML = annHtml;
+    annCache = Array.isArray(data.announcements) ? data.announcements : [];
+    document.getElementById('ov-announcements').innerHTML = renderAnnouncementCards(annCache, false);
+    document.getElementById('ann-list').innerHTML = renderAnnouncementCards(annCache, true);
 
     if (data.analytics) {
       renderOverviewAnalytics(data.analytics);
@@ -1114,11 +1153,7 @@
   });
 
   // ---- Teachers ----
-  document.getElementById('teachers-list-tbody').addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-edit-tch]');
-    if (!btn) return;
-    const teacher = teachersCache.find((t) => Number(t.id) === Number(btn.dataset.editTch));
-    if (!teacher) return;
+  function __openTeacherEditorModal(teacher) {
     document.getElementById('edit-teacher-id').value = String(teacher.id);
     document.getElementById('edit-teacher-modal-title').textContent =
       `Edit Teacher — ${teacher.first_name} ${teacher.last_name}`;
@@ -1135,6 +1170,13 @@
     document.getElementById('edit-teacher-status').value = teacher.user_status || teacher.status || 'active';
     document.getElementById('edit-teacher-error').textContent = '';
     openRecordModal('edit-teacher-modal');
+  }
+
+  document.getElementById('teachers-list-tbody').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-edit-tch]');
+    if (!btn) return;
+    const teacher = teachersCache.find((t) => Number(t.id) === Number(btn.dataset.editTch));
+    if (teacher) __openTeacherEditorModal(teacher);
   });
 
   document.getElementById('edit-teacher-form').addEventListener('submit', async (e) => {
@@ -1173,26 +1215,8 @@
   });
 
   // ---- Staff / user accounts ----
-  document.getElementById('users-tbody').addEventListener('click', async (e) => {
-    const btn = e.target.closest('[data-edit-user]');
-    if (!btn) return;
-    const userId = Number(btn.dataset.editUser);
-    let u = usersCache.find((x) => Number(x.id) === userId);
-    try {
-      if (!u) {
-        const emailCell = btn.closest('tr')?.children[1]?.textContent?.trim() || '';
-        const res = await api(`/api/superadmin/users?search=${encodeURIComponent(emailCell)}`);
-        u = (res.items || []).find((x) => Number(x.id) === userId) || null;
-      }
-    } catch (error) {
-      toast(error.message, 'error');
-      return;
-    }
-    if (!u) {
-      toast('Account could not be loaded.', 'error');
-      return;
-    }
-    document.getElementById('edit-user-id').value = String(userId);
+  function __openUserEditorModal(u) {
+    document.getElementById('edit-user-id').value = String(u.id);
     document.getElementById('edit-user-modal-title').textContent = `Edit Account — ${u.full_name}`;
     document.getElementById('edit-user-full-name').value = u.full_name || '';
     document.getElementById('edit-user-username').value = u.username || '';
@@ -1203,6 +1227,34 @@
     document.getElementById('edit-user-password').value = '';
     document.getElementById('edit-user-error').textContent = '';
     openRecordModal('edit-user-modal');
+  }
+
+  async function __resolveUserForEdit(userId, fallbackSearch = '') {
+    let u = usersCache.find((x) => Number(x.id) === Number(userId));
+    if (u) return u;
+    const res = await api(`/api/superadmin/users?search=${encodeURIComponent(fallbackSearch)}`);
+    u = (res.items || []).find((x) => Number(x.id) === Number(userId)) || null;
+    if (u) usersCache = (res.items || []);
+    return u;
+  }
+
+  document.getElementById('users-tbody').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-edit-user]');
+    if (!btn) return;
+    const userId = Number(btn.dataset.editUser);
+    let u;
+    try {
+      const emailCell = btn.closest('tr')?.children[1]?.textContent?.trim() || '';
+      u = await __resolveUserForEdit(userId, emailCell);
+    } catch (error) {
+      toast(error.message, 'error');
+      return;
+    }
+    if (!u) {
+      toast('Account could not be loaded.', 'error');
+      return;
+    }
+    __openUserEditorModal(u);
   });
 
   document.getElementById('edit-user-form').addEventListener('submit', async (e) => {
@@ -2184,6 +2236,84 @@
       await loadOverview();
     } catch (err) {
       toast(err.message, 'error');
+    }
+  });
+
+  // Announcement editing & deletion (Superadmin can manage every notice)
+  document.getElementById('ann-list').addEventListener('click', async (e) => {
+    const editBtn = e.target.closest('[data-edit-ann]');
+    if (editBtn) {
+      const ann = annCache.find((a) => Number(a.id) === Number(editBtn.dataset.editAnn));
+      if (!ann) return;
+      document.getElementById('edit-ann-id').value = String(ann.id);
+      document.getElementById('edit-announcement-modal-title').textContent = `Edit — ${ann.title}`;
+      document.getElementById('edit-ann-title').value = ann.title || '';
+      document.getElementById('edit-ann-body').value = ann.body || '';
+      document.getElementById('edit-ann-priority').value = ann.priority || 'normal';
+      const audienceSel = document.getElementById('edit-ann-audience');
+      let classOpt = audienceSel.querySelector('option[value="class"]');
+      if (ann.audience === 'class') {
+        const names = (ann.target_classes || []).map((c) => c.name).join(', ') || 'no classes';
+        if (!classOpt) {
+          classOpt = document.createElement('option');
+          classOpt.value = 'class';
+          audienceSel.appendChild(classOpt);
+        }
+        classOpt.textContent = `Selected classes (${names})`;
+        audienceSel.value = 'class';
+      } else {
+        if (classOpt) classOpt.remove();
+        audienceSel.value = audienceSel.querySelector(`option[value="${ann.audience}"]`)
+          ? ann.audience
+          : 'all';
+      }
+      document.getElementById('edit-announcement-error').textContent = '';
+      openRecordModal('edit-announcement-modal');
+      return;
+    }
+
+    const delBtn = e.target.closest('[data-del-ann]');
+    if (!delBtn) return;
+    const ann = annCache.find((a) => Number(a.id) === Number(delBtn.dataset.delAnn));
+    if (!confirm(`Delete "${ann ? ann.title : 'this announcement'}"? Receivers will no longer see it.`)) {
+      return;
+    }
+    try {
+      const res = await api(`/api/superadmin/announcements/${delBtn.dataset.delAnn}`, {
+        method: 'DELETE',
+      });
+      toast(res.message || 'Announcement deleted.', 'info');
+      await loadOverview();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+
+  document.getElementById('edit-announcement-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('edit-ann-id').value;
+    const btn = document.getElementById('edit-announcement-save');
+    const err = document.getElementById('edit-announcement-error');
+    const audienceSel = document.getElementById('edit-ann-audience');
+    err.textContent = '';
+    btn.disabled = true;
+    try {
+      const body = {
+        title: document.getElementById('edit-ann-title').value.trim(),
+        body: document.getElementById('edit-ann-body').value.trim(),
+        priority: document.getElementById('edit-ann-priority').value,
+      };
+      // Class-targeted teacher announcements keep their class list untouched.
+      if (audienceSel.value !== 'class') body.audience = audienceSel.value;
+      const res = await api(`/api/superadmin/announcements/${id}`, { method: 'PATCH', body });
+      closeRecordModal('edit-announcement-modal');
+      toast(res.message || 'Announcement updated.', 'success');
+      await loadOverview();
+    } catch (error) {
+      err.textContent = error.message;
+      toast(error.message, 'error');
+    } finally {
+      btn.disabled = false;
     }
   });
 

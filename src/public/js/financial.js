@@ -89,6 +89,46 @@
     const rowsHtml = renderPaymentRows(data.recentPayments || []);
     document.getElementById('fin-ov-payments-tbody').innerHTML = rowsHtml;
     document.getElementById('fin-payments-tbody').innerHTML = rowsHtml;
+
+    renderAnnouncements(data.announcements || []);
+  }
+
+  function audienceLabel(a) {
+    if (a.audience === 'class') {
+      const names = (a.target_classes || []).map((c) => c.name);
+      return names.length ? `Classes: ${names.join(', ')}` : 'Selected classes';
+    }
+    const labels = {
+      all: 'Everyone',
+      teachers: 'Teachers',
+      students: 'Students',
+      financial: 'Financial staff',
+    };
+    return `Audience: ${labels[a.audience] || a.audience}`;
+  }
+
+  function renderAnnouncements(items = []) {
+    const target = document.getElementById('fin-announcements');
+    if (!target) return;
+    target.innerHTML =
+      items
+        .map(
+          (a) => `<div class="feed-item">
+            <div class="feed-item-head">
+              <div>
+                <strong>${esc(a.title)}</strong>
+                ${a.author_name ? `<small class="feed-item-meta">by ${esc(a.author_name)}</small>` : ''}
+              </div>
+              ${statusBadge(a.priority)}
+            </div>
+            <div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;">
+              <span class="badge badge-neutral">${esc(audienceLabel(a))}</span>
+              ${a.edited_at ? '<span class="badge badge-neutral">Edited</span>' : ''}
+            </div>
+            <div class="feed-item-body">${esc(a.body)}</div>
+          </div>`
+        )
+        .join('') || '<div class="empty-state">No announcements posted.</div>';
   }
 
   async function loadFeeCategories() {

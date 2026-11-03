@@ -1402,10 +1402,11 @@ async function reviewProfileChangeRequest({ requestId, decision, actor, ipAddres
 
 // ---------------- ANNOUNCEMENTS, SETTINGS, REPORTS, AUDIT, BACKUP ----------------
 async function createAnnouncement({ title, body, audience, priority, actor, ipAddress }) {
+  const resolvedAudience = normalizeAnnouncementAudience(audience) || 'all';
   const ins = await db.run(
     `INSERT INTO announcements (title, body, audience, priority, author_user_id, status)
      VALUES (?, ?, ?, ?, ?, 'published')`,
-    [title, body, audience || 'all', priority || 'normal', actor.id]
+    [title, body, resolvedAudience, priority || 'normal', actor.id]
   );
   await recordAudit({
     actorUserId: actor.id,
@@ -1414,9 +1415,129 @@ async function createAnnouncement({ title, body, audience, priority, actor, ipAd
     targetType: 'announcement',
     targetId: String(ins.insertId),
     ipAddress,
-    metadata: { title, audience },
+    metadata: { title, audience: resolvedAudience },
   });
   return { id: ins.insertId };
+}
+
+// Announcement audiences are stored in their plural form ('teachers', 'students').
+// Older forms and the singular labels used by some clients are normalised here so
+// that a notice always reaches everyone it was written for.
+const ANNOUNCEMENT_AUDIENCES = new Set(['all', 'teachers', 'students', 'financial', 'class']);
+const AUDIENCE_ALIASES = {
+  everyone: 'all',
+  teacher: 'teachers',
+  teachers: 'teachers',
+  student: 'students',
+  students: 'students',
+  financial: 'financial',
+  finance: 'financial',
+  class: 'class',
+};
+
+function normalizeAnnouncementAudience(value) {
+  const raw = String(value || '').trim().toLowerCase();
+  const resolved = AUDIENCE_ALIASES[raw] || raw;
+  return ANNOUNCEMENT_AUDIENCES.has(resolved) ? resolved : null;
+}
+
+async function updateAnnouncement({
+  announcementId,
+  title,
+  body,
+  audience,
+  priority,
+  status,
+  actor,
+  ipAddress,
+}) {
+  const ann = await db.get('SELECT * FROM announcements WHERE id = ?', [announcementId]);
+  if (!ann) throw new AppError(404, 'Announcement not found.');
+
+  const cleanTitle = title === undefined ? ann.title : String(title).trim();
+  const cleanBody = body === undefined ? ann.body : String(body).trim();
+  if (cleanTitle.length < 3 || cleanTitle.length > 180) {
+    throw new AppError(400, 'Announcement title must be between 3 and 180 characters.');
+  }
+  if (cleanBody.length < 3) {
+    throw new AppError(400, 'Announcement message must be at least 3 characters.');
+  }
+
+  const allowedPriorities = new Set(['normal', 'important', 'urgent']);
+  const nextPriority = allowedPriorities.has(String(priority || '').toLowerCase())
+    ? String(priority).toLowerCase()
+    : ann.priority;
+
+  let nextAudience = ann.audience;
+  if (audience !== undefined) {
+    const resolved = normalizeAnnouncementAudience(audience);
+    if (!resolved || resolved === 'class') {
+      throw new AppError(400, 'Choose who should receive this announcement.');
+    }
+    nextAudience = resolved;
+  }
+
+  const allowedStatuses = new Set(['published', 'draft', 'archived']);
+  const nextStatus =
+    status !== undefined && allowedStatuses.has(String(status).toLowerCase())
+      ? String(status).toLowerCase()
+      : ann.status;
+
+  await db.withTransaction(async (tx) => {
+    await tx.run(
+      `UPDATE announcements
+       SET title = ?, body = ?, audience = ?, priority = ?, status = ?,
+           edited_by_user_id = ?, edited_at = CURRENT_TIMESTAMP,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [cleanTitle, cleanBody, nextAudience, nextPriority, nextStatus, actor.id, announcementId]
+    );
+    await recordAudit(
+      {
+        actorUserId: actor.id,
+        actorRole: actor.role,
+        action: 'ANNOUNCEMENT_UPDATED',
+        targetType: 'announcement',
+        targetId: String(announcementId),
+        ipAddress,
+        metadata: { audience: nextAudience, priority: nextPriority, status: nextStatus },
+      },
+      tx
+    );
+  });
+
+  const fresh = await db.get(
+    `SELECT a.*, u.full_name AS author_name, ue.full_name AS editor_name
+     FROM announcements a
+     LEFT JOIN users u ON u.id = a.author_user_id
+     LEFT JOIN users ue ON ue.id = a.edited_by_user_id
+     WHERE a.id = ?`,
+    [announcementId]
+  );
+  return { announcement: fresh, message: 'Announcement updated.' };
+}
+
+async function deleteAnnouncement({ announcementId, actor, ipAddress }) {
+  const ann = await db.get('SELECT * FROM announcements WHERE id = ?', [announcementId]);
+  if (!ann) throw new AppError(404, 'Announcement not found.');
+
+  await db.withTransaction(async (tx) => {
+    await tx.run('DELETE FROM announcement_classes WHERE announcement_id = ?', [announcementId]);
+    await tx.run('DELETE FROM announcements WHERE id = ?', [announcementId]);
+    await recordAudit(
+      {
+        actorUserId: actor.id,
+        actorRole: actor.role,
+        action: 'ANNOUNCEMENT_DELETED',
+        targetType: 'announcement',
+        targetId: String(announcementId),
+        ipAddress,
+        metadata: { title: ann.title, audience: ann.audience },
+      },
+      tx
+    );
+  });
+  return { message: 'Announcement deleted.' };
 }
 
 async function updateSchoolSettings(payload, actor, ipAddress) {
@@ -2278,6 +2399,9 @@ module.exports = {
   reviewMarkCorrection,
   reviewProfileChangeRequest,
   createAnnouncement,
+  updateAnnouncement,
+  deleteAnnouncement,
+  normalizeAnnouncementAudience,
   updateSchoolSettings,
   getSchoolWideReports,
   listAuditLogs,

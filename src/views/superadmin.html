@@ -1042,8 +1042,8 @@
                     <label>Audience</label>
                     <select name="audience">
                       <option value="all">Everyone</option>
-                      <option value="teacher">Teachers Only</option>
-                      <option value="student">Students Only</option>
+                      <option value="teachers">Teachers Only</option>
+                      <option value="students">Students Only</option>
                       <option value="financial">Financial Staff Only</option>
                     </select>
                   </div>
@@ -1063,7 +1063,10 @@
 
             <div class="card">
               <div class="card-header">
-                <h2 class="card-title">Published Announcements</h2>
+                <div>
+                  <h2 class="card-title">Published Announcements</h2>
+                  <div class="card-subtitle">Edit or delete any notice &mdash; changes appear for every receiver immediately</div>
+                </div>
                 <div class="search-bar" data-search-list="ann-list">
                   <input type="search" class="search-bar-input" placeholder="Search announcements...">
                   <button type="button" class="btn btn-primary btn-sm" data-search-btn>Search</button>
@@ -1339,6 +1342,38 @@
         <div class="record-modal-footer">
           <button type="button" class="btn btn-secondary" data-close-edit-modal>Cancel</button>
           <button type="submit" class="btn btn-primary" id="edit-user-save">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="record-modal-backdrop hidden" id="edit-announcement-modal" role="dialog" aria-modal="true" aria-labelledby="edit-announcement-modal-title">
+    <div class="record-modal">
+      <div class="record-modal-header">
+        <h3 id="edit-announcement-modal-title">Edit Announcement</h3>
+        <button type="button" class="record-modal-close" data-close-edit-modal aria-label="Close">&times;</button>
+      </div>
+      <form id="edit-announcement-form" class="record-modal-body">
+        <input type="hidden" id="edit-ann-id">
+        <div class="record-modal-grid">
+          <div class="form-group record-modal-span"><label>Title</label><input type="text" id="edit-ann-title" maxlength="180" required></div>
+          <div class="form-group"><label>Audience</label>
+            <select id="edit-ann-audience">
+              <option value="all">Everyone</option>
+              <option value="teachers">Teachers Only</option>
+              <option value="students">Students Only</option>
+              <option value="financial">Financial Staff Only</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Priority</label>
+            <select id="edit-ann-priority"><option value="normal">Normal</option><option value="important">Important</option><option value="urgent">Urgent</option></select>
+          </div>
+          <div class="form-group record-modal-span"><label>Message</label><textarea id="edit-ann-body" rows="4" required></textarea></div>
+        </div>
+        <div class="form-error" id="edit-announcement-error"></div>
+        <div class="record-modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-edit-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary" id="edit-announcement-save">Save Changes</button>
         </div>
       </form>
     </div>

@@ -591,15 +591,58 @@ async function reviewProfileChange(req, res) {
 }
 
 async function createAnnouncement(req, res) {
+  const audience = superadminService.normalizeAnnouncementAudience(req.body.audience || 'all');
+  if (!audience || audience === 'class') {
+    throw new AppError(400, 'Choose who should receive this announcement.');
+  }
   const created = await superadminService.createAnnouncement({
     title: requireString(req.body.title, 'Title', { min: 3, max: 180 }),
     body: requireString(req.body.body, 'Message body', { min: 4, max: 3000 }),
-    audience: requireEnum(req.body.audience || 'all', ['all', 'teachers', 'students', 'financial'], 'Audience'),
+    audience,
     priority: requireEnum(req.body.priority || 'normal', ['normal', 'important', 'urgent'], 'Priority'),
     actor: req.user,
     ipAddress: req.ip,
   });
   return res.status(201).json({ ok: true, ...created });
+}
+
+async function updateAnnouncement(req, res) {
+  const announcementId = requirePositiveInt(req.params.id, 'Announcement ID');
+  const payload = {
+    announcementId,
+    actor: req.user,
+    ipAddress: req.ip,
+  };
+  if (req.body.title !== undefined) {
+    payload.title = requireString(req.body.title, 'Title', { min: 3, max: 180 });
+  }
+  if (req.body.body !== undefined) {
+    payload.body = requireString(req.body.body, 'Message body', { min: 4, max: 3000 });
+  }
+  if (req.body.audience !== undefined) {
+    const audience = superadminService.normalizeAnnouncementAudience(req.body.audience);
+    if (!audience || audience === 'class') {
+      throw new AppError(400, 'Choose who should receive this announcement.');
+    }
+    payload.audience = audience;
+  }
+  if (req.body.priority !== undefined) {
+    payload.priority = requireEnum(req.body.priority, ['normal', 'important', 'urgent'], 'Priority');
+  }
+  if (req.body.status !== undefined) {
+    payload.status = requireEnum(req.body.status, ['published', 'draft', 'archived'], 'Status');
+  }
+  const data = await superadminService.updateAnnouncement(payload);
+  return res.json({ ok: true, ...data });
+}
+
+async function deleteAnnouncement(req, res) {
+  const data = await superadminService.deleteAnnouncement({
+    announcementId: requirePositiveInt(req.params.id, 'Announcement ID'),
+    actor: req.user,
+    ipAddress: req.ip,
+  });
+  return res.json({ ok: true, ...data });
 }
 
 async function getSettings(_req, res) {
@@ -848,6 +891,8 @@ module.exports = {
   reviewMarkCorrection,
   reviewProfileChange,
   createAnnouncement,
+  updateAnnouncement,
+  deleteAnnouncement,
   getSettings,
   updateSettings,
   switchCurrency,

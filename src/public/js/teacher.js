@@ -81,19 +81,22 @@
                 .join('')}</div>`
             : `<div style="margin-top:4px;"><span class="badge badge-neutral">Audience: ${esc(a.audience)}</span></div>`;
         const isOwn = currentUserId > 0 && Number(a.author_user_id) === currentUserId;
-        return `<div class="feed-item">
+        const edited = a.edited_at ? '<span class="badge badge-neutral">Edited</span>' : '';
+        return `<div class="feed-item" data-ann-card="${a.id}">
           <div class="feed-item-head">
             <div>
               <strong>${esc(a.title)}</strong>
               ${a.author_name ? `<small class="feed-item-meta">by ${esc(a.author_name)}</small>` : ''}
             </div>
-            <div style="display:flex;align-items:center;gap:8px;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
               ${statusBadge(a.priority)}
+              ${isOwn ? `<button type="button" class="btn btn-secondary btn-sm" data-edit-ann="${a.id}">Edit</button>` : ''}
               ${isOwn ? `<button type="button" class="btn btn-danger btn-sm" data-del-ann="${a.id}">Delete</button>` : ''}
             </div>
           </div>
           ${classPills}
           <div class="feed-item-body">${esc(a.body)}</div>
+          ${edited ? `<div style="margin-top:6px;">${edited}</div>` : ''}
         </div>`;
       })
       .join('');
@@ -337,7 +340,8 @@
       emptyMessage: 'No timetable lessons scheduled yet.',
     });
 
-    renderAnnouncementsFeed(data.announcements || []);
+    annCache = Array.isArray(data.announcements) ? data.announcements : [];
+    renderAnnouncementsFeed(annCache);
 
     document.getElementById('prof-staff-no').value = data.teacher.staff_number || '';
     document.getElementById('prof-phone').value = data.teacher.phone || '';
@@ -670,15 +674,126 @@
   });
 
   document.getElementById('tc-announcements')?.addEventListener('click', async (e) => {
+    const editBtn = e.target.closest('[data-edit-ann]');
+    if (editBtn) {
+      const ann = (annCache || []).find((a) => Number(a.id) === Number(editBtn.dataset.editAnn));
+      if (ann) openAnnouncementEditor(ann);
+      return;
+    }
+
     const delBtn = e.target.closest('[data-del-ann]');
     if (!delBtn) return;
-    if (!confirm('Delete this announcement?')) return;
+    if (!confirm('Delete this announcement? Students will no longer see it.')) return;
     try {
       await api(`/api/teacher/announcements/${delBtn.dataset.delAnn}`, { method: 'DELETE' });
       toast('Announcement deleted.', 'info');
       await loadOverview();
     } catch (err) {
       toast(err.message, 'error');
+    }
+  });
+
+  // ---------------- ANNOUNCEMENT EDITING ----------------
+  let annCache = [];
+
+  function openRecordModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    const first = modal.querySelector('input[type="text"], textarea');
+    if (first) setTimeout(() => first.focus(), 30);
+  }
+
+  function closeRecordModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.add('hidden');
+  }
+
+  function bindAnnouncementModalChrome() {
+    document.querySelectorAll('[data-close-edit-modal]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const backdrop = btn.closest('.record-modal-backdrop');
+        if (backdrop) backdrop.classList.add('hidden');
+      });
+    });
+    document.querySelectorAll('.record-modal-backdrop').forEach((backdrop) => {
+      backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) backdrop.classList.add('hidden');
+      });
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      document.querySelectorAll('.record-modal-backdrop').forEach((b) => b.classList.add('hidden'));
+    });
+
+    const allChk = document.getElementById('edit-ann-all-classes');
+    const grid = document.getElementById('edit-ann-classes-grid');
+    allChk?.addEventListener('change', () => {
+      grid?.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+        cb.checked = Boolean(allChk.checked);
+      });
+    });
+    grid?.addEventListener('change', () => {
+      const boxes = Array.from(grid.querySelectorAll('input[type="checkbox"]'));
+      if (allChk && boxes.length) allChk.checked = boxes.every((b) => b.checked);
+    });
+  }
+  bindAnnouncementModalChrome();
+
+  function openAnnouncementEditor(ann) {
+    document.getElementById('edit-ann-id').value = String(ann.id);
+    document.getElementById('edit-announcement-modal-title').textContent = `Edit — ${ann.title}`;
+    document.getElementById('edit-ann-title').value = ann.title || '';
+    document.getElementById('edit-ann-body').value = ann.body || '';
+    document.getElementById('edit-ann-priority').value = ann.priority || 'normal';
+
+    const targetIds = new Set((ann.target_classes || []).map((c) => Number(c.id)));
+    renderAssignedClassCheckboxes('edit-ann-classes-grid', trcAssignedClasses || []);
+    document.querySelectorAll('#edit-ann-classes-grid input[type="checkbox"]').forEach((cb) => {
+      cb.checked = targetIds.has(Number(cb.value));
+    });
+    const allChk = document.getElementById('edit-ann-all-classes');
+    const boxes = Array.from(
+      document.querySelectorAll('#edit-ann-classes-grid input[type="checkbox"]')
+    );
+    if (allChk) allChk.checked = boxes.length > 0 && boxes.every((b) => b.checked);
+
+    document.getElementById('edit-announcement-error').textContent = '';
+    openRecordModal('edit-announcement-modal');
+  }
+
+  document.getElementById('edit-announcement-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('edit-ann-id').value;
+    const btn = document.getElementById('edit-announcement-save');
+    const err = document.getElementById('edit-announcement-error');
+    const allChecked = document.getElementById('edit-ann-all-classes')?.checked;
+    const classIds = getCheckedClassIds('edit-ann-classes-grid');
+    if (!allChecked && !classIds.length) {
+      err.textContent = 'Select at least one assigned class or check All My Assigned Classes.';
+      return;
+    }
+    err.textContent = '';
+    btn.disabled = true;
+    try {
+      const res = await api(`/api/teacher/announcements/${id}`, {
+        method: 'PATCH',
+        body: {
+          title: document.getElementById('edit-ann-title').value.trim(),
+          body: document.getElementById('edit-ann-body').value.trim(),
+          priority: document.getElementById('edit-ann-priority').value,
+          applyToAllClasses: Boolean(allChecked),
+          classIds,
+        },
+      });
+      closeRecordModal('edit-announcement-modal');
+      toast(res.message || 'Announcement updated.', 'success');
+      await loadOverview();
+    } catch (error) {
+      err.textContent = error.message;
+      toast(error.message, 'error');
+    } finally {
+      btn.disabled = false;
     }
   });
 

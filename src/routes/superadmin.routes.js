@@ -65,6 +65,8 @@ router.post('/exams/corrections/:id/review', verifyCsrfToken, ctrl.reviewMarkCor
 router.post('/profile-requests/:id/review', verifyCsrfToken, ctrl.reviewProfileChange);
 
 router.post('/announcements', verifyCsrfToken, ctrl.createAnnouncement);
+router.patch('/announcements/:id', verifyCsrfToken, ctrl.updateAnnouncement);
+router.delete('/announcements/:id', verifyCsrfToken, ctrl.deleteAnnouncement);
 
 router.get('/settings', ctrl.getSettings);
 router.put('/settings', verifyCsrfToken, ctrl.updateSettings);

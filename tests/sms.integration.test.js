@@ -3724,3 +3724,178 @@ test('Test 30: hosted database config uses TLS for remote hosts and never silent
   const envSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'config', 'environment.js'), 'utf8');
   assert.match(envSource, /resolveMysqlSsl/);
 });
+
+test('31. Announcements reach every receiver, and both authors can edit and delete them', async () => {
+  const admin = new SessionClient();
+  await admin.login('admin@school.edu.gh', 'Admin@2026!');
+  const teacher = new SessionClient();
+  await teacher.login('kofi.mensah@school.edu.gh', 'Teacher@2026!');
+  const student = new SessionClient();
+  await student.login('kwame.asante@student.school.edu.gh', 'Student@2026!');
+  const finance = new SessionClient();
+  await finance.login('finance@school.edu.gh', 'Finance@2026!');
+
+  const feeds = async () => {
+    const [a, t, s, f] = await Promise.all([
+      admin.request('/api/superadmin/overview'),
+      teacher.request('/api/teacher/overview'),
+      student.request('/api/student/overview'),
+      finance.request('/api/financial/overview'),
+    ]);
+    return {
+      admin: a.json.announcements || [],
+      teacher: t.json.announcements || [],
+      student: s.json.announcements || [],
+      finance: f.json.announcements || [],
+    };
+  };
+  const hasTitle = (list, title) => list.some((a) => a.title === title);
+
+  // ---------- EVERYONE ----------
+  const everyone = await admin.request('/api/superadmin/announcements', {
+    method: 'POST',
+    body: {
+      title: 'Sports Day Friday',
+      body: 'All staff, teachers and students to assemble on the field at 8am.',
+      audience: 'all',
+      priority: 'important',
+    },
+  });
+  assert.equal(everyone.status, 201);
+  const everyoneId = everyone.json.id;
+
+  let feed = await feeds();
+  for (const role of ['admin', 'teacher', 'student', 'finance']) {
+    assert.ok(
+      hasTitle(feed[role], 'Sports Day Friday'),
+      `${role} dashboard must show the announcement addressed to everyone`
+    );
+  }
+
+  // ---------- AUDIENCE TARGETING (legacy singular labels are normalised) ----------
+  const teachersOnly = await admin.request('/api/superadmin/announcements', {
+    method: 'POST',
+    body: { title: 'Teachers Briefing', body: 'Staff meeting in the library.', audience: 'teacher' },
+  });
+  assert.equal(teachersOnly.status, 201, 'a singular audience label must still publish');
+  const studentsOnly = await admin.request('/api/superadmin/announcements', {
+    method: 'POST',
+    body: { title: 'Students Briefing', body: 'Prefects meet at break.', audience: 'students' },
+  });
+  assert.equal(studentsOnly.status, 201);
+  const financeOnly = await admin.request('/api/superadmin/announcements', {
+    method: 'POST',
+    body: { title: 'Finance Briefing', body: 'Term fee deadline is Friday.', audience: 'financial' },
+  });
+  assert.equal(financeOnly.status, 201);
+  const financeId = financeOnly.json.id;
+
+  feed = await feeds();
+  assert.ok(hasTitle(feed.teacher, 'Teachers Briefing'), 'teachers must see the teachers notice');
+  assert.ok(!hasTitle(feed.student, 'Teachers Briefing'), 'students must not see the teachers notice');
+  assert.ok(!hasTitle(feed.finance, 'Teachers Briefing'), 'finance must not see the teachers notice');
+
+  assert.ok(hasTitle(feed.student, 'Students Briefing'), 'students must see the students notice');
+  assert.ok(!hasTitle(feed.teacher, 'Students Briefing'), 'teachers must not see the students notice');
+
+  assert.ok(hasTitle(feed.finance, 'Finance Briefing'), 'finance staff must see the finance notice');
+  assert.ok(!hasTitle(feed.student, 'Finance Briefing'), 'students must not see the finance notice');
+  assert.ok(!hasTitle(feed.teacher, 'Finance Briefing'), 'teachers must not see the finance notice');
+
+  // ---------- SUPERADMIN EDITS A PUBLISHED NOTICE ----------
+  const edited = await admin.request(`/api/superadmin/announcements/${financeId}`, {
+    method: 'PATCH',
+    body: {
+      title: 'Finance Briefing (updated)',
+      body: 'The term fee deadline moved to Monday.',
+      audience: 'all',
+      priority: 'urgent',
+    },
+  });
+  assert.equal(edited.status, 200);
+
+  feed = await feeds();
+  const revised = feed.finance.find((a) => a.id === financeId);
+  assert.ok(revised, 'the edited announcement must remain in the feed');
+  assert.equal(revised.title, 'Finance Briefing (updated)');
+  assert.equal(revised.body, 'The term fee deadline moved to Monday.');
+  assert.equal(revised.priority, 'urgent');
+  assert.ok(revised.edited_at, 'receivers must be able to see that a notice was edited');
+  assert.ok(hasTitle(feed.student, 'Finance Briefing (updated)'), 'widening the audience reaches new receivers');
+
+  // ---------- SUPERADMIN DELETES A NOTICE ----------
+  const removed = await admin.request(`/api/superadmin/announcements/${financeId}`, {
+    method: 'DELETE',
+  });
+  assert.equal(removed.status, 200);
+  feed = await feeds();
+  for (const role of ['admin', 'teacher', 'student', 'finance']) {
+    assert.ok(
+      !hasTitle(feed[role], 'Finance Briefing (updated)'),
+      `${role} must no longer see the deleted announcement`
+    );
+  }
+
+  // ---------- TEACHER CLASS ANNOUNCEMENT: CREATE, EDIT, DELETE ----------
+  const overview = (await teacher.request('/api/teacher/overview')).json;
+  const assignedClasses = overview.assignedClasses || [];
+  assert.ok(assignedClasses.length > 0, 'the demo teacher needs assigned classes for this test');
+
+  const classAnn = await teacher.request('/api/teacher/announcements', {
+    method: 'POST',
+    body: {
+      title: 'Class Test Friday',
+      body: 'Bring your calculators.',
+      priority: 'normal',
+      applyToAllClasses: true,
+      classIds: [],
+    },
+  });
+  assert.equal(classAnn.status, 201);
+  const classAnnId = classAnn.json.id;
+
+  feed = await feeds();
+  assert.ok(hasTitle(feed.student, 'Class Test Friday'), 'students in the class must see the notice');
+  assert.ok(hasTitle(feed.teacher, 'Class Test Friday'), 'the author must see their own notice');
+
+  const teacherEdit = await teacher.request(`/api/teacher/announcements/${classAnnId}`, {
+    method: 'PATCH',
+    body: {
+      title: 'Class Test Monday',
+      body: 'Moved to Monday, bring calculators.',
+      priority: 'urgent',
+      applyToAllClasses: true,
+    },
+  });
+  assert.equal(teacherEdit.status, 200);
+
+  feed = await feeds();
+  const studentView = feed.student.find((a) => a.id === classAnnId);
+  assert.ok(studentView, 'the edited class announcement must still reach the class');
+  assert.equal(studentView.title, 'Class Test Monday');
+  assert.equal(studentView.body, 'Moved to Monday, bring calculators.');
+  assert.equal(studentView.priority, 'urgent');
+  assert.ok(studentView.edited_at, 'students must see that the class notice was edited');
+
+  // A teacher may never edit a notice written by somebody else
+  const foreign = await teacher.request(`/api/teacher/announcements/${everyoneId}`, {
+    method: 'PATCH',
+    body: { title: 'Hijacked title', body: 'Hijacked body.' },
+  });
+  assert.equal(foreign.status, 403, 'teachers may only edit their own announcements');
+
+  // Teachers may not select classes they are not assigned to
+  const outsideClass = await teacher.request(`/api/teacher/announcements/${classAnnId}`, {
+    method: 'PATCH',
+    body: { title: 'Wrong class', body: 'Trying another class.', classIds: [999999] },
+  });
+  assert.equal(outsideClass.status, 403, 'teachers may only target their assigned classes');
+
+  const teacherDelete = await teacher.request(`/api/teacher/announcements/${classAnnId}`, {
+    method: 'DELETE',
+  });
+  assert.equal(teacherDelete.status, 200);
+  feed = await feeds();
+  assert.ok(!hasTitle(feed.student, 'Class Test Monday'), 'the deleted class notice must disappear');
+  assert.ok(!hasTitle(feed.teacher, 'Class Test Monday'), 'the deleted class notice must disappear');
+});

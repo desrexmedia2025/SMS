@@ -291,6 +291,7 @@
             </div>
             ${classBadges}
             <div class="feed-item-body">${esc(a.body)}</div>
+            ${a.edited_at ? '<div style="margin-top:6px;"><span class="badge badge-neutral">Edited</span></div>' : ''}
           </div>`;
         })
         .join('') || '<div class="empty-state">No announcements posted.</div>';

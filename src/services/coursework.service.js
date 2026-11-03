@@ -687,6 +687,103 @@ async function createTeacherClassAnnouncement(user, {
   });
 }
 
+async function updateTeacherClassAnnouncement(user, {
+  announcementId,
+  title,
+  body,
+  priority,
+  classIds,
+  applyToAllClasses,
+  ipAddress,
+}) {
+  const teacher = await requireTeacherRecord(user);
+  const ann = await db.get('SELECT * FROM announcements WHERE id = ?', [announcementId]);
+  if (!ann) throw new AppError(404, 'Announcement not found.');
+  if (Number(ann.author_user_id) !== Number(user.id)) {
+    throw new AppError(403, 'You can only edit announcements created by you.');
+  }
+
+  const cleanTitle = title === undefined ? ann.title : String(title).trim();
+  const cleanBody = body === undefined ? ann.body : String(body).trim();
+  if (cleanTitle.length < 3 || cleanTitle.length > 180) {
+    throw new AppError(400, 'Announcement title must be between 3 and 180 characters.');
+  }
+  if (cleanBody.length < 3) {
+    throw new AppError(400, 'Announcement message must be at least 3 characters.');
+  }
+
+  const allowedPriorities = new Set(['normal', 'important', 'urgent']);
+  const nextPriority = allowedPriorities.has(String(priority || '').toLowerCase())
+    ? String(priority).toLowerCase()
+    : ann.priority;
+
+  let targetClassIds = null;
+  if (isTruthyFlag(applyToAllClasses) || classIds !== undefined) {
+    const { assignedClasses, assignedClassIds } = await getTeacherAssignedClassesAndSubjects(
+      teacher.id
+    );
+    if (!assignedClasses.length) {
+      throw new AppError(
+        400,
+        'You do not have any assigned classes yet. Ask the Superadmin to assign your classes first.'
+      );
+    }
+    const requested = isTruthyFlag(applyToAllClasses)
+      ? assignedClasses.map((c) => c.id)
+      : parseIdArray(classIds);
+    if (!requested.length) {
+      throw new AppError(
+        400,
+        'Please select at least one assigned class or choose All Assigned Classes.'
+      );
+    }
+    for (const cid of requested) {
+      if (!assignedClassIds.has(cid)) {
+        throw new AppError(403, 'You can only send announcements to classes assigned to you.');
+      }
+    }
+    targetClassIds = requested;
+  }
+
+  await db.withTransaction(async (tx) => {
+    await tx.run(
+      `UPDATE announcements
+       SET title = ?, body = ?, priority = ?,
+           edited_by_user_id = ?, edited_at = CURRENT_TIMESTAMP,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [cleanTitle, cleanBody, nextPriority, user.id, announcementId]
+    );
+    if (targetClassIds) {
+      await tx.run('DELETE FROM announcement_classes WHERE announcement_id = ?', [announcementId]);
+      for (const cid of targetClassIds) {
+        await tx.run(
+          'INSERT INTO announcement_classes (announcement_id, class_id) VALUES (?, ?)',
+          [announcementId, cid]
+        );
+      }
+    }
+    await recordAudit(
+      {
+        actorUserId: user.id,
+        actorRole: user.role,
+        action: 'TEACHER_CLASS_ANNOUNCEMENT_UPDATED',
+        targetType: 'announcement',
+        targetId: String(announcementId),
+        ipAddress,
+        metadata: { title: cleanTitle, classIds: targetClassIds, priority: nextPriority },
+      },
+      tx
+    );
+  });
+
+  return {
+    id: Number(announcementId),
+    targetClassIds: targetClassIds || [],
+    message: 'Announcement updated.',
+  };
+}
+
 async function deleteTeacherClassAnnouncement(user, { announcementId, ipAddress }) {
   await requireTeacherRecord(user);
   const ann = await db.get('SELECT * FROM announcements WHERE id = ?', [announcementId]);
@@ -1033,6 +1130,7 @@ module.exports = {
   gradeSubmission,
   deleteCoursework,
   createTeacherClassAnnouncement,
+  updateTeacherClassAnnouncement,
   deleteTeacherClassAnnouncement,
   listStudentCoursework,
   submitStudentCoursework,

@@ -111,6 +111,19 @@ async function createClassAnnouncement(req, res) {
   });
 }
 
+async function updateClassAnnouncement(req, res) {
+  const updated = await courseworkService.updateTeacherClassAnnouncement(req.user, {
+    announcementId: requirePositiveInt(req.params.id, 'Announcement ID'),
+    title: req.body.title,
+    body: req.body.body,
+    priority: req.body.priority,
+    classIds: req.body.classIds,
+    applyToAllClasses: req.body.applyToAllClasses,
+    ipAddress: req.ip,
+  });
+  return res.json({ ok: true, ...updated });
+}
+
 async function deleteClassAnnouncement(req, res) {
   const announcementId = requirePositiveInt(req.params.id, 'Announcement ID');
   await courseworkService.deleteTeacherClassAnnouncement(req.user, {
@@ -276,6 +289,7 @@ module.exports = {
   gradeCourseworkSubmission,
   deleteCoursework,
   createClassAnnouncement,
+  updateClassAnnouncement,
   deleteClassAnnouncement,
   createAssessment,
   getMarksheet,
