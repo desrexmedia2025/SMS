@@ -2237,6 +2237,7 @@ window.SMS = (() => {
 
   // ---------------- NOTIFICATION BELL & INTERNAL MESSAGING ----------------
   let msgBellState = { unreadThreads: 0, items: [] };
+  let bellErrorShown = false;
   let msgBellTimer = null;
   let msgState = { threads: [], activeId: null, recipients: [] };
 
@@ -2289,8 +2290,16 @@ window.SMS = (() => {
               .join('')
           : '<div class="msg-bell-empty">You are all caught up. No new notifications.</div>';
       }
-    } catch (_) {
-      // bell failures must never break the dashboard
+    } catch (error) {
+      // bell failures must never break the dashboard, but they must never be invisible either
+      if (!bellErrorShown) {
+        bellErrorShown = true;
+        console.error('[SMS] notification bell failed', error);
+        toast(
+          'Notifications could not be loaded right now. Refresh the page and try again.',
+          'error'
+        );
+      }
     }
   }
 
@@ -2407,7 +2416,7 @@ window.SMS = (() => {
 
     refreshMessageBell();
     if (!msgBellTimer) {
-      msgBellTimer = window.setInterval(refreshMessageBell, 60000);
+      msgBellTimer = window.setInterval(refreshMessageBell, 30000);
     }
   }
 

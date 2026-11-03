@@ -76,8 +76,9 @@ async function announcementNotifications(user) {
   ]);
 
   return announcements.slice(0, MAX_ANNOUNCEMENTS).map((a) => {
-    const isAuthor = Number(a.author_user_id) === Number(user.id);
-    const unread = !isAuthor && !readIds.has(Number(a.id));
+    // Everyone - including the person who published it - sees the announcement until it is read,
+    // so the bell always reflects what has been posted.
+    const unread = !readIds.has(Number(a.id));
     const audience =
       a.audience === 'class'
         ? `Classes: ${(a.target_classes || []).map((c) => c.name).join(', ') || 'selected classes'}`

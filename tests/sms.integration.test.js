@@ -4041,12 +4041,8 @@ test('33. Notification bell carries announcements, registrations and messages fo
     assert.equal(notice.title, 'Bell Check Assembly');
     assert.equal(notice.label, 'Announcement');
     assert.equal(notice.target.section, 'announcements', 'clicking it opens the Announcements tab');
-    // The author already knows their own notice, so it is not counted as unread for them
-    assert.equal(
-      notice.unread,
-      role === 'admin' ? false : true,
-      `${role} unread flag must be correct for the new announcement`
-    );
+    // Everyone - including the person who published it - sees the notice until it is read
+    assert.equal(notice.unread, true, `${role} must see the new announcement as unread`);
   }
 
   // The Superadmin sees pending student join proposals in the same feed

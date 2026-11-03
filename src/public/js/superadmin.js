@@ -1293,6 +1293,7 @@
 
   // ---------------- STAFF DIRECTORY (TEACHERS + FINANCIAL STAFF) ----------------
   let staffCache = [];
+  let staffTotals = {};
 
   function staffInitials(name) {
     return String(name || '?')
@@ -1346,10 +1347,18 @@
         (document.getElementById('staff-search-input')?.value || '').trim() ||
         (document.getElementById('staff-role-filter')?.value || '') ||
         (document.getElementById('staff-status-filter')?.value || '');
+      const totals = staffTotals || {};
       tbody.innerHTML = searching
-        ? '<tr><td colspan="7" class="empty-state">No staff records match your search.</td></tr>'
+        ? `<tr><td colspan="7" class="empty-state">
+             No staff records match your search (${Number(totals.matching || 0)} of ${Number(
+            totals.all || 0
+          )} staff records match). Clear the search to see everyone again.
+           </td></tr>`
         : `<tr><td colspan="7" class="empty-state">
-             No staff records yet. Register a teacher or create a Financial Officer account to see them here.
+             No staff records yet &mdash; the school currently has
+             ${Number(totals.teachers || 0)} teacher(s) and ${Number(
+            totals.financial || 0
+          )} financial staff. Register a teacher or create a Financial Officer account to see them here.
              <div style="display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap;">
                <button type="button" class="btn btn-primary btn-sm" data-nav-jump="teacher-register">Register Teacher</button>
                <button type="button" class="btn btn-secondary btn-sm" data-nav-jump="users">Create Staff Account</button>
@@ -1415,9 +1424,22 @@
     const clearBtn = document.getElementById('staff-clear-btn');
     if (clearBtn) clearBtn.classList.toggle('hidden', !search);
 
-    const data = await api(`/api/superadmin/staff?${params.toString()}`);
+    let data = { staff: [], totals: {} };
+    try {
+      data = await api(`/api/superadmin/staff?${params.toString()}`);
+    } catch (error) {
+      staffTotals = {};
+      staffCache = [];
+      renderStaffSummary({});
+      document.getElementById('staff-tbody').innerHTML =
+        `<tr><td colspan="7" class="empty-state">The staff list could not be loaded: ${esc(
+          error.message || 'unknown error'
+        )}. Refresh the page and try again.</td></tr>`;
+      throw error;
+    }
+    staffTotals = data.totals || {};
     staffCache = data.staff || [];
-    renderStaffSummary(data.totals || {});
+    renderStaffSummary(staffTotals);
     renderStaffTable(staffCache);
   }
 
