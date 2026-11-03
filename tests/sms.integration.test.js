@@ -4152,3 +4152,32 @@ test('34. Dashboard scripts and stylesheets are never served from a stale browse
     assert.match(html, /\/css\/styles\.css\?v=\d+\.\d+/, `${view} must version its stylesheet`);
   }
 });
+
+test('35. Every page ships the school logo favicon and the icons are really served', async () => {
+  const anon = new SessionClient();
+  const views = ['login.html', 'superadmin.html', 'teacher.html', 'student.html', 'financial.html'];
+
+  for (const view of views) {
+    const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'views', view), 'utf8');
+    assert.match(html, /rel="icon"/, `${view} must declare a favicon`);
+    assert.match(html, /rel="apple-touch-icon"/, `${view} must declare the iOS home-screen icon`);
+    assert.match(html, /name="theme-color" content="#1d4ed8"/, `${view} must declare the brand colour`);
+  }
+
+  const ico = await anon.request('/favicon.ico');
+  assert.equal(ico.status, 200, '/favicon.ico must be served for browsers that request it by default');
+  const icoBuf = ico.buffer;
+  assert.equal(icoBuf.readUInt16LE(0), 0, 'valid ICO reserved field');
+  assert.equal(icoBuf.readUInt16LE(2), 1, 'valid ICO type field');
+  assert.ok(icoBuf.readUInt16LE(4) >= 3, 'the ICO should carry several sizes');
+
+  const svg = await anon.request('/favicon.svg');
+  assert.equal(svg.status, 200);
+  assert.match(String(svg.headers.get('content-type') || ''), /svg/, 'the SVG icon must be served as SVG');
+  assert.match(svg.text, /<svg[\s\S]*<\/svg>/);
+
+  const touch = await anon.request('/apple-touch-icon.png');
+  assert.equal(touch.status, 200);
+  const png = touch.buffer;
+  assert.equal(png.slice(1, 4).toString(), 'PNG', 'the touch icon must be a real PNG');
+});
