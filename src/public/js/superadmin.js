@@ -1342,8 +1342,19 @@
     const tbody = document.getElementById('staff-tbody');
     if (!tbody) return;
     if (!items.length) {
-      tbody.innerHTML =
-        '<tr><td colspan="7" class="empty-state">No staff records match your search.</td></tr>';
+      const searching =
+        (document.getElementById('staff-search-input')?.value || '').trim() ||
+        (document.getElementById('staff-role-filter')?.value || '') ||
+        (document.getElementById('staff-status-filter')?.value || '');
+      tbody.innerHTML = searching
+        ? '<tr><td colspan="7" class="empty-state">No staff records match your search.</td></tr>'
+        : `<tr><td colspan="7" class="empty-state">
+             No staff records yet. Register a teacher or create a Financial Officer account to see them here.
+             <div style="display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap;">
+               <button type="button" class="btn btn-primary btn-sm" data-nav-jump="teacher-register">Register Teacher</button>
+               <button type="button" class="btn btn-secondary btn-sm" data-nav-jump="users">Create Staff Account</button>
+             </div>
+           </td></tr>`;
       return;
     }
 
@@ -1473,6 +1484,13 @@
   });
   document.getElementById('staff-status-filter')?.addEventListener('change', () => {
     loadStaff().catch((err) => toast(err.message, 'error'));
+  });
+
+  // Notification bell: open the right sub-tab when a notification asks for one
+  window.addEventListener('sms:notification-open', (event) => {
+    const detail = event.detail || {};
+    if (!detail.subtab) return;
+    activateSubtab(detail.section, detail.subtab);
   });
 
   // ---------------- SCHOOL-WIDE CALENDAR EVENTS ----------------
