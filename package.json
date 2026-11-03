@@ -9,7 +9,7 @@
     "db:migrate": "node --no-warnings database/migrate.js",
     "db:seed": "node --no-warnings database/seeds/seed.js",
     "test": "node --no-warnings --test tests/*.test.js",
-    "icons": "node scripts/generate-brand-icons.js"
+    "icons": "node scripts/generate-brand-icons.js && node scripts/inline-brand-icons.js"
   },
   "repository": {
     "type": "git",

@@ -4159,7 +4159,8 @@ test('35. Every page ships the school logo favicon and the icons are really serv
 
   for (const view of views) {
     const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'views', view), 'utf8');
-    assert.match(html, /rel="icon"/, `${view} must declare a favicon`);
+    assert.match(html, /rel="icon" href="data:image\/svg\+xml;base64,/, `${view} must carry the logo inline`);
+    assert.match(html, /rel="icon" href="data:image\/x-icon;base64,/, `${view} must carry the legacy .ico inline`);
     assert.match(html, /rel="apple-touch-icon"/, `${view} must declare the iOS home-screen icon`);
     assert.match(html, /name="theme-color" content="#1d4ed8"/, `${view} must declare the brand colour`);
   }
