@@ -1810,7 +1810,7 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
   // Every dashboard includes Show/Hide Menu button, modern action tiles & clean v3.x assets
   for (const html of [saHtml, tcHtml, stHtml, fnHtml]) {
     assert.match(html, /id="mobile-menu-btn"/);
-    assert.match(html, /\?v=3\.21/);
+    assert.match(html, /\?v=3\.\d+/, 'dashboards must pin their assets to a cache-busting version');
     assert.match(html, /class="action-tile-grid"/);
     assert.doesNotMatch(html, /Hide Figures/i);
     assert.doesNotMatch(html, /Audit Log/i);
@@ -4114,6 +4114,19 @@ test('33. Notification bell carries announcements, registrations and messages fo
     (cleared.items || []).filter((i) => i.kind === 'message').length,
     0,
     'mark-all-read must clear every unread conversation'
+  );
+
+  // Opening the Announcements tab clears every announcement for that account (id 0 = all of a kind)
+  const bulkRead = await student.request('/api/notifications/read', {
+    method: 'POST',
+    body: { kind: 'announcement', id: 0 },
+  });
+  assert.equal(bulkRead.status, 200);
+  const studentAfter = (await student.request('/api/notifications')).json;
+  assert.equal(
+    (studentAfter.items || []).filter((i) => i.kind === 'announcement' && i.unread).length,
+    0,
+    'visiting Announcements must clear the announcement badge'
   );
 
   // Unknown / malformed read requests are rejected

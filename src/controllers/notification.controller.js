@@ -15,7 +15,8 @@ async function markAllRead(_req, res) {
 async function markRead(req, res) {
   const kind = optionalString(req.body.kind, 30);
   const id = Number(req.body.id);
-  if (!kind || !Number.isInteger(id) || id <= 0) {
+  // id 0 marks every notification of that kind (the Announcements tab uses it).
+  if (!kind || !Number.isInteger(id) || id < 0) {
     throw new AppError(400, 'A notification kind and id are required.');
   }
   const data = await notificationService.markRead(req.user, { kind, id });

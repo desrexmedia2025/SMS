@@ -908,6 +908,7 @@ window.SMS = (() => {
     document.querySelectorAll('.module-panel').forEach((p) => {
       p.classList.toggle('hidden', p.id !== `sec-${sec}`);
     });
+    if (sec === 'announcements') markAnnouncementsRead();
     if (onSectionChange) onSectionChange(sec);
   }
 
@@ -2301,6 +2302,19 @@ window.SMS = (() => {
       await api('/api/notifications/read', { method: 'POST', body: { kind, id: Number(id) } });
     } catch (_) {
       // marking a notification read is best effort
+    }
+  }
+
+  // Opening the Announcements tab means the notices have been seen, so the badge clears them.
+  async function markAnnouncementsRead() {
+    try {
+      const res = await api('/api/notifications/read', {
+        method: 'POST',
+        body: { kind: 'announcement', id: 0 },
+      });
+      if (res && res.read) refreshMessageBell();
+    } catch (_) {
+      // best effort
     }
   }
 

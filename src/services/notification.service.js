@@ -364,6 +364,8 @@ async function listNotifications(user) {
 
 async function markAnnouncementRead(user, announcementId) {
   const id = Number(announcementId);
+  // id 0 is the "everything of this kind" shortcut used when the Announcements tab is opened.
+  if (id === 0) return markAllAnnouncementsRead(user);
   if (!Number.isInteger(id) || id <= 0) return { read: false };
   const existing = await db.get(
     'SELECT id FROM announcement_reads WHERE user_id = ? AND announcement_id = ?',
@@ -376,6 +378,22 @@ async function markAnnouncementRead(user, announcementId) {
     );
   }
   return { read: true };
+}
+
+async function markAllAnnouncementsRead(user) {
+  const announcements = await announcementsForUser(user);
+  const readIds = await readAnnouncementIds(user.id);
+  let marked = 0;
+  for (const ann of announcements) {
+    const id = Number(ann.id);
+    if (!id || readIds.has(id)) continue;
+    await db.run('INSERT INTO announcement_reads (user_id, announcement_id) VALUES (?, ?)', [
+      user.id,
+      id,
+    ]);
+    marked += 1;
+  }
+  return { read: marked > 0, marked };
 }
 
 async function markAllRead(user) {
