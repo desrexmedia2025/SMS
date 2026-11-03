@@ -3681,6 +3681,43 @@ html[dir="rtl"] .nav-btn.active {
   white-space: nowrap;
 }
 .msg-bell-empty { padding: 18px 14px; text-align: center; color: var(--muted, #64748b); font-size: 0.85rem; }
+.msg-bell-item.is-unread { background: rgba(37, 99, 235, 0.05); }
+.msg-bell-item.is-unread:hover { background: rgba(37, 99, 235, 0.1); }
+.msg-bell-kind {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  background: rgba(100, 116, 139, 0.14);
+  color: var(--muted, #64748b);
+}
+.msg-bell-kind-message { background: rgba(37, 99, 235, 0.14); color: #1d4ed8; }
+.msg-bell-kind-announcement { background: rgba(16, 185, 129, 0.16); color: #047857; }
+.msg-bell-kind-registration,
+.msg-bell-kind-profile { background: rgba(217, 119, 6, 0.16); color: #b45309; }
+.msg-bell-kind-correction,
+.msg-bell-kind-submission,
+.msg-bell-kind-coursework { background: rgba(139, 92, 246, 0.16); color: #6d28d9; }
+.msg-bell-kind-result { background: rgba(14, 165, 233, 0.16); color: #0369a1; }
+.msg-bell-kind-fee { background: rgba(239, 68, 68, 0.14); color: #b91c1c; }
+.msg-bell-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2563eb;
+  flex-shrink: 0;
+}
+.msg-bell-item-title {
+  display: block;
+  font-size: 0.87rem;
+  font-weight: 700;
+  margin-top: 4px;
+  color: var(--text, #0f172a);
+}
 .msg-bell-open {
   display: block;
   width: 100%;

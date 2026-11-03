@@ -2246,13 +2246,16 @@ window.SMS = (() => {
     </a>`;
   }
 
+  // The bell is the single feed for everything that needs attention: unread
+  // messages, published announcements, new student registrations, coursework to
+  // submit or grade, mark correction requests and fee deadlines.
   async function refreshMessageBell() {
     const badge = document.getElementById('msg-bell-badge');
     if (!badge) return;
     try {
-      const data = await api('/api/messages/unread');
+      const data = await api('/api/notifications');
       msgBellState = data;
-      const count = Number(data.unreadThreads || 0);
+      const count = Number(data.unread || 0);
       badge.textContent = String(count);
       badge.classList.toggle('hidden', count === 0);
       const navPill = document.getElementById('nav-unread-pill');
@@ -2262,26 +2265,75 @@ window.SMS = (() => {
       }
       const list = document.getElementById('msg-bell-list');
       if (list) {
-        list.innerHTML = (data.items || []).length
-          ? data.items
+        const items = data.items || [];
+        list.innerHTML = items.length
+          ? items
               .map(
-                (it) => `<button type="button" class="msg-bell-item" data-msg-thread="${it.id}">
+                (it) => `<button type="button" class="msg-bell-item${it.unread ? ' is-unread' : ''}"
+                    data-notif-key="${esc(it.key)}"
+                    data-notif-kind="${esc(it.kind)}"
+                    data-notif-section="${esc(it.target?.section || '')}"
+                    data-notif-subtab="${esc(it.target?.subtab || '')}"
+                    data-notif-thread="${esc(it.target?.threadId || '')}"
+                    data-notif-announcement="${esc(it.target?.announcementId || '')}">
                   <span class="msg-bell-item-top">
-                    <strong>${esc(it.subject)}</strong>
-                    <span class="msg-bell-count">${esc(String(it.unreadCount))}</span>
+                    <span class="msg-bell-kind msg-bell-kind-${esc(it.kind)}">${esc(it.label || it.kind)}</span>
+                    ${it.unread ? '<span class="msg-bell-dot" aria-label="unread"></span>' : ''}
                   </span>
-                  <span class="msg-bell-item-meta">${esc(it.lastSender)} &middot; ${esc(
-                    String(it.lastAt || '').slice(0, 16)
-                  )}</span>
-                  <span class="msg-bell-item-body">${esc(it.lastBody)}</span>
+                  <strong class="msg-bell-item-title">${esc(it.title)}</strong>
+                  <span class="msg-bell-item-meta">${esc(it.meta || '')}</span>
+                  ${it.body ? `<span class="msg-bell-item-body">${esc(it.body)}</span>` : ''}
                 </button>`
               )
               .join('')
-          : '<div class="msg-bell-empty">You are all caught up. No new messages.</div>';
+          : '<div class="msg-bell-empty">You are all caught up. No new notifications.</div>';
       }
     } catch (_) {
       // bell failures must never break the dashboard
     }
+  }
+
+  async function markNotificationRead(dataset) {
+    const kind = dataset.notifKind;
+    const id = dataset.notifThread || dataset.notifAnnouncement || '';
+    if (!kind || !id) return;
+    try {
+      await api('/api/notifications/read', { method: 'POST', body: { kind, id: Number(id) } });
+    } catch (_) {
+      // marking a notification read is best effort
+    }
+  }
+
+  async function handleNotificationClick(dataset) {
+    closeMessageBell();
+
+    if (dataset.notifKind === 'message') {
+      openMessagesSection(dataset.notifThread ? Number(dataset.notifThread) : null);
+      return;
+    }
+
+    await markNotificationRead(dataset);
+
+    const section = dataset.notifSection;
+    if (!section) return;
+    const navBtn = document.querySelector(`.nav-btn[data-section="${section}"]`);
+    if (navBtn) {
+      navBtn.click();
+    } else {
+      activateSection(section, navSectionHandler);
+    }
+
+    // Role dashboards that own sub-tabs (for example student join proposals)
+    // listen for this event and open the right sub-tab themselves.
+    if (dataset.notifSubtab) {
+      window.dispatchEvent(
+        new CustomEvent('sms:notification-open', {
+          detail: { section, subtab: dataset.notifSubtab },
+        })
+      );
+    }
+
+    refreshMessageBell();
   }
 
   function closeMessageBell() {
@@ -2322,7 +2374,7 @@ window.SMS = (() => {
 
     document.getElementById('msg-bell-read-all')?.addEventListener('click', async () => {
       try {
-        const res = await api('/api/messages/read-all', { method: 'POST' });
+        const res = await api('/api/notifications/read-all', { method: 'POST' });
         toast(res.message || 'Notifications cleared.', 'success');
         await refreshMessageBell();
         if (typeof window.refreshMessages === 'function') await window.refreshMessages();
@@ -2334,9 +2386,9 @@ window.SMS = (() => {
     document.getElementById('msg-bell-open')?.addEventListener('click', () => openMessagesSection(null));
 
     document.getElementById('msg-bell-list')?.addEventListener('click', (e) => {
-      const item = e.target.closest('[data-msg-thread]');
+      const item = e.target.closest('[data-notif-key]');
       if (!item) return;
-      openMessagesSection(Number(item.dataset.msgThread));
+      handleNotificationClick(item.dataset);
     });
 
     refreshMessageBell();

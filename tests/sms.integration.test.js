@@ -1810,7 +1810,7 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
   // Every dashboard includes Show/Hide Menu button, modern action tiles & clean v3.x assets
   for (const html of [saHtml, tcHtml, stHtml, fnHtml]) {
     assert.match(html, /id="mobile-menu-btn"/);
-    assert.match(html, /\?v=3\.20/);
+    assert.match(html, /\?v=3\.21/);
     assert.match(html, /class="action-tile-grid"/);
     assert.doesNotMatch(html, /Hide Figures/i);
     assert.doesNotMatch(html, /Audit Log/i);
@@ -3250,7 +3250,8 @@ test('28. Messaging & notification bell: Superadmin to everyone, teacher to clas
   }
 
   const common = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'js', 'common.js'), 'utf8');
-  assert.match(common, /\/api\/messages\/unread/);
+  assert.match(common, /\/api\/notifications/, 'the bell must read the unified notification feed');
+  assert.match(common, /\/api\/notifications\/read-all/);
   assert.match(common, /initMessageBell/);
   assert.match(common, /initMessaging/);
   assert.match(common, /msg-bell-panel/);
@@ -3996,4 +3997,129 @@ test('32. Staff directory lists only teaching and financial staff, searches, and
   // ---------- STATUS FILTER ----------
   const activeOnly = await admin.request('/api/superadmin/staff?status=active');
   assert.ok(activeOnly.json.staff.every((s) => s.status === 'active'));
+});
+
+test('33. Notification bell carries announcements, registrations and messages for every role', async () => {
+  const admin = new SessionClient();
+  await admin.login('admin@school.edu.gh', 'Admin@2026!');
+  const teacher = new SessionClient();
+  await teacher.login('kofi.mensah@school.edu.gh', 'Teacher@2026!');
+  const student = new SessionClient();
+  await student.login('kwame.asante@student.school.edu.gh', 'Student@2026!');
+  const finance = new SessionClient();
+  await finance.login('finance@school.edu.gh', 'Finance@2026!');
+  const anonymous = new SessionClient();
+
+  // The bell requires a signed-in session
+  const denied = await anonymous.request('/api/notifications');
+  assert.equal(denied.status, 401, 'the notification feed must never be public');
+
+  // A fresh announcement addressed to everyone
+  const published = await admin.request('/api/superadmin/announcements', {
+    method: 'POST',
+    body: {
+      title: 'Bell Check Assembly',
+      body: 'Everyone should assemble in the hall at 7:45am tomorrow.',
+      audience: 'all',
+      priority: 'normal',
+    },
+  });
+  assert.equal(published.status, 201);
+  const announcementId = published.json.id;
+
+  for (const [role, client] of [
+    ['teacher', teacher],
+    ['student', student],
+    ['finance', finance],
+    ['admin', admin],
+  ]) {
+    const feed = (await client.request('/api/notifications')).json;
+    const notice = (feed.items || []).find(
+      (i) => i.kind === 'announcement' && i.target?.announcementId === announcementId
+    );
+    assert.ok(notice, `${role} bell must show the new announcement`);
+    assert.equal(notice.title, 'Bell Check Assembly');
+    assert.equal(notice.label, 'Announcement');
+    assert.equal(notice.target.section, 'announcements', 'clicking it opens the Announcements tab');
+    // The author already knows their own notice, so it is not counted as unread for them
+    assert.equal(
+      notice.unread,
+      role === 'admin' ? false : true,
+      `${role} unread flag must be correct for the new announcement`
+    );
+  }
+
+  // The Superadmin sees pending student join proposals in the same feed
+  const publicClient = new SessionClient();
+  await publicClient.request('/api/auth/session');
+  const classes = (await admin.request('/api/superadmin/academic')).json;
+  const firstClassId = (classes.classes || [])[0]?.id;
+  assert.ok(firstClassId, 'the school needs at least one class for the join proposal');
+  const proposal = await publicClient.request('/api/auth/register-student', {
+    method: 'POST',
+    body: {
+      firstName: 'Bell',
+      lastName: 'Applicant',
+      email: 'bell.applicant@student.school.edu.gh',
+      requestedClassId: firstClassId,
+      gender: 'Male',
+      guardianPhone: '+233 24 900 4455',
+      password: 'Bell#Student2026!',
+      acceptTerms: true,
+    },
+  });
+  assert.equal(proposal.status, 201);
+
+  const adminFeed = (await admin.request('/api/notifications')).json;
+  const registrationNotice = (adminFeed.items || []).find((i) => i.kind === 'registration');
+  assert.ok(registrationNotice, 'new student registrations must appear in the bell');
+  assert.match(registrationNotice.title, /Bell Applicant/);
+  assert.equal(registrationNotice.target.section, 'students');
+  assert.equal(registrationNotice.target.subtab, 'stu-proposals');
+
+  // A student never sees registration approvals
+  const studentFeed = (await student.request('/api/notifications')).json;
+  assert.ok(
+    !(studentFeed.items || []).some((i) => i.kind === 'registration'),
+    'students must not see registration approvals'
+  );
+
+  // Reading one announcement clears only that announcement
+  const beforeRead = (await teacher.request('/api/notifications')).json;
+  const teacherAnnouncements = (beforeRead.items || []).filter((i) => i.kind === 'announcement');
+  const unreadBefore = teacherAnnouncements.filter((i) => i.unread).length;
+  assert.ok(unreadBefore >= 1);
+
+  const readOne = await teacher.request('/api/notifications/read', {
+    method: 'POST',
+    body: { kind: 'announcement', id: announcementId },
+  });
+  assert.equal(readOne.status, 200);
+
+  const afterRead = (await teacher.request('/api/notifications')).json;
+  const stillUnread = (afterRead.items || []).filter(
+    (i) => i.kind === 'announcement' && i.unread && i.target?.announcementId === announcementId
+  );
+  assert.equal(stillUnread.length, 0, 'a read announcement must leave the unread set');
+
+  // Mark all read clears every announcement and message from the badge
+  await teacher.request('/api/notifications/read-all', { method: 'POST' });
+  const cleared = (await teacher.request('/api/notifications')).json;
+  assert.equal(
+    (cleared.items || []).filter((i) => i.kind === 'announcement' && i.unread).length,
+    0,
+    'mark-all-read must clear every announcement'
+  );
+  assert.equal(
+    (cleared.items || []).filter((i) => i.kind === 'message').length,
+    0,
+    'mark-all-read must clear every unread conversation'
+  );
+
+  // Unknown / malformed read requests are rejected
+  const badRead = await teacher.request('/api/notifications/read', {
+    method: 'POST',
+    body: { kind: '', id: 0 },
+  });
+  assert.equal(badRead.status, 400);
 });

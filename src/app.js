@@ -29,6 +29,7 @@ const studentRoutes = require('./routes/student.routes');
 const financialRoutes = require('./routes/financial.routes');
 const calendarRoutes = require('./routes/calendar.routes');
 const messageRoutes = require('./routes/message.routes');
+const notificationRoutes = require('./routes/notification.routes');
 const paystackService = require('./services/paystack.service');
 const courseworkService = require('./services/coursework.service');
 const profileController = require('./controllers/profile.controller');
@@ -246,6 +247,7 @@ function createApp() {
 
   // Internal messaging & the topbar notification bell (all four roles)
   app.use('/api/messages', messageRoutes);
+  app.use('/api/notifications', notificationRoutes);
 
   // Non-reflecting 404 handler (never echoes arbitrary URLs back into responses)
   app.use((_req, _res, next) => {
