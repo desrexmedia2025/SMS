@@ -1540,6 +1540,153 @@ async function deleteAnnouncement({ announcementId, actor, ipAddress }) {
   return { message: 'Announcement deleted.' };
 }
 
+// ---------------- STAFF DIRECTORY (TEACHERS + FINANCIAL STAFF) ----------------
+// A single, searchable list of everyone who works at the school: teaching staff
+// (who also have a `teachers` record) and Financial Officers (portal accounts
+// with the `financial` role). Students and Superadmins are never included.
+async function listStaffDirectory(query = {}) {
+  const search = String(query.search || '').trim().toLowerCase();
+  const roleFilter = String(query.role || '').trim().toLowerCase();
+  const statusFilter = String(query.status || '').trim().toLowerCase();
+
+  const [teacherRows, subjectRows, assignmentRows, financialRows] = await Promise.all([
+    db.query(
+      `SELECT
+         t.id AS teacher_id, t.user_id, t.staff_number, t.first_name, t.last_name,
+         t.qualification, t.specialization, t.department, t.hire_date,
+         t.status AS record_status,
+         u.username, u.email, u.phone, u.status AS user_status, u.last_login_at
+       FROM teachers t
+       INNER JOIN users u ON u.id = t.user_id
+       ORDER BY t.first_name ASC, t.last_name ASC`
+    ),
+    db.query(
+      `SELECT ts.teacher_id, s.id, s.code, s.name
+       FROM teacher_subjects ts
+       INNER JOIN subjects s ON s.id = ts.subject_id
+       ORDER BY s.code ASC, s.name ASC`
+    ),
+    db.query(
+      `SELECT DISTINCT ta.teacher_id, c.id AS class_id, c.name AS class_name
+       FROM teacher_assignments ta
+       INNER JOIN classes c ON c.id = ta.class_id
+       ORDER BY c.level_order ASC, c.name ASC`
+    ),
+    db.query(
+      `SELECT
+         u.id AS user_id, u.full_name, u.username, u.email, u.phone,
+         u.status AS user_status, u.last_login_at
+       FROM users u
+       INNER JOIN user_roles ur ON ur.user_id = u.id
+       INNER JOIN roles r ON r.id = ur.role_id
+       WHERE r.slug = 'financial'
+       ORDER BY u.full_name ASC`
+    ),
+  ]);
+
+  const subjectsByTeacher = new Map();
+  for (const row of subjectRows) {
+    const tid = Number(row.teacher_id);
+    if (!subjectsByTeacher.has(tid)) subjectsByTeacher.set(tid, []);
+    subjectsByTeacher.get(tid).push({ id: Number(row.id), code: row.code, name: row.name });
+  }
+  const classesByTeacher = new Map();
+  for (const row of assignmentRows) {
+    const tid = Number(row.teacher_id);
+    if (!classesByTeacher.has(tid)) classesByTeacher.set(tid, []);
+    classesByTeacher.get(tid).push({ id: Number(row.class_id), name: row.class_name });
+  }
+
+  const teachers = teacherRows.map((t) => {
+    const subjects = subjectsByTeacher.get(Number(t.teacher_id)) || [];
+    const classes = classesByTeacher.get(Number(t.teacher_id)) || [];
+    return {
+      kind: 'teacher',
+      role: 'teacher',
+      roleLabel: 'Teacher',
+      teacherId: Number(t.teacher_id),
+      userId: Number(t.user_id),
+      staffNumber: t.staff_number || '',
+      firstName: t.first_name || '',
+      lastName: t.last_name || '',
+      fullName: `${t.first_name || ''} ${t.last_name || ''}`.trim(),
+      username: t.username || '',
+      email: t.email || '',
+      phone: t.phone || '',
+      qualification: t.qualification || '',
+      specialization: t.specialization || '',
+      department: t.department || '',
+      hireDate: t.hire_date || '',
+      status: t.user_status || t.record_status || 'active',
+      lastLoginAt: t.last_login_at || null,
+      subjects,
+      subjectIds: subjects.map((s) => s.id),
+      classes,
+    };
+  });
+
+  const financial = financialRows.map((u) => ({
+    kind: 'financial',
+    role: 'financial',
+    roleLabel: 'Financial Officer',
+    teacherId: null,
+    userId: Number(u.user_id),
+    staffNumber: '',
+    firstName: String(u.full_name || '').split(' ')[0] || '',
+    lastName: String(u.full_name || '').split(' ').slice(1).join(' '),
+    fullName: u.full_name || '',
+    username: u.username || '',
+    email: u.email || '',
+    phone: u.phone || '',
+    qualification: '',
+    specialization: '',
+    department: 'Finance',
+    hireDate: '',
+    status: u.user_status || 'active',
+    lastLoginAt: u.last_login_at || null,
+    subjects: [],
+    subjectIds: [],
+    classes: [],
+  }));
+
+  let staff = roleFilter === 'financial' ? financial : roleFilter === 'teacher' ? teachers : [...teachers, ...financial];
+
+  if (statusFilter) {
+    staff = staff.filter((s) => String(s.status || '').toLowerCase() === statusFilter);
+  }
+
+  if (search) {
+    staff = staff.filter((s) => {
+      const haystack = [
+        s.staffNumber,
+        s.fullName,
+        s.email,
+        s.phone,
+        s.username,
+        s.department,
+        s.specialization,
+        s.qualification,
+        (s.subjects || []).map((sub) => `${sub.code || ''} ${sub.name || ''}`).join(' '),
+        (s.classes || []).map((c) => c.name).join(' '),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(search);
+    });
+  }
+
+  return {
+    staff,
+    totals: {
+      all: teachers.length + financial.length,
+      teachers: teachers.length,
+      financial: financial.length,
+      matching: staff.length,
+    },
+  };
+}
+
 async function updateSchoolSettings(payload, actor, ipAddress) {
   const resolvedCurr = resolveCurrency(payload.currencyCode, payload.currencySymbol);
   const current = await db.get(
@@ -2379,6 +2526,7 @@ module.exports = {
   createClass,
   createSubject,
   listTeachers,
+  listStaffDirectory,
   createTeacher,
   updateTeacherSubjects,
   assignTeacher,

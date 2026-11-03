@@ -1153,7 +1153,7 @@
   });
 
   // ---- Teachers ----
-  function __openTeacherEditorModal(teacher) {
+  function openTeacherEditorModal(teacher) {
     document.getElementById('edit-teacher-id').value = String(teacher.id);
     document.getElementById('edit-teacher-modal-title').textContent =
       `Edit Teacher — ${teacher.first_name} ${teacher.last_name}`;
@@ -1176,7 +1176,7 @@
     const btn = e.target.closest('[data-edit-tch]');
     if (!btn) return;
     const teacher = teachersCache.find((t) => Number(t.id) === Number(btn.dataset.editTch));
-    if (teacher) __openTeacherEditorModal(teacher);
+    if (teacher) openTeacherEditorModal(teacher);
   });
 
   document.getElementById('edit-teacher-form').addEventListener('submit', async (e) => {
@@ -1206,6 +1206,7 @@
       closeRecordModal('edit-teacher-modal');
       toast(res.message || 'Teacher record updated.', 'success');
       await loadAcademicAndTeachers();
+      await refreshStaffIfOpen();
     } catch (error) {
       err.textContent = error.message;
       toast(error.message, 'error');
@@ -1215,7 +1216,7 @@
   });
 
   // ---- Staff / user accounts ----
-  function __openUserEditorModal(u) {
+  function openUserEditorModal(u) {
     document.getElementById('edit-user-id').value = String(u.id);
     document.getElementById('edit-user-modal-title').textContent = `Edit Account — ${u.full_name}`;
     document.getElementById('edit-user-full-name').value = u.full_name || '';
@@ -1229,7 +1230,7 @@
     openRecordModal('edit-user-modal');
   }
 
-  async function __resolveUserForEdit(userId, fallbackSearch = '') {
+  async function resolveUserForEdit(userId, fallbackSearch = '') {
     let u = usersCache.find((x) => Number(x.id) === Number(userId));
     if (u) return u;
     const res = await api(`/api/superadmin/users?search=${encodeURIComponent(fallbackSearch)}`);
@@ -1245,7 +1246,7 @@
     let u;
     try {
       const emailCell = btn.closest('tr')?.children[1]?.textContent?.trim() || '';
-      u = await __resolveUserForEdit(userId, emailCell);
+      u = await resolveUserForEdit(userId, emailCell);
     } catch (error) {
       toast(error.message, 'error');
       return;
@@ -1254,7 +1255,7 @@
       toast('Account could not be loaded.', 'error');
       return;
     }
-    __openUserEditorModal(u);
+    openUserEditorModal(u);
   });
 
   document.getElementById('edit-user-form').addEventListener('submit', async (e) => {
@@ -1281,12 +1282,194 @@
       toast(res.message || 'Staff account updated.', 'success');
       await loadUsers();
       await loadAcademicAndTeachers();
+      await refreshStaffIfOpen();
     } catch (error) {
       err.textContent = error.message;
       toast(error.message, 'error');
     } finally {
       btn.disabled = false;
     }
+  });
+
+  // ---------------- STAFF DIRECTORY (TEACHERS + FINANCIAL STAFF) ----------------
+  let staffCache = [];
+
+  function staffInitials(name) {
+    return String(name || '?')
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0].toUpperCase())
+      .join('');
+  }
+
+  function renderStaffSummary(totals = {}) {
+    const host = document.getElementById('staff-summary');
+    if (!host) return;
+    host.innerHTML = [
+      SMS.kpiCard({
+        label: 'Total Staff',
+        value: String(totals.all || 0),
+        sub: 'Teachers and Financial staff',
+        icon: 'users',
+        tone: 'blue',
+      }),
+      SMS.kpiCard({
+        label: 'Teachers',
+        value: String(totals.teachers || 0),
+        sub: 'Teaching staff',
+        icon: 'graduation',
+        tone: 'teal',
+      }),
+      SMS.kpiCard({
+        label: 'Financial Staff',
+        value: String(totals.financial || 0),
+        sub: 'Finance office accounts',
+        icon: 'wallet',
+        tone: 'indigo',
+      }),
+      SMS.kpiCard({
+        label: 'Matching Search',
+        value: String(totals.matching || 0),
+        sub: 'Results in the table below',
+        icon: 'layers',
+        tone: 'sky',
+      }),
+    ].join('');
+  }
+
+  function renderStaffTable(items = []) {
+    const tbody = document.getElementById('staff-tbody');
+    if (!tbody) return;
+    if (!items.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="7" class="empty-state">No staff records match your search.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = items
+      .map((st) => {
+        const subjects = (st.subjects || [])
+          .map((sub) => `<span class="subject-badge-tag">${esc(sub.name)}</span>`)
+          .join('');
+        const classes = (st.classes || [])
+          .map((c) => `<span class="subject-badge-tag">Class: ${esc(c.name)}</span>`)
+          .join('');
+        const detailBits = [
+          st.department ? `Dept: ${esc(st.department)}` : '',
+          st.specialization ? `Specialism: ${esc(st.specialization)}` : '',
+          st.qualification ? esc(st.qualification) : '',
+          st.hireDate ? `Hired: ${esc(st.hireDate)}` : '',
+        ].filter(Boolean);
+        const actionBtn =
+          st.role === 'teacher'
+            ? `<button type="button" class="btn btn-secondary btn-sm" data-edit-tch="${st.teacherId}">Edit</button>`
+            : `<button type="button" class="btn btn-secondary btn-sm" data-edit-user="${st.userId}" data-email="${esc(st.email)}">Edit</button>`;
+
+        return `<tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span class="subject-badge-tag" aria-hidden="true">${esc(staffInitials(st.fullName))}</span>
+              <div>
+                <strong>${esc(st.fullName)}</strong>
+                <div class="feed-item-meta">${esc(st.staffNumber || 'No staff number')}</div>
+              </div>
+            </div>
+          </td>
+          <td><span class="badge ${st.role === 'teacher' ? 'badge-primary' : 'badge-info'}">${esc(st.roleLabel)}</span></td>
+          <td>
+            <div>${esc(st.email || '—')}</div>
+            <div class="feed-item-meta">${esc(st.phone || 'No phone')}</div>
+          </td>
+          <td>
+            ${subjects || classes ? `<div class="subject-badges-wrap">${subjects}${classes}</div>` : '<span class="feed-item-meta">Not assigned</span>'}
+          </td>
+          <td><div class="feed-item-meta">${detailBits.length ? detailBits.join(' &middot; ') : 'No extra details'}</div></td>
+          <td>${statusBadge(st.status)}</td>
+          <td>${actionBtn}</td>
+        </tr>`;
+      })
+      .join('');
+  }
+
+  async function loadStaff() {
+    const search = document.getElementById('staff-search-input')?.value.trim() || '';
+    const role = document.getElementById('staff-role-filter')?.value || '';
+    const status = document.getElementById('staff-status-filter')?.value || '';
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (role) params.set('role', role);
+    if (status) params.set('status', status);
+
+    const data = await api(`/api/superadmin/staff?${params.toString()}`);
+    staffCache = data.staff || [];
+    renderStaffSummary(data.totals || {});
+    renderStaffTable(staffCache);
+  }
+
+  async function refreshStaffIfOpen() {
+    const section = document.getElementById('sec-staff');
+    if (section && !section.classList.contains('hidden')) await loadStaff();
+  }
+
+  document.getElementById('staff-tbody').addEventListener('click', async (e) => {
+    const tchBtn = e.target.closest('[data-edit-tch]');
+    if (tchBtn) {
+      const teacherId = Number(tchBtn.dataset.editTch);
+      let teacher = teachersCache.find((t) => Number(t.id) === teacherId);
+      try {
+        if (!teacher) {
+          await loadAcademicAndTeachers();
+          teacher = teachersCache.find((t) => Number(t.id) === teacherId);
+        }
+      } catch (error) {
+        toast(error.message, 'error');
+        return;
+      }
+      if (!teacher) {
+        toast('Teacher record could not be loaded.', 'error');
+        return;
+      }
+      openTeacherEditorModal(teacher);
+      return;
+    }
+
+    const usrBtn = e.target.closest('[data-edit-user]');
+    if (usrBtn) {
+      let u;
+      try {
+        u = await resolveUserForEdit(usrBtn.dataset.editUser, usrBtn.dataset.email || '');
+      } catch (error) {
+        toast(error.message, 'error');
+        return;
+      }
+      if (!u) {
+        toast('Account could not be loaded.', 'error');
+        return;
+      }
+      openUserEditorModal(u);
+    }
+  });
+
+  document.getElementById('staff-search-btn')?.addEventListener('click', () => {
+    loadStaff().catch((err) => toast(err.message, 'error'));
+  });
+  document.getElementById('staff-search-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      loadStaff().catch((err) => toast(err.message, 'error'));
+    }
+  });
+  document.getElementById('staff-clear-btn')?.addEventListener('click', () => {
+    const input = document.getElementById('staff-search-input');
+    if (input) input.value = '';
+    loadStaff().catch((err) => toast(err.message, 'error'));
+  });
+  document.getElementById('staff-role-filter')?.addEventListener('change', () => {
+    loadStaff().catch((err) => toast(err.message, 'error'));
+  });
+  document.getElementById('staff-status-filter')?.addEventListener('change', () => {
+    loadStaff().catch((err) => toast(err.message, 'error'));
   });
 
   // ---------------- SCHOOL-WIDE CALENDAR EVENTS ----------------
@@ -1633,6 +1816,7 @@
     ) {
       await loadAcademicAndTeachers();
     }
+    if (sec === 'staff') await loadStaff();
     if (sec === 'students') {
       await loadAcademicAndTeachers();
       await loadStudents();

@@ -645,6 +645,15 @@ async function deleteAnnouncement(req, res) {
   return res.json({ ok: true, ...data });
 }
 
+async function listStaff(req, res) {
+  const data = await superadminService.listStaffDirectory({
+    search: optionalString(req.query.search, 120) || '',
+    role: optionalString(req.query.role, 30) || '',
+    status: optionalString(req.query.status, 30) || '',
+  });
+  return res.json({ ok: true, ...data });
+}
+
 async function getSettings(_req, res) {
   const data = await systemModel.getSchoolContext();
   return res.json({ ok: true, ...data });
@@ -893,6 +902,7 @@ module.exports = {
   createAnnouncement,
   updateAnnouncement,
   deleteAnnouncement,
+  listStaff,
   getSettings,
   updateSettings,
   switchCurrency,

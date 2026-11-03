@@ -41,6 +41,7 @@ router.post('/academic/activate', verifyCsrfToken, ctrl.activatePeriod);
 router.post('/academic/classes', verifyCsrfToken, ctrl.createClass);
 router.post('/academic/subjects', verifyCsrfToken, ctrl.createSubject);
 
+router.get('/staff', ctrl.listStaff);
 router.get('/teachers', ctrl.listTeachers);
 router.post('/teachers', verifyCsrfToken, ctrl.createTeacher);
 router.put('/teachers/:id/subjects', verifyCsrfToken, ctrl.updateTeacherSubjects);

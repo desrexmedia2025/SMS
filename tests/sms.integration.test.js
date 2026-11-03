@@ -3899,3 +3899,101 @@ test('31. Announcements reach every receiver, and both authors can edit and dele
   assert.ok(!hasTitle(feed.student, 'Class Test Monday'), 'the deleted class notice must disappear');
   assert.ok(!hasTitle(feed.teacher, 'Class Test Monday'), 'the deleted class notice must disappear');
 });
+
+test('32. Staff directory lists only teaching and financial staff, searches, and applies edits', async () => {
+  const admin = new SessionClient();
+  await admin.login('admin@school.edu.gh', 'Admin@2026!');
+  const teacher = new SessionClient();
+  await teacher.login('kofi.mensah@school.edu.gh', 'Teacher@2026!');
+
+  // Only the Superadmin may read the staff directory
+  const denied = await teacher.request('/api/superadmin/staff');
+  assert.equal(denied.status, 403, 'teachers cannot read the staff directory');
+
+  const list = await admin.request('/api/superadmin/staff');
+  assert.equal(list.status, 200);
+  const staff = list.json.staff || [];
+  assert.ok(staff.length >= 3, 'the directory must contain the demo staff members');
+  assert.ok(
+    staff.every((s) => s.role === 'teacher' || s.role === 'financial'),
+    'students and superadmins must never appear in the staff directory'
+  );
+  assert.ok(staff.some((s) => s.role === 'teacher'), 'teachers belong in the staff directory');
+  assert.ok(staff.some((s) => s.role === 'financial'), 'financial officers belong in the staff directory');
+  assert.equal(list.json.totals.all, list.json.totals.teachers + list.json.totals.financial);
+
+  // ---------- SEARCH ----------
+  const byName = await admin.request(`/api/superadmin/staff?search=${encodeURIComponent('Kofi')}`);
+  assert.ok(byName.json.staff.length >= 1, 'searching by name must find the teacher');
+  assert.ok((byName.json.totals.matching || 0) >= 1);
+
+  const teacherRow = staff.find((s) => s.role === 'teacher' && s.staffNumber);
+  assert.ok(teacherRow, 'the demo teacher needs a staff number');
+  const byNumber = await admin.request(
+    `/api/superadmin/staff?search=${encodeURIComponent(teacherRow.staffNumber)}`
+  );
+  assert.ok(
+    byNumber.json.staff.some((s) => s.staffNumber === teacherRow.staffNumber),
+    'searching by staff number must find the teacher'
+  );
+
+  const noMatch = await admin.request(
+    `/api/superadmin/staff?search=${encodeURIComponent('zzz-no-such-person-zzz')}`
+  );
+  assert.equal(noMatch.json.staff.length, 0);
+
+  // ---------- ROLE FILTER ----------
+  const onlyFinance = await admin.request('/api/superadmin/staff?role=financial');
+  assert.ok(onlyFinance.json.staff.length >= 1);
+  assert.ok(onlyFinance.json.staff.every((s) => s.role === 'financial'));
+  const onlyTeachers = await admin.request('/api/superadmin/staff?role=teacher');
+  assert.ok(onlyTeachers.json.staff.length >= 1);
+  assert.ok(onlyTeachers.json.staff.every((s) => s.role === 'teacher'));
+
+  // ---------- EDIT A TEACHER THROUGH THE DIRECTORY ----------
+  const teacherPatch = await admin.request(`/api/superadmin/teachers/${teacherRow.teacherId}`, {
+    method: 'PATCH',
+    body: {
+      firstName: teacherRow.firstName,
+      lastName: teacherRow.lastName,
+      email: teacherRow.email,
+      phone: '+233 24 000 0001',
+      department: 'Science Department',
+    },
+  });
+  assert.equal(teacherPatch.status, 200);
+  const afterTeacherEdit = await admin.request(
+    `/api/superadmin/staff?search=${encodeURIComponent(teacherRow.staffNumber)}`
+  );
+  const updatedTeacher = afterTeacherEdit.json.staff.find(
+    (s) => s.staffNumber === teacherRow.staffNumber
+  );
+  assert.ok(updatedTeacher);
+  assert.equal(updatedTeacher.phone, '+233 24 000 0001');
+  assert.equal(updatedTeacher.department, 'Science Department');
+
+  // ---------- EDIT A FINANCIAL OFFICER THROUGH THE DIRECTORY ----------
+  const financeRow = staff.find((s) => s.role === 'financial');
+  assert.ok(financeRow, 'the demo financial officer must exist');
+  const financePatch = await admin.request(`/api/superadmin/users/${financeRow.userId}/profile`, {
+    method: 'PATCH',
+    body: {
+      fullName: financeRow.fullName.trim(),
+      username: financeRow.username,
+      email: financeRow.email,
+      phone: '+233 20 111 2222',
+      role: 'financial',
+      status: 'active',
+    },
+  });
+  assert.equal(financePatch.status, 200);
+  const afterFinanceEdit = await admin.request('/api/superadmin/staff?role=financial');
+  const updatedFinance = afterFinanceEdit.json.staff.find((s) => s.userId === financeRow.userId);
+  assert.ok(updatedFinance);
+  assert.equal(updatedFinance.phone, '+233 20 111 2222');
+  assert.equal(updatedFinance.role, 'financial');
+
+  // ---------- STATUS FILTER ----------
+  const activeOnly = await admin.request('/api/superadmin/staff?status=active');
+  assert.ok(activeOnly.json.staff.every((s) => s.status === 'active'));
+});

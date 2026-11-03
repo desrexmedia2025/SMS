@@ -31,6 +31,9 @@
         <button class="nav-btn" data-section="teachers" data-title="Teachers List">
           <span class="nav-item-label">Teachers List</span>
         </button>
+        <button class="nav-btn" data-section="staff" data-title="Staff">
+          <span class="nav-item-label">Staff</span>
+        </button>
         <button class="nav-btn" data-section="teacher-assign" data-title="Assign Class &amp; Subject">
           <span class="nav-item-label">Assign Class &amp; Subject</span>
         </button>
@@ -548,6 +551,55 @@
               <table>
                 <thead><tr><th>Staff #</th><th>Name</th><th>Email</th><th>Subjects Taught</th><th>Status</th><th>Action</th></tr></thead>
                 <tbody id="teachers-list-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3B. STAFF DIRECTORY (TEACHERS + FINANCIAL STAFF) -->
+        <section id="sec-staff" class="module-panel hidden">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Staff Directory</h2>
+                <div class="card-subtitle">Teaching and Financial staff &mdash; search, review and edit their details</div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                <select id="staff-role-filter" style="width:180px;">
+                  <option value="">All Staff</option>
+                  <option value="teacher">Teachers Only</option>
+                  <option value="financial">Financial Staff Only</option>
+                </select>
+                <select id="staff-status-filter" style="width:150px;">
+                  <option value="">Any Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="suspended">Suspended</option>
+                </select>
+                <div class="search-bar">
+                  <input type="search" id="staff-search-input" class="search-bar-input" data-server-search-input data-server-search-btn="staff-search-btn" placeholder="Search name, staff #, email, subject...">
+                  <button type="button" class="btn btn-primary btn-sm" id="staff-search-btn">Search</button>
+                  <button type="button" class="btn btn-secondary btn-sm hidden" id="staff-clear-btn">Clear</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="kpi-grid" id="staff-summary"></div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Staff</th>
+                    <th>Role</th>
+                    <th>Contact</th>
+                    <th>Subjects / Classes</th>
+                    <th>Details</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="staff-tbody"></tbody>
               </table>
             </div>
           </div>
