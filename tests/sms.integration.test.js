@@ -4123,3 +4123,23 @@ test('33. Notification bell carries announcements, registrations and messages fo
   });
   assert.equal(badRead.status, 400);
 });
+
+test('34. Dashboard scripts and stylesheets are never served from a stale browser cache', async () => {
+  const anon = new SessionClient();
+  for (const asset of ['/js/common.js', '/js/superadmin.js', '/css/styles.css']) {
+    const res = await anon.request(asset);
+    assert.equal(res.status, 200, `${asset} must be served`);
+    assert.match(
+      String(res.headers.get('cache-control') || ''),
+      /no-cache/,
+      `${asset} must be revalidated on every load so new dashboard features reach the browser`
+    );
+  }
+
+  // Every dashboard pins its assets to a version, so a release can hard-bust older copies too.
+  for (const view of ['superadmin.html', 'teacher.html', 'student.html', 'financial.html']) {
+    const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'views', view), 'utf8');
+    assert.match(html, /\/js\/common\.js\?v=\d+\.\d+/, `${view} must version its shared script`);
+    assert.match(html, /\/css\/styles\.css\?v=\d+\.\d+/, `${view} must version its stylesheet`);
+  }
+});

@@ -153,13 +153,19 @@ function createApp() {
   app.use(passport.initialize());
   app.use(ensureCsrfToken);
 
-  // Static public assets (CSS & JS only — dashboard HTML views are strictly route-protected in src/views/)
+  // Static public assets (CSS & JS only — dashboard HTML views are strictly route-protected in src/views/).
+  // Scripts and stylesheets are revalidated on every load so a dashboard can never keep running an
+  // older cached bundle (a stale bundle used to leave new tabs such as Staff blank until a hard refresh).
   app.use(
     express.static(path.join(__dirname, 'public'), {
       dotfiles: 'deny',
       index: false,
       etag: true,
-      maxAge: env.isProduction ? '1h' : 0,
+      setHeaders(res, filePath) {
+        if (/\.(js|css)$/i.test(filePath)) {
+          res.setHeader('Cache-Control', 'no-cache');
+        }
+      },
     })
   );
 
