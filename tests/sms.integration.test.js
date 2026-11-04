@@ -1250,10 +1250,23 @@ test('16. Superadmin Custom Grading Scale Management & Clean Sub-Tabbed Workspac
   assert.match(htmlRes.text, /data-section="teacher-register"/);
   assert.match(htmlRes.text, /data-section="teachers"/);
   assert.match(htmlRes.text, /data-section="teacher-assign"/);
-  assert.match(htmlRes.text, /data-tab-group="finance"/);
+  assert.match(htmlRes.text, /data-section="finance"/);
+  assert.match(htmlRes.text, /data-section="paystack"/);
+  assert.match(htmlRes.text, /data-tab-group="paystack"/);
+  assert.match(htmlRes.text, /data-section="profile"/);
   assert.doesNotMatch(htmlRes.text, /Security Audit Logs/i);
   assert.doesNotMatch(htmlRes.text, /Database Backups/i);
   assert.doesNotMatch(htmlRes.text, /Hide Figures/i);
+
+  // Fees & Paystack live in separate sections, and every dashboard carries a Profile tab
+  assert.match(htmlRes.text, /id="sec-finance"/);
+  assert.match(htmlRes.text, /id="sec-paystack"/);
+  assert.match(htmlRes.text, /id="sec-profile"/);
+  for (const view of ['teacher', 'student', 'financial']) {
+    const viewHtml = fs.readFileSync(path.join(process.cwd(), 'src', 'views', `${view}.html`), 'utf8');
+    assert.match(viewHtml, /data-section="profile"/, `${view} dashboard needs a Profile tab`);
+    assert.match(viewHtml, /id="sec-profile"/, `${view} dashboard needs a Profile section`);
+  }
 
   // Create and remove a custom grading band
   const createBand = await admin.request('/api/superadmin/exams/grading-scales', {

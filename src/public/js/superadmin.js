@@ -7,6 +7,13 @@
   SMS.initMessageBell();
   SMS.initMessaging();
   SMS.initProfileAvatar();
+  SMS.initProfileAvatar({
+    imgId: 'prof-avatar-img',
+    initialsId: 'prof-avatar-initials',
+    changeId: 'prof-photo-btn',
+    removeId: 'prof-photo-remove-btn',
+    inputId: 'prof-avatar-input',
+  });
   document.getElementById('logout-btn').addEventListener('click', SMS.logout);
 
   const user = SMS.getUser();
@@ -911,13 +918,6 @@
         tone: 'teal',
       }),
       SMS.kpiCard({
-        label: 'Paystack Collected',
-        value: money(m.paystackCollected || 0),
-        sub: 'Online gateway receipts',
-        icon: 'trending',
-        tone: 'indigo',
-      }),
-      SMS.kpiCard({
         label: 'Outstanding Balance',
         value: money(m.totalOutstanding),
         sub: 'Unpaid student fees',
@@ -978,6 +978,35 @@
           </tr>`
         )
         .join('') || '<tr><td colspan="7" class="empty-state">No payments recorded yet.</td></tr>';
+
+    const transfers = trfData.items || [];
+    const transfersSent = transfers.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    const psKpis = document.getElementById('sa-ps-kpis');
+    if (psKpis) {
+      psKpis.innerHTML = [
+        SMS.kpiCard({
+          label: 'Paystack Collected',
+          value: money(m.paystackCollected || 0),
+          sub: 'Online gateway receipts',
+          icon: 'trending',
+          tone: 'indigo',
+        }),
+        SMS.kpiCard({
+          label: 'Transfers Sent',
+          value: money(transfersSent),
+          sub: `${transfers.length} outbound transfer(s)`,
+          icon: 'wallet',
+          tone: 'blue',
+        }),
+        SMS.kpiCard({
+          label: 'Gateway',
+          value: fin.paystack?.enabled === false ? 'Off' : 'On',
+          sub: fin.paystack?.enabled === false ? 'Paystack is disabled in Settings' : 'Receiving online payments',
+          icon: 'check',
+          tone: fin.paystack?.enabled === false ? 'sky' : 'teal',
+        }),
+      ].join('');
+    }
 
     document.getElementById('sa-fin-transfers-tbody').innerHTML =
       (trfData.items || [])
@@ -1847,6 +1876,37 @@
     }
   });
 
+  // ---------------- PROFILE ----------------
+  function renderAdminProfile() {
+    const user = SMS.getUser();
+    const host = document.getElementById('sa-profile-details');
+    if (!host || !user) return;
+    host.innerHTML = `
+      <div class="profile-kv-grid">
+        <div class="profile-kv-row"><span class="profile-kv-label">Name</span><strong>${esc(user.fullName)}</strong></div>
+        <div class="profile-kv-row"><span class="profile-kv-label">Role</span><span>${esc(user.roleName || user.role || 'Administrator')}</span></div>
+        <div class="profile-kv-row"><span class="profile-kv-label">Email</span><span>${esc(user.email)}</span></div>
+        <div class="profile-kv-row"><span class="profile-kv-label">Username</span><code>${esc(user.username || '-')}</code></div>
+        <div class="profile-kv-row"><span class="profile-kv-label">Phone</span><span>${esc(user.phone || 'Not set')}</span></div>
+        <div class="profile-kv-row"><span class="profile-kv-label">Sign-in</span><span>${esc(
+          user.authProvider === 'google' ? 'Google account' : 'Email & password'
+        )}${user.googleLinked ? ' (Google linked)' : ''}</span></div>
+      </div>
+    `;
+  }
+
+  document.getElementById('sa-pw-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = Object.fromEntries(new FormData(e.target).entries());
+    try {
+      const res = await api('/api/auth/password/change', { method: 'POST', body: fd });
+      toast(res.message || 'Password updated.', 'success');
+      e.target.reset();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+
   // ---------------- NAVIGATION ----------------
   async function loadSectionData(sec) {
     if (sec === 'overview') await loadOverview();
@@ -1876,7 +1936,8 @@
       await loadAcademicAndTeachers();
       await loadTimetable();
     }
-    if (sec === 'finance') await loadFinance();
+    if (sec === 'finance' || sec === 'paystack') await loadFinance();
+    if (sec === 'profile') renderAdminProfile();
     if (sec === 'users') {
       await loadAcademicAndTeachers();
       await loadUsers();
@@ -1923,7 +1984,10 @@
   // Topbar currency switcher
   SMS.bindCurrencySelect('sa-currency-switcher', '/api/superadmin/settings/currency', async () => {
     await loadOverview();
-    if (!document.getElementById('sec-finance').classList.contains('hidden')) await loadFinance();
+    const finOpen = ['sec-finance', 'sec-paystack'].some(
+      (id) => !document.getElementById(id).classList.contains('hidden')
+    );
+    if (finOpen) await loadFinance();
   });
 
   // Classes & Subjects forms

@@ -60,8 +60,11 @@
         </button>
 
         <div class="nav-section-label">Operations</div>
-        <button class="nav-btn" data-section="finance" data-title="Finance &amp; Paystack">
-          <span class="nav-item-label">Finance &amp; Paystack</span>
+        <button class="nav-btn" data-section="finance" data-title="Fees">
+          <span class="nav-item-label">Fees</span>
+        </button>
+        <button class="nav-btn" data-section="paystack" data-title="Paystack">
+          <span class="nav-item-label">Paystack</span>
         </button>
         <button class="nav-btn" data-section="users" data-title="Staff Accounts">
           <span class="nav-item-label">Staff Accounts</span>
@@ -71,6 +74,9 @@
         </button>
         <button class="nav-btn" data-section="settings" data-title="Settings">
           <span class="nav-item-label">Settings</span>
+        </button>
+        <button class="nav-btn" data-section="profile" data-title="Profile">
+          <span class="nav-item-label">Profile</span>
         </button>
       </nav>
 
@@ -863,20 +869,11 @@
           </div>
         </section>
 
-        <!-- 6. FINANCE & PAYSTACK -->
+        <!-- 6. FEES -->
         <section id="sec-finance" class="module-panel hidden">
           <div class="kpi-grid" id="sa-fin-kpis"></div>
 
-          <div class="subnav-bar">
-            <div class="subnav-tabs" data-tab-group="finance">
-              <button type="button" class="subtab-btn active" data-subtab="fin-billing">Fees &amp; Billing</button>
-              <button type="button" class="subtab-btn" data-subtab="fin-payments">Paystack Payments &amp; Reversals</button>
-              <button type="button" class="subtab-btn" data-subtab="fin-transfers">Send Transfer</button>
-            </div>
-          </div>
-
-          <!-- Fees & Billing -->
-          <div id="subtab-fin-billing" class="subtab-pane" data-tab-pane="finance">
+          <div id="subtab-fin-billing" class="subtab-pane" data-tab-pane="fees">
             <div class="grid-2">
               <div class="card">
                 <div class="card-header">
@@ -930,9 +927,20 @@
               </div>
             </div>
           </div>
+        </section>
 
-          <!-- Paystack Payments & Reversals -->
-          <div id="subtab-fin-payments" class="subtab-pane hidden" data-tab-pane="finance">
+        <!-- 6B. PAYSTACK (ADMIN ONLY) -->
+        <section id="sec-paystack" class="module-panel hidden">
+          <div class="kpi-grid" id="sa-ps-kpis"></div>
+
+          <div class="subnav-bar">
+            <div class="subnav-tabs" data-tab-group="paystack">
+              <button type="button" class="subtab-btn active" data-subtab="ps-payments">Payments &amp; Reversals</button>
+              <button type="button" class="subtab-btn" data-subtab="ps-transfers">Send Transfer</button>
+            </div>
+          </div>
+
+          <div id="subtab-ps-payments" class="subtab-pane" data-tab-pane="paystack">
             <div class="card">
               <div class="card-header"><h2 class="card-title">Collect Fee via Paystack</h2></div>
               <form id="sa-paystack-init-form" class="form-grid">
@@ -970,8 +978,7 @@
             </div>
           </div>
 
-          <!-- Send Transfer -->
-          <div id="subtab-fin-transfers" class="subtab-pane hidden" data-tab-pane="finance">
+          <div id="subtab-ps-transfers" class="subtab-pane hidden" data-tab-pane="paystack">
             <div class="card">
               <div class="card-header"><h2 class="card-title">Send Outbound Paystack Transfer</h2></div>
               <form id="sa-paystack-transfer-form" class="form-grid">
@@ -1192,6 +1199,42 @@
                 <button class="btn btn-primary" type="submit">Save Settings</button>
               </div>
             </form>
+          </div>
+        </section>
+
+        <!-- PROFILE -->
+        <section id="sec-profile" class="module-panel hidden">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header"><h2 class="card-title">My Account Details</h2></div>
+              <div id="sa-profile-details" style="margin-bottom:16px;"></div>
+              <button type="button" class="btn btn-secondary btn-sm hidden" id="google-link-btn">Link Google Account</button>
+            </div>
+            <div class="card">
+              <div class="card-header"><h2 class="card-title">Profile Photo</h2></div>
+              <div class="profile-photo-card">
+                <span class="profile-avatar profile-avatar-lg" id="prof-avatar">
+                  <img class="profile-avatar-img hidden" id="prof-avatar-img" alt="Profile photo">
+                  <span class="profile-avatar-fallback" id="prof-avatar-initials">AD</span>
+                </span>
+                <div class="profile-photo-meta">
+                  <p class="profile-photo-hint">Upload a JPG, PNG, WEBP or GIF image up to 2 MB. Your photo appears in the side panel session box.</p>
+                  <div class="profile-photo-actions">
+                    <button type="button" class="btn btn-primary btn-sm" id="prof-photo-btn">Upload Photo</button>
+                    <button type="button" class="btn btn-secondary btn-sm hidden" id="prof-photo-remove-btn">Remove Photo</button>
+                  </div>
+                </div>
+              </div>
+              <input type="file" id="prof-avatar-input" class="hidden" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" aria-label="Choose profile photo">
+            </div>
+            <div class="card">
+              <div class="card-header"><h2 class="card-title">Change Password</h2></div>
+              <form id="sa-pw-form">
+                <div class="form-group"><label>Current Password</label><input type="password" name="currentPassword" required></div>
+                <div class="form-group"><label>New Password (min 8 chars)</label><input type="password" name="newPassword" minlength="8" required></div>
+                <button class="btn btn-primary btn-sm" type="submit">Update Password</button>
+              </form>
+            </div>
           </div>
         </section>
 

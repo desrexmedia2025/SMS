@@ -7,6 +7,13 @@
   SMS.initMessageBell();
   SMS.initMessaging();
   SMS.initProfileAvatar();
+  SMS.initProfileAvatar({
+    imgId: 'prof-avatar-img',
+    initialsId: 'prof-avatar-initials',
+    changeId: 'prof-photo-btn',
+    removeId: 'prof-photo-remove-btn',
+    inputId: 'prof-avatar-input',
+  });
   document.getElementById('logout-btn').addEventListener('click', SMS.logout);
   document.getElementById('print-fin-rcp-btn')?.addEventListener('click', () => window.print());
 
@@ -239,8 +246,40 @@
     document.getElementById('fin-receipt-modal').classList.add('open');
   }
 
+  // ---------------- PROFILE ----------------
+  function renderOfficerProfile() {
+    const user = SMS.getUser();
+    const host = document.getElementById('fn-profile-details');
+    if (!host || !user) return;
+    host.innerHTML = `
+      <div class="profile-kv-grid">
+        <div class="profile-kv-row"><span class="profile-kv-label">Name</span><strong>${esc(user.fullName)}</strong></div>
+        <div class="profile-kv-row"><span class="profile-kv-label">Role</span><span>${esc(user.roleName || user.role || 'Financial Officer')}</span></div>
+        <div class="profile-kv-row"><span class="profile-kv-label">Email</span><span>${esc(user.email)}</span></div>
+        <div class="profile-kv-row"><span class="profile-kv-label">Username</span><code>${esc(user.username || '-')}</code></div>
+        <div class="profile-kv-row"><span class="profile-kv-label">Phone</span><span>${esc(user.phone || 'Not set')}</span></div>
+        <div class="profile-kv-row"><span class="profile-kv-label">Sign-in</span><span>${esc(
+          user.authProvider === 'google' ? 'Google account' : 'Email & password'
+        )}${user.googleLinked ? ' (Google linked)' : ''}</span></div>
+      </div>
+    `;
+  }
+
+  document.getElementById('fn-pw-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = Object.fromEntries(new FormData(e.target).entries());
+    try {
+      const res = await api('/api/auth/password/change', { method: 'POST', body: fd });
+      toast(res.message || 'Password updated.', 'success');
+      e.target.reset();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+
   SMS.initNavigation(async (sec) => {
     try {
+      if (sec === 'profile') renderOfficerProfile();
       if (sec === 'overview') await loadOverview();
       if (sec === 'billing') {
         await loadOverview();
