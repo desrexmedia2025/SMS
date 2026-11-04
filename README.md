@@ -32,6 +32,11 @@ Every dashboard includes a responsive **Show Menu / Hide Menu** sidebar toggle a
 - **Teacher** - their own classwork, homework, test and exam deadlines plus the class announcements they published.
 - **Student** - deadlines for their enrolled class (with submitted / not-submitted status), school & class announcements, and their own fee due dates.
 - **Financial** - fee bills falling due and payments received, with no access to academic coursework data.
+- School-wide events published by the Superadmin land on every dashboard in this list, and the calendar re-pulls its month the moment an event is added, edited or deleted (and whenever the Overview tab is opened), so a newly set event is visible straight away instead of after a page reload.
+
+**App Themes**: The sidebar **Theme** picker on every dashboard ships nine palettes - **Light**, **Dark**, **Ocean Glass**, **Midnight Indigo**, **Royal Plum**, **Forest Green**, **Sandstone**, **Slate Grey** and **System** (which follows the operating system's light/dark setting). The choice is saved to the account (`PATCH /api/auth/preferences`) and applied locally, so it follows the user from device to device; the two dark palettes reuse every dark-mode component rule, and unknown values are rejected with `HTTP 400`.
+
+**Fees, Paystack & Profile Tabs**: The Superadmin side panel separates **Fees** (billing: fee items, class/student billing) from **Paystack** (gateway collections, payments & reversals, outbound transfers) instead of one combined screen. Paystack appears only on the Superadmin dashboard - the Student **Fees** tab and the Finance **Payments & Receipts** tab are plain fee screens. Every one of the four dashboards - Superadmin, Teacher, Student and Financial - now has a **Profile** tab with account details, a profile-photo uploader and a change-password form.
 
 ---
 

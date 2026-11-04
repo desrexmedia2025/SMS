@@ -1,5 +1,5 @@
 (async function initFinancialDashboard() {
-  const { esc, money, api, toast, statusBadge, openPaystackCheckout } = window.SMS;
+  const { esc, money, api, toast, statusBadge } = window.SMS;
 
   await SMS.initSession();
   SMS.configureGoogleLinkButton('google-link-btn');
@@ -76,13 +76,6 @@
         sub: `${m.collectionRate}% collected`,
         icon: 'check',
         tone: 'teal',
-      }),
-      SMS.kpiCard({
-        label: 'Paystack Collected',
-        value: money(m.paystackCollected || 0),
-        sub: 'Online gateway receipts',
-        icon: 'trending',
-        tone: 'indigo',
       }),
       SMS.kpiCard({
         label: 'Outstanding Balance',
@@ -167,10 +160,8 @@
           `<option value="${s.student_id}" data-balance="${s.balance}">${esc(s.admission_number)} - ${esc(s.first_name)} ${esc(s.last_name)} (Due: ${money(s.balance)})</option>`
       )
       .join('');
-    ['fin-student-sel', 'psk-student-sel'].forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) el.innerHTML = stuOpts || '<option value="">No students yet</option>';
-    });
+    const stuSel = document.getElementById('fin-student-sel');
+    if (stuSel) stuSel.innerHTML = stuOpts || '<option value="">No students yet</option>';
   }
 
   async function loadAccounts() {
@@ -333,37 +324,6 @@
       const res = await api('/api/financial/assignments', { method: 'POST', body: fd });
       toast(res.message || 'Fee assigned.', 'success');
       await loadOverview();
-    } catch (err) {
-      toast(err.message, 'error');
-    }
-  });
-
-  document.getElementById('paystack-init-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fd = Object.fromEntries(new FormData(e.target).entries());
-    fd.callbackUrl = `${window.location.origin}/dashboard/financial`;
-    try {
-      const res = await api('/api/financial/paystack/initialize', { method: 'POST', body: fd });
-      openPaystackCheckout(res.transaction, {
-        verifyEndpoint: '/api/financial/paystack/verify',
-        onSuccess: async (verified) => {
-          e.target.reset();
-          await loadOverview();
-          if (verified.receiptNumber) await openReceipt(verified.receiptNumber);
-        },
-      });
-    } catch (err) {
-      toast(err.message, 'error');
-    }
-  });
-
-  document.getElementById('fin-transfer-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fd = Object.fromEntries(new FormData(e.target).entries());
-    try {
-      const res = await api('/api/financial/paystack/transfers', { method: 'POST', body: fd });
-      toast(`Transfer sent (${res.transfer.reference}).`, 'success');
-      e.target.reset();
     } catch (err) {
       toast(err.message, 'error');
     }

@@ -2,6 +2,21 @@
 window.SMS = (() => {
   const SESSION_STORAGE_KEY = 'sms_session_token';
   const THEME_STORAGE_KEY = 'sms_theme_pref';
+  // Every palette that ships with the app. Dark palettes resolve through `data-theme`
+  // directly; `system` follows the operating system's light/dark setting.
+  const AVAILABLE_THEMES = ['light', 'dark', 'ocean', 'midnight', 'plum', 'forest', 'sandstone', 'slate'];
+  const THEME_CHOICES = [...AVAILABLE_THEMES, 'system'];
+  const THEME_LABELS = {
+    light: 'Light',
+    dark: 'Dark',
+    ocean: 'Ocean Glass',
+    midnight: 'Midnight Indigo',
+    plum: 'Royal Plum',
+    forest: 'Forest Green',
+    sandstone: 'Sandstone',
+    slate: 'Slate Grey',
+    system: 'System',
+  };
   const LANG_STORAGE_KEY = 'sms_lang_pref';
   let csrfToken = '';
   let sessionToken = '';
@@ -232,12 +247,12 @@ window.SMS = (() => {
         return 'light';
       }
     }
-    if (['light', 'dark', 'ocean'].includes(clean)) return clean;
+    if (AVAILABLE_THEMES.includes(clean)) return clean;
     return 'light';
   }
 
   function applyTheme(pref, { persistLocal = true } = {}) {
-    const normalized = ['light', 'dark', 'ocean', 'system'].includes(String(pref || '').toLowerCase())
+    const normalized = THEME_CHOICES.includes(String(pref || '').toLowerCase())
       ? String(pref).toLowerCase()
       : 'light';
     activeThemePref = normalized;
@@ -909,6 +924,7 @@ window.SMS = (() => {
       p.classList.toggle('hidden', p.id !== `sec-${sec}`);
     });
     if (sec === 'announcements') markAnnouncementsRead();
+    if (sec === 'overview') refreshOverviewCalendar();
     if (onSectionChange) onSectionChange(sec);
   }
 
@@ -2131,6 +2147,24 @@ window.SMS = (() => {
     CAL_EVENT_CACHE.clear();
   }
 
+  // Re-pulls the visible month so newly created school events, announcements,
+  // coursework and fee dates appear on the calendar without a page reload.
+  async function refreshOverviewCalendar(options = {}) {
+    if (!calMountEl || CAL_STATE.year === null || CAL_STATE.month === null) return;
+    if (options.focusDate) {
+      const [fy, fm, fd] = String(options.focusDate).slice(0, 10).split('-').map(Number);
+      if (fy && fm) {
+        CAL_STATE.year = fy;
+        CAL_STATE.month = fm - 1;
+        CAL_STATE.selected = `${String(fy).padStart(4, '0')}-${pad2(fm)}-${pad2(fd || 1)}`;
+      }
+    }
+    if (options.force) clearCalendarCache();
+    await loadCalendarEvents(CAL_STATE.year, CAL_STATE.month);
+    renderCalendar();
+    renderCalendarAgenda();
+  }
+
   // ---------------- PRINTABLE REPORT CARDS ----------------
   function buildReportCardHtml(card, gradingScales = []) {
     const school = card.school || {};
@@ -2639,6 +2673,7 @@ window.SMS = (() => {
     navigateAuthenticated,
     initOverviewCalendar,
     clearCalendarCache,
+    refreshOverviewCalendar,
     initMessageBell,
     initMessaging,
     buildReportCardHtml,

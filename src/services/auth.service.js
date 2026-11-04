@@ -310,7 +310,17 @@ async function changeOwnPassword({ userId, currentPassword, newPassword, current
 }
 
 const CURRENT_TERMS_VERSION = '2026.1';
-const SUPPORTED_THEMES = new Set(['light', 'dark', 'ocean', 'system']);
+const SUPPORTED_THEMES = new Set([
+  'light',
+  'dark',
+  'ocean',
+  'midnight',
+  'plum',
+  'forest',
+  'sandstone',
+  'slate',
+  'system',
+]);
 const SUPPORTED_LANGUAGES = new Set(['en', 'fr', 'es', 'pt', 'tw', 'ar']);
 
 function isTruthyTermsAcceptance(val) {

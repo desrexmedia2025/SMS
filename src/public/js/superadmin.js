@@ -1664,6 +1664,8 @@
       toast(res.message || 'School event saved.', 'success');
       resetSchoolEventForm();
       window.SMS.clearCalendarCache();
+      // Push the new dates onto every dashboard calendar straight away
+      window.SMS.refreshOverviewCalendar({ force: true, focusDate: res.event?.start_date || payload.startDate });
       await loadSchoolEvents();
     } catch (err) {
       toast(err.message, 'error');
@@ -1703,6 +1705,7 @@
         toast(res.message || 'School event deleted.', 'success');
         if (Number(editingSchoolEventId) === Number(ev.id)) resetSchoolEventForm();
         window.SMS.clearCalendarCache();
+        window.SMS.refreshOverviewCalendar({ force: true });
         await loadSchoolEvents();
       } catch (err) {
         toast(err.message, 'error');

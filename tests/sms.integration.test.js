@@ -1268,6 +1268,36 @@ test('16. Superadmin Custom Grading Scale Management & Clean Sub-Tabbed Workspac
     assert.match(viewHtml, /id="sec-profile"/, `${view} dashboard needs a Profile section`);
   }
 
+  // Paystack stays on the Superadmin dashboard only - the other dashboards keep plain fee screens
+  for (const view of ['teacher', 'student', 'financial']) {
+    const viewHtml = fs.readFileSync(path.join(process.cwd(), 'src', 'views', `${view}.html`), 'utf8');
+    assert.doesNotMatch(viewHtml, /id="st-paystack-card"/, `${view} dashboard must not host Paystack`);
+    assert.doesNotMatch(viewHtml, /id="paystack-init-form"/, `${view} dashboard must not host Paystack`);
+    assert.doesNotMatch(viewHtml, /id="fin-transfer-form"/, `${view} dashboard must not host Paystack`);
+  }
+
+  // Every dashboard offers the full theme palette
+  const EXTRA_THEMES = ['midnight', 'plum', 'forest', 'sandstone', 'slate'];
+  for (const view of ['superadmin', 'teacher', 'student', 'financial']) {
+    const viewHtml = fs.readFileSync(path.join(process.cwd(), 'src', 'views', `${view}.html`), 'utf8');
+    for (const theme of EXTRA_THEMES) {
+      assert.match(
+        viewHtml,
+        new RegExp(`<option value="${theme}">`),
+        `${view} dashboard should offer the ${theme} theme`
+      );
+    }
+  }
+  const cssText = fs.readFileSync(path.join(process.cwd(), 'src', 'public', 'css', 'styles.css'), 'utf8');
+  for (const theme of EXTRA_THEMES) {
+    assert.match(cssText, new RegExp(`html\\[data-theme="${theme}"\\]`), `${theme} palette missing from styles.css`);
+  }
+  for (const theme of EXTRA_THEMES) {
+    const pref = await admin.request('/api/auth/preferences', { method: 'PATCH', body: { theme } });
+    assert.equal(pref.status, 200, `server should accept the ${theme} theme`);
+    assert.equal(pref.json.user.themePreference, theme);
+  }
+
   // Create and remove a custom grading band
   const createBand = await admin.request('/api/superadmin/exams/grading-scales', {
     method: 'POST',

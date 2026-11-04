@@ -5,7 +5,6 @@
     api,
     toast,
     statusBadge,
-    openPaystackCheckout,
     activateSection,
     renderMediaAttachments,
     formatBytes,
@@ -340,15 +339,6 @@
         }),
       ].join('');
 
-      const pskCard = document.getElementById('st-paystack-card');
-      if (Number(fee.summary.balance) > 0 && data.school.paystack?.enabled !== false) {
-        pskCard.classList.remove('hidden');
-        document.getElementById('st-pay-amount').value = Number(fee.summary.balance).toFixed(2);
-        document.getElementById('st-pay-email').value = s.guardian_email || s.email || '';
-      } else {
-        pskCard.classList.add('hidden');
-      }
-
       document.getElementById('st-fee-items-tbody').innerHTML =
         fee.assignments
           .map(
@@ -481,24 +471,6 @@
       toast(err.message, 'error');
     } finally {
       if (submitBtn) submitBtn.disabled = false;
-    }
-  });
-
-  document.getElementById('st-paystack-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fd = Object.fromEntries(new FormData(e.target).entries());
-    fd.callbackUrl = `${window.location.origin}/dashboard/student`;
-    try {
-      const res = await api('/api/student/paystack/initialize', { method: 'POST', body: fd });
-      openPaystackCheckout(res.transaction, {
-        verifyEndpoint: '/api/student/paystack/verify',
-        onSuccess: async (verified) => {
-          await loadPortal();
-          if (verified.receiptNumber) await openOwnReceipt(verified.receiptNumber);
-        },
-      });
-    } catch (err) {
-      toast(err.message, 'error');
     }
   });
 
