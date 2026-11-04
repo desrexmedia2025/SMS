@@ -29,6 +29,7 @@ const studentRoutes = require('./routes/student.routes');
 const financialRoutes = require('./routes/financial.routes');
 const calendarRoutes = require('./routes/calendar.routes');
 const messageRoutes = require('./routes/message.routes');
+const notesRoutes = require('./routes/notes.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const brandController = require('./controllers/brand.controller');
 const paystackService = require('./services/paystack.service');
@@ -260,6 +261,9 @@ function createApp() {
   // Internal messaging & the topbar notification bell (all four roles)
   app.use('/api/messages', messageRoutes);
   app.use('/api/notifications', notificationRoutes);
+
+  // Personal notes: a lightweight word processor available on every dashboard
+  app.use('/api/notes', notesRoutes);
 
   // Non-reflecting 404 handler (never echoes arbitrary URLs back into responses)
   app.use((_req, _res, next) => {

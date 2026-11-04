@@ -15,6 +15,7 @@
   SMS.initOverviewCalendar();
   SMS.initMessageBell();
   SMS.initMessaging();
+  SMS.initNotes();
   SMS.initProfileAvatar();
   SMS.initProfileAvatar({
     imgId: 'prof-avatar-img',

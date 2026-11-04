@@ -4238,3 +4238,171 @@ test('35. Every page ships the school logo favicon and the icons are really serv
   const png = touch.buffer;
   assert.equal(png.slice(1, 4).toString(), 'PNG', 'the touch icon must be a real PNG');
 });
+
+test('36. Personal Notes: lightweight word processor on all four dashboards', async () => {
+  const admin = new SessionClient();
+  await admin.login('admin@school.edu.gh', 'Admin@2026!');
+  const teacher = new SessionClient();
+  await teacher.login('kofi.mensah@school.edu.gh', 'Teacher@2026!');
+
+  // 36a. Every dashboard carries a Notes tab
+  for (const view of ['superadmin', 'teacher', 'student', 'financial']) {
+    const html = fs.readFileSync(path.join(process.cwd(), 'src', 'views', `${view}.html`), 'utf8');
+    assert.match(html, /data-section="notes"/, `${view} dashboard needs a Notes tab`);
+    assert.match(html, /id="sec-notes"/, `${view} dashboard needs a Notes section`);
+  }
+  const commonJs = fs.readFileSync(path.join(process.cwd(), 'src', 'public', 'js', 'common.js'), 'utf8');
+  assert.match(commonJs, /function initNotes/);
+  assert.match(commonJs, /function uploadNoteFiles/);
+  const sanitiserSrc = fs.readFileSync(
+    path.join(process.cwd(), 'src', 'utils', 'sanitizeNoteHtml.js'),
+    'utf8'
+  );
+  assert.match(sanitiserSrc, /function sanitizeNoteHtml/);
+  const { sanitizeNoteHtml } = require('../src/utils/sanitizeNoteHtml');
+  assert.equal(sanitizeNoteHtml('<p>ok</p><script>alert(1)</script>'), '<p>ok</p>');
+
+  // 36b. Create, autosave and pin a note
+  const empty = await admin.request('/api/notes');
+  assert.equal(empty.status, 200);
+  const created = await admin.request('/api/notes', {
+    method: 'POST',
+    body: { title: 'Staff meeting', content: '<p>Bring <strong>attendance</strong> sheets.</p>', color: '#7c3aed' },
+  });
+  assert.equal(created.status, 201);
+  const noteId = created.json.note.id;
+  assert.equal(created.json.note.color, '#7c3aed');
+  assert.equal(created.json.note.wordCount, 3, 'Bring / attendance / sheets');
+  assert.match(created.json.note.excerpt, /attendance sheets/);
+
+  const saved = await admin.request(`/api/notes/${noteId}`, {
+    method: 'PATCH',
+    body: { content: '<p>Bring attendance sheets and the <em>exam timetable</em>.</p>', pinned: true },
+  });
+  assert.equal(saved.status, 200);
+  assert.equal(saved.json.note.pinned, true);
+  assert.equal(saved.json.note.title, 'Staff meeting', 'title is kept when only the body changes');
+
+  const list = await admin.request('/api/notes');
+  assert.equal(list.status, 200);
+  assert.ok(list.json.items.some((n) => n.id === noteId));
+  assert.equal(list.json.items[0].pinned, true, 'pinned notes float to the top of the list');
+
+  const searched = await admin.request('/api/notes?search=exam');
+  assert.equal(searched.status, 200);
+  assert.ok(searched.json.items.some((n) => n.id === noteId));
+  const missed = await admin.request('/api/notes?search=zzzznotpresent');
+  assert.equal(missed.json.items.length, 0);
+
+  // 36c. Notes are private to their owner
+  const foreignRead = await teacher.request(`/api/notes/${noteId}`, {
+    method: 'PATCH',
+    body: { content: '<p>hijacked</p>' },
+  });
+  assert.equal(foreignRead.status, 404, 'another user must not reach someone else’s note');
+  const teacherList = await teacher.request('/api/notes');
+  assert.equal(teacherList.json.items.some((n) => n.id === noteId), false);
+
+  // 36d. Stored HTML is sanitised: scripts, event handlers and javascript: URLs are dropped
+  const nasty = await admin.request('/api/notes', {
+    method: 'POST',
+    body: {
+      title: 'Unsafe paste',
+      content:
+        '<p onclick="alert(1)">Hi<script>alert(2)</script></p><a href="javascript:alert(3)">bad</a><img src="x" onerror="alert(4)">',
+    },
+  });
+  assert.equal(nasty.status, 201);
+  const nastyContent = nasty.json.note.content;
+  assert.doesNotMatch(nastyContent, /<script/i);
+  assert.doesNotMatch(nastyContent, /onerror|onclick/i);
+  assert.doesNotMatch(nastyContent, /javascript:/i);
+
+  // 36e. File attachments are stored against the note and streamed only to its owner
+  const pngBase64 =
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  const fd = new FormData();
+  fd.append('attachments', new Blob([Buffer.from(pngBase64, 'base64')], { type: 'image/png' }), 'note-diagram.png');
+  const upload = await admin.request(`/api/notes/${noteId}/attachments`, { method: 'POST', body: fd });
+  assert.equal(upload.status, 201);
+  const attachment = upload.json.attachments[0];
+  assert.equal(attachment.kind, 'image');
+  assert.match(attachment.url, /^\/api\/media\/\d+$/);
+
+  const owned = await admin.request(attachment.url);
+  assert.equal(owned.status, 200);
+  assert.match(String(owned.headers.get('content-type') || ''), /image\/png/);
+  const stolen = await teacher.request(attachment.url);
+  assert.equal(stolen.status, 403, 'note attachments are private to the note owner');
+
+  const attachments = await admin.request(`/api/notes/${noteId}/attachments`);
+  assert.equal(attachments.status, 200);
+  assert.equal(attachments.json.items.length, 1);
+  assert.equal(attachments.json.items[0].name, 'note-diagram.png');
+
+  // 36f. Deleting a note removes it and detaches its files
+  const del = await admin.request(`/api/notes/${noteId}`, { method: 'DELETE' });
+  assert.equal(del.status, 200);
+  const after = await admin.request('/api/notes');
+  assert.equal(after.json.items.some((n) => n.id === noteId), false);
+  const gone = await admin.request(attachment.url);
+  assert.equal(gone.status, 404);
+});
+
+test('37. School events reach every dashboard calendar in the colour they were given', async () => {
+  const admin = new SessionClient();
+  await admin.login('admin@school.edu.gh', 'Admin@2026!');
+
+  const today = new Date();
+  const key = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const start = key(today);
+  const end = key(new Date(today.getTime() + 2 * 86400000));
+
+  const created = await admin.request('/api/superadmin/events', {
+    method: 'POST',
+    body: {
+      title: 'Colour Check Sports Day',
+      description: 'Should keep its colour on every calendar',
+      eventType: 'sports',
+      startDate: start,
+      endDate: end,
+      color: '#7c3aed',
+      audience: 'all',
+    },
+  });
+  assert.equal(created.status, 201);
+  assert.equal(created.json.event.color, '#7c3aed');
+
+  const from = key(new Date(today.getFullYear(), today.getMonth(), 1));
+  const to = key(new Date(today.getFullYear(), today.getMonth() + 1, 0));
+
+  for (const creds of [
+    ['admin@school.edu.gh', 'Admin@2026!', 'superadmin'],
+    ['kofi.mensah@school.edu.gh', 'Teacher@2026!', 'teacher'],
+    ['kwame.asante@student.school.edu.gh', 'Student@2026!', 'student'],
+    ['finance@school.edu.gh', 'Finance@2026!', 'financial'],
+  ]) {
+    const client = new SessionClient();
+    await client.login(creds[0], creds[1]);
+    const feed = await client.request(`/api/calendar/events?from=${from}&to=${to}`);
+    assert.equal(feed.status, 200);
+    const hits = (feed.json.events || []).filter(
+      (ev) => ev.kind === 'school_event' && String(ev.title).includes('Colour Check')
+    );
+    assert.ok(hits.length > 0, `${creds[2]} calendar must show the new school event`);
+    assert.equal(hits[0].color, '#7c3aed', `${creds[2]} calendar must keep the chosen colour`);
+    assert.equal(hits[0].date, start, 'the event lands on its start date');
+  }
+
+  // The overview calendar re-pulls its month, so newly added events appear without a reload
+  const commonJs = fs.readFileSync(path.join(process.cwd(), 'src', 'public', 'js', 'common.js'), 'utf8');
+  assert.match(commonJs, /function refreshOverviewCalendar/);
+  assert.match(commonJs, /if \(sec === 'overview'\) refreshOverviewCalendar\(\);/);
+  assert.match(
+    fs.readFileSync(path.join(process.cwd(), 'src', 'public', 'js', 'superadmin.js'), 'utf8'),
+    /refreshOverviewCalendar\(\{ force: true/
+  );
+
+  const del = await admin.request(`/api/superadmin/events/${created.json.event.id}`, { method: 'DELETE' });
+  assert.equal(del.status, 200);
+});

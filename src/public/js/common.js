@@ -925,6 +925,8 @@ window.SMS = (() => {
     });
     if (sec === 'announcements') markAnnouncementsRead();
     if (sec === 'overview') refreshOverviewCalendar();
+    if (sec === 'notes') refreshNotes();
+    else closeNotes();
     if (onSectionChange) onSectionChange(sec);
   }
 
@@ -1975,7 +1977,9 @@ window.SMS = (() => {
     for (let i = 0; i < 42; i += 1) {
       const key = `${cursor.getFullYear()}-${pad2(cursor.getMonth() + 1)}-${pad2(cursor.getDate())}`;
       const outside = cursor.getMonth() !== month;
-      const dayEvents = byDate.get(key) || [];
+      const dayEvents = (byDate.get(key) || [])
+        .slice()
+        .sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'school_event' ? -1 : 1));
       const toneSet = new Map();
       dayEvents.forEach((e) => {
         const tone = e.tone || e.kind;
@@ -2055,6 +2059,10 @@ window.SMS = (() => {
       .sort((a, b) => (String(a.date) < String(b.date) ? -1 : 1))
       .slice(0, 4);
 
+    const schoolEvents = CAL_STATE.events
+      .filter((ev) => ev.kind === 'school_event')
+      .sort((a, b) => (String(a.date) < String(b.date) ? -1 : 1));
+
     const itemHtml = (ev) => `
       <div class="cal-agenda-item">
         <span class="cal-dot ${
@@ -2086,6 +2094,16 @@ window.SMS = (() => {
           upcoming.length
             ? upcoming.map(itemHtml).join('')
             : '<div class="empty-state-sm">Nothing upcoming in this period.</div>'
+        }
+      </div>
+      <div class="cal-agenda-head cal-agenda-head-spaced">
+        <span class="cal-agenda-label">School Events</span>
+      </div>
+      <div class="cal-agenda-list">
+        ${
+          schoolEvents.length
+            ? schoolEvents.map(itemHtml).join('')
+            : '<div class="empty-state-sm">No school events in this month.</div>'
         }
       </div>
     `;
@@ -2163,6 +2181,530 @@ window.SMS = (() => {
     await loadCalendarEvents(CAL_STATE.year, CAL_STATE.month);
     renderCalendar();
     renderCalendarAgenda();
+  }
+
+  /* ---------------- NOTES (lightweight word processor, all dashboards) ---------------- */
+  const NOTES_COLORS = [
+    '#1d4ed8', '#0f766e', '#b45309', '#b91c1c',
+    '#7c3aed', '#047857', '#0369a1', '#be185d',
+  ];
+  const NOTES_STATE = {
+    ready: false,
+    items: [],
+    activeId: null,
+    search: '',
+    saveTimer: null,
+    saving: false,
+    dirty: false,
+  };
+  let notesMountEl = null;
+
+  function notesEl(id) {
+    return notesMountEl ? notesMountEl.querySelector(`#${id}`) : null;
+  }
+
+  function noteDateLabel(value) {
+    const raw = String(value || '').replace('T', ' ').slice(0, 19);
+    if (!raw) return '';
+    const d = new Date(raw.replace(' ', 'T') + (raw.length === 19 ? '' : ''));
+    if (Number.isNaN(d.getTime())) return raw.slice(0, 10);
+    try {
+      return new Intl.DateTimeFormat(calLang(), { day: 'numeric', month: 'short', year: 'numeric' }).format(d);
+    } catch (_) {
+      return raw.slice(0, 10);
+    }
+  }
+
+  function noteTimeLabel(value) {
+    const raw = String(value || '').replace('T', ' ').slice(11, 16);
+    return raw || '';
+  }
+
+  function buildNotesShell() {
+    if (!notesMountEl) return;
+    notesMountEl.innerHTML = `
+      <div class="notes-shell">
+        <aside class="notes-side">
+          <div class="notes-side-head">
+            <button type="button" class="btn btn-primary btn-sm notes-new-btn" id="notes-new-btn">New Note</button>
+            <div class="search-bar" data-search-region="notes">
+              <input type="search" class="search-bar-input" id="notes-search-input" placeholder="Search notes...">
+              <button type="button" class="btn btn-secondary btn-sm hidden" id="notes-search-clear">Clear</button>
+            </div>
+          </div>
+          <div class="notes-list" id="notes-list"></div>
+        </aside>
+        <section class="notes-main">
+          <div class="notes-empty" id="notes-empty">
+            <div class="notes-empty-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H18a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5A2.5 2.5 0 0 1 4 19.5z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg>
+            </div>
+            <h3>Your notebook</h3>
+            <p>Write notes, drop in pictures, videos and files, and format them like a document. Everything saves automatically.</p>
+            <button type="button" class="btn btn-primary btn-sm" id="notes-empty-new-btn">Start your first note</button>
+          </div>
+
+          <div class="notes-editor hidden" id="notes-editor">
+            <div class="notes-editor-head">
+              <input type="text" class="note-title-input" id="note-title-input" placeholder="Note title" maxlength="200">
+              <div class="notes-head-actions">
+                <span class="notes-save-hint" id="note-save-hint">Saved</span>
+                <button type="button" class="btn btn-secondary btn-sm" id="note-pin-btn">Pin</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="note-delete-btn">Delete</button>
+              </div>
+            </div>
+
+            <div class="notes-toolbar" role="toolbar" aria-label="Note formatting">
+              <button type="button" class="note-tool" data-note-cmd="bold" title="Bold (Ctrl+B)"><strong>B</strong></button>
+              <button type="button" class="note-tool" data-note-cmd="italic" title="Italic (Ctrl+I)"><em>I</em></button>
+              <button type="button" class="note-tool" data-note-cmd="underline" title="Underline (Ctrl+U)"><u>U</u></button>
+              <button type="button" class="note-tool" data-note-cmd="strikeThrough" title="Strikethrough"><s>S</s></button>
+              <span class="note-tool-sep" aria-hidden="true"></span>
+              <button type="button" class="note-tool" data-note-block="h1" title="Heading">H1</button>
+              <button type="button" class="note-tool" data-note-block="h2" title="Subheading">H2</button>
+              <button type="button" class="note-tool" data-note-block="blockquote" title="Quote">&ldquo;</button>
+              <button type="button" class="note-tool" data-note-block="p" title="Body text">P</button>
+              <span class="note-tool-sep" aria-hidden="true"></span>
+              <button type="button" class="note-tool" data-note-cmd="insertUnorderedList" title="Bullet list">&bull;&bull;&bull;</button>
+              <button type="button" class="note-tool" data-note-cmd="insertOrderedList" title="Numbered list">1.2.3</button>
+              <button type="button" class="note-tool" data-note-cmd="createLink" title="Insert link">Link</button>
+              <span class="note-tool-sep" aria-hidden="true"></span>
+              <button type="button" class="note-tool" data-note-cmd="justifyLeft" title="Align left">Left</button>
+              <button type="button" class="note-tool" data-note-cmd="justifyCenter" title="Align centre">Centre</button>
+              <button type="button" class="note-tool" data-note-cmd="justifyRight" title="Align right">Right</button>
+              <span class="note-tool-sep" aria-hidden="true"></span>
+              <button type="button" class="note-tool note-tool-media" data-note-media="image" title="Insert picture">Picture</button>
+              <button type="button" class="note-tool note-tool-media" data-note-media="video" title="Insert video">Video</button>
+              <button type="button" class="note-tool note-tool-media" data-note-media="file" title="Attach a file">File</button>
+              <span class="note-tool-sep" aria-hidden="true"></span>
+              <button type="button" class="note-tool" data-note-cmd="removeFormat" title="Clear formatting">Clear</button>
+              <button type="button" class="note-tool" data-note-cmd="undo" title="Undo (Ctrl+Z)">Undo</button>
+              <button type="button" class="note-tool" data-note-cmd="redo" title="Redo (Ctrl+Y)">Redo</button>
+            </div>
+
+            <div class="note-body" id="note-body" contenteditable="true" spellcheck="true" role="textbox" aria-multiline="true" aria-label="Note text"></div>
+
+            <div class="notes-foot">
+              <div class="notes-colour-row" id="note-colours"></div>
+              <div class="notes-foot-meta">
+                <span id="note-counts" class="muted-sm"></span>
+                <span id="note-attachments" class="notes-attachments"></span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+      <input type="file" id="note-file-image" class="hidden" accept="image/*" multiple>
+      <input type="file" id="note-file-video" class="hidden" accept="video/*" multiple>
+      <input type="file" id="note-file-any" class="hidden" multiple>
+    `;
+
+    notesEl('notes-new-btn')?.addEventListener('click', () => createNote());
+    notesEl('notes-empty-new-btn')?.addEventListener('click', () => createNote());
+    notesEl('note-pin-btn')?.addEventListener('click', () => togglePin());
+    notesEl('note-delete-btn')?.addEventListener('click', () => deleteActiveNote());
+
+    const searchInput = notesEl('notes-search-input');
+    const clearBtn = notesEl('notes-search-clear');
+    searchInput?.addEventListener('input', () => {
+      NOTES_STATE.search = searchInput.value.trim();
+      if (clearBtn) clearBtn.classList.toggle('hidden', !searchInput.value);
+      renderNoteList();
+    });
+    clearBtn?.addEventListener('click', () => {
+      searchInput.value = '';
+      NOTES_STATE.search = '';
+      clearBtn.classList.add('hidden');
+      renderNoteList();
+    });
+
+    const titleInput = notesEl('note-title-input');
+    titleInput?.addEventListener('input', () => queueNoteSave());
+    const body = notesEl('note-body');
+    body?.addEventListener('input', () => queueNoteSave());
+    body?.addEventListener('paste', (e) => {
+      // Paste as plain text so foreign markup never lands inside a note
+      if (!e.clipboardData) return;
+      e.preventDefault();
+      const text = e.clipboardData.getData('text/plain') || '';
+      insertAtCursor(text);
+      queueNoteSave();
+    });
+    body?.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && String(e.key).toLowerCase() === 's') {
+        e.preventDefault();
+        saveActiveNote({ immediate: true });
+      }
+    });
+
+    notesMountEl.querySelectorAll('[data-note-cmd]').forEach((btn) => {
+      btn.addEventListener('mousedown', (e) => e.preventDefault());
+      btn.addEventListener('click', () => runNoteCommand(btn.dataset.noteCmd));
+    });
+    notesMountEl.querySelectorAll('[data-note-block]').forEach((btn) => {
+      btn.addEventListener('mousedown', (e) => e.preventDefault());
+      btn.addEventListener('click', () => runNoteBlock(btn.dataset.noteBlock));
+    });
+    notesMountEl.querySelectorAll('[data-note-media]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const kind = btn.dataset.noteMedia;
+        const input = notesEl(
+          kind === 'image' ? 'note-file-image' : kind === 'video' ? 'note-file-video' : 'note-file-any'
+        );
+        if (input) {
+          input.value = '';
+          input.click();
+        }
+      });
+    });
+    ['note-file-image', 'note-file-video', 'note-file-any'].forEach((id) => {
+      notesEl(id)?.addEventListener('change', (e) => uploadNoteFiles(e.target.files || []));
+    });
+
+    renderNoteColours();
+  }
+
+  function renderNoteColours() {
+    const host = notesEl('note-colours');
+    if (!host) return;
+    const active = activeNote();
+    host.innerHTML = NOTES_COLORS.map(
+      (color) =>
+        `<button type="button" class="note-colour${active && active.color === color ? ' is-active' : ''}" data-note-colour="${color}" style="background:${color}" title="Note colour ${color}" aria-label="Note colour ${color}"></button>`
+    ).join('');
+    host.querySelectorAll('[data-note-colour]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const note = activeNote();
+        if (!note) return;
+        note.color = btn.dataset.noteColour;
+        renderNoteColours();
+        renderNoteList();
+        queueNoteSave();
+      });
+    });
+  }
+
+  function activeNote() {
+    return NOTES_STATE.items.find((n) => Number(n.id) === Number(NOTES_STATE.activeId)) || null;
+  }
+
+  function filteredNotes() {
+    const term = NOTES_STATE.search.toLowerCase();
+    if (!term) return NOTES_STATE.items;
+    return NOTES_STATE.items.filter((n) =>
+      `${n.title} ${n.excerpt}`.toLowerCase().includes(term)
+    );
+  }
+
+  function renderNoteList() {
+    const host = notesEl('notes-list');
+    if (!host) return;
+    const items = filteredNotes();
+    if (!items.length) {
+      host.innerHTML = `<div class="empty-state-sm">${
+        NOTES_STATE.search ? 'No notes match that search.' : 'No notes yet. Create your first one.'
+      }</div>`;
+      return;
+    }
+    host.innerHTML = items
+      .map((n) => {
+        const active = Number(n.id) === Number(NOTES_STATE.activeId);
+        return `<button type="button" class="notes-list-item${active ? ' is-active' : ''}" data-note-id="${n.id}">
+          <span class="notes-list-dot" style="background:${esc(n.color)}"></span>
+          <span class="notes-list-copy">
+            <span class="notes-list-title">${n.pinned ? '<span class="notes-pin-flag">Pinned</span>' : ''}${esc(n.title || 'Untitled note')}</span>
+            <span class="notes-list-excerpt">${esc(n.excerpt || 'Empty note')}</span>
+            <span class="notes-list-date">${esc(noteDateLabel(n.updatedAt))}${noteTimeLabel(n.updatedAt) ? ` &middot; ${esc(noteTimeLabel(n.updatedAt))}` : ''}</span>
+          </span>
+        </button>`;
+      })
+      .join('');
+    host.querySelectorAll('[data-note-id]').forEach((btn) => {
+      btn.addEventListener('click', () => openNote(Number(btn.dataset.noteId)));
+    });
+  }
+
+  function renderNoteEditor() {
+    const note = activeNote();
+    const editor = notesEl('notes-editor');
+    const empty = notesEl('notes-empty');
+    if (!editor || !empty) return;
+    if (!note) {
+      editor.classList.add('hidden');
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+    editor.classList.remove('hidden');
+    const titleInput = notesEl('note-title-input');
+    const body = notesEl('note-body');
+    if (titleInput && titleInput.value !== (note.title || '')) titleInput.value = note.title || '';
+    if (body && body.innerHTML !== (note.content || '')) body.innerHTML = note.content || '';
+    notesEl('note-pin-btn').textContent = note.pinned ? 'Unpin' : 'Pin';
+    renderNoteColours();
+    renderNoteCounts();
+    renderNoteAttachments();
+  }
+
+  function renderNoteCounts() {
+    const host = notesEl('note-counts');
+    const note = activeNote();
+    if (!host || !note) return;
+    host.textContent = `${note.wordCount || 0} word(s) · ${note.characterCount || 0} characters`;
+  }
+
+  async function renderNoteAttachments() {
+    const host = notesEl('note-attachments');
+    const note = activeNote();
+    if (!host || !note) return;
+    host.innerHTML = '<span class="muted-sm">Loading files...</span>';
+    try {
+      const data = await api(`/api/notes/${note.id}/attachments`);
+      const items = data.items || [];
+      if (!items.length) {
+        host.innerHTML = '<span class="muted-sm">No files attached yet.</span>';
+        return;
+      }
+      host.innerHTML = items
+        .map(
+          (a) =>
+            `<a class="note-file-chip" href="${esc(a.url)}?download=1" target="_blank" rel="noopener noreferrer" title="Download ${esc(a.name)}">${esc(a.kind)} · ${esc(a.name)}</a>`
+        )
+        .join('');
+    } catch (_) {
+      host.innerHTML = '<span class="muted-sm">Files unavailable.</span>';
+    }
+  }
+
+  async function loadNotes(options = {}) {
+    if (!notesMountEl) return;
+    try {
+      const data = await api('/api/notes?limit=200');
+      NOTES_STATE.items = Array.isArray(data.items) ? data.items : [];
+      if (Array.isArray(data.colors) && data.colors.length) {
+        NOTES_STATE.colors = data.colors;
+      }
+      NOTES_STATE.ready = true;
+      if (!NOTES_STATE.activeId && NOTES_STATE.items.length && !options.keepSelection) {
+        NOTES_STATE.activeId = NOTES_STATE.items[0].id;
+      }
+      renderNoteList();
+      renderNoteEditor();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }
+
+  function openNote(id) {
+    if (NOTES_STATE.dirty) saveActiveNote({ immediate: true });
+    NOTES_STATE.activeId = id;
+    renderNoteList();
+    renderNoteEditor();
+  }
+
+  async function createNote() {
+    try {
+      const data = await api('/api/notes', {
+        method: 'POST',
+        body: { title: '', content: '', color: NOTES_COLORS[0] },
+      });
+      NOTES_STATE.items.unshift(data.note);
+      NOTES_STATE.activeId = data.note.id;
+      NOTES_STATE.search = '';
+      const searchInput = notesEl('notes-search-input');
+      if (searchInput) searchInput.value = '';
+      renderNoteList();
+      renderNoteEditor();
+      notesEl('note-title-input')?.focus();
+      toast('New note created.', 'success');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }
+
+  async function deleteActiveNote() {
+    const note = activeNote();
+    if (!note) return;
+    if (!window.confirm(`Delete "${note.title || 'this note'}"? This cannot be undone.`)) return;
+    try {
+      await api(`/api/notes/${note.id}`, { method: 'DELETE' });
+      NOTES_STATE.items = NOTES_STATE.items.filter((n) => Number(n.id) !== Number(note.id));
+      NOTES_STATE.activeId = NOTES_STATE.items.length ? NOTES_STATE.items[0].id : null;
+      NOTES_STATE.dirty = false;
+      renderNoteList();
+      renderNoteEditor();
+      toast('Note deleted.', 'success');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }
+
+  async function togglePin() {
+    const note = activeNote();
+    if (!note) return;
+    note.pinned = !note.pinned;
+    NOTES_STATE.items.sort((a, b) => Number(b.pinned) - Number(a.pinned));
+    renderNoteList();
+    renderNoteEditor();
+    queueNoteSave();
+  }
+
+  function queueNoteSave() {
+    NOTES_STATE.dirty = true;
+    const hint = notesEl('note-save-hint');
+    if (hint) hint.textContent = 'Saving...';
+    if (NOTES_STATE.saveTimer) clearTimeout(NOTES_STATE.saveTimer);
+    NOTES_STATE.saveTimer = setTimeout(() => saveActiveNote(), 800);
+  }
+
+  async function saveActiveNote({ immediate = false } = {}) {
+    const note = activeNote();
+    if (!note) return;
+    if (NOTES_STATE.saveTimer) clearTimeout(NOTES_STATE.saveTimer);
+    const titleInput = notesEl('note-title-input');
+    const body = notesEl('note-body');
+    note.title = titleInput ? titleInput.value.trim() : note.title;
+    note.content = body ? body.innerHTML : note.content;
+    if (NOTES_STATE.saving) return;
+    NOTES_STATE.saving = true;
+    const hint = notesEl('note-save-hint');
+    if (hint) hint.textContent = immediate ? 'Saving...' : (hint.textContent || 'Saving...');
+    try {
+      const data = await api(`/api/notes/${note.id}`, {
+        method: 'PATCH',
+        body: { title: note.title, content: note.content, color: note.color, pinned: note.pinned },
+      });
+      const saved = data.note || note;
+      const idx = NOTES_STATE.items.findIndex((n) => Number(n.id) === Number(saved.id));
+      if (idx !== -1) NOTES_STATE.items[idx] = saved;
+      NOTES_STATE.dirty = false;
+      if (hint) hint.textContent = 'All changes saved';
+      renderNoteList();
+      renderNoteCounts();
+    } catch (err) {
+      if (hint) hint.textContent = 'Save failed';
+      toast(err.message, 'error');
+    } finally {
+      NOTES_STATE.saving = false;
+    }
+  }
+
+  function focusNoteBody() {
+    const body = notesEl('note-body');
+    if (body) body.focus();
+  }
+
+  function insertAtCursor(html) {
+    const body = notesEl('note-body');
+    if (!body) return;
+    focusNoteBody();
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount) {
+      const range = selection.getRangeAt(0);
+      if (body.contains(range.commonAncestorContainer)) {
+        range.deleteContents();
+        const frag = document.createElement('div');
+        frag.innerHTML = html;
+        const nodes = Array.from(frag.childNodes);
+        nodes.forEach((node) => range.insertNode(node));
+        if (nodes.length) {
+          range.setStartAfter(nodes[nodes.length - 1]);
+          range.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+        return;
+      }
+    }
+    body.innerHTML += html;
+  }
+
+  function runNoteCommand(cmd) {
+    focusNoteBody();
+    if (cmd === 'createLink') {
+      const url = window.prompt('Link address (https://...)', 'https://');
+      if (!url) return;
+      try {
+        document.execCommand('createLink', false, url);
+      } catch (_) {
+        insertAtCursor(` <a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(url)}</a> `);
+      }
+    } else {
+      try {
+        document.execCommand(cmd, false, null);
+      } catch (_) {
+        /* command unavailable in this browser */
+      }
+    }
+    queueNoteSave();
+  }
+
+  function runNoteBlock(tag) {
+    focusNoteBody();
+    try {
+      if (tag === 'p') document.execCommand('formatBlock', false, 'p');
+      else document.execCommand('formatBlock', false, tag);
+    } catch (_) {
+      /* ignore */
+    }
+    queueNoteSave();
+  }
+
+  async function uploadNoteFiles(fileList) {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    let note = activeNote();
+    if (!note) return;
+    if (NOTES_STATE.dirty) await saveActiveNote({ immediate: true });
+    const hint = notesEl('note-save-hint');
+    if (hint) hint.textContent = 'Uploading...';
+    const fd = new FormData();
+    files.slice(0, 10).forEach((file) => fd.append('attachments', file));
+    try {
+      const data = await api(`/api/notes/${note.id}/attachments`, { method: 'POST', body: fd });
+      const attachments = data.attachments || [];
+      attachments.forEach((att) => {
+        const name = esc(att.name || 'file');
+        if (att.kind === 'image') {
+          insertAtCursor(`<figure><img src="${esc(att.url)}" alt="${name}"><figcaption>${name}</figcaption></figure><p><br></p>`);
+        } else if (att.kind === 'video') {
+          insertAtCursor(`<figure><video src="${esc(att.url)}" controls preload="metadata"></video><figcaption>${name}</figcaption></figure><p><br></p>`);
+        } else {
+          insertAtCursor(`<p><a href="${esc(att.url)}?download=1" target="_blank" rel="noopener noreferrer">${name}</a></p><p><br></p>`);
+        }
+      });
+      if (hint) hint.textContent = 'Saving...';
+      queueNoteSave();
+      renderNoteAttachments();
+      toast(data.message || 'File(s) added to the note.', 'success');
+    } catch (err) {
+      if (hint) hint.textContent = 'Upload failed';
+      toast(err.message, 'error');
+    }
+  }
+
+  function initNotes(options = {}) {
+    notesMountEl = document.getElementById(options.mountId || 'notes-app');
+    if (!notesMountEl) return;
+    if (!notesMountEl.dataset.notesBound) {
+      notesMountEl.dataset.notesBound = '1';
+      buildNotesShell();
+    }
+    if (!NOTES_STATE.ready) loadNotes();
+    else {
+      renderNoteList();
+      renderNoteEditor();
+    }
+  }
+
+  function refreshNotes() {
+    if (!notesMountEl) return;
+    if (NOTES_STATE.dirty) saveActiveNote({ immediate: true });
+    loadNotes({ keepSelection: true });
+  }
+
+  function closeNotes() {
+    if (NOTES_STATE.dirty) saveActiveNote({ immediate: true });
   }
 
   // ---------------- PRINTABLE REPORT CARDS ----------------
@@ -2683,6 +3225,9 @@ window.SMS = (() => {
     initProfileAvatar,
     renderAllAvatars,
     initialsOf,
+    initNotes,
+    refreshNotes,
+    closeNotes,
     setSessionToken,
     getSessionToken,
     getUser: () => currentUser,

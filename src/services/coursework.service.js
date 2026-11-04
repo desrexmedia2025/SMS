@@ -1019,6 +1019,16 @@ async function getAuthorizedMediaAttachment(user, attachmentId) {
     return att;
   }
 
+  // Note attachments stay private to the note's owner on every dashboard
+  if (att.owner_type === 'note') {
+    const note = await db.get('SELECT id FROM notes WHERE id = ? AND user_id = ?', [
+      att.owner_id,
+      user.id,
+    ]);
+    if (note) return att;
+    throw new AppError(403, 'You do not have permission to access this file.');
+  }
+
   // Message attachments: only participants of the owning conversation may stream them
   if (att.owner_type === 'message') {
     const message = await db.get('SELECT id, thread_id FROM messages WHERE id = ?', [att.owner_id]);
