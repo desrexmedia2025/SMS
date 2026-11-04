@@ -3281,10 +3281,13 @@ html[data-theme="ocean"] .action-tile {
 
 /* ---- Extra app themes (Midnight, Plum, Forest, Sandstone, Slate) ---- */
 
+
+/* --- midnight: the dark component rules, re-tinted for this palette --- */
+
 html[data-theme="midnight"] .profile-avatar-lg {
-  background: rgba(59, 130, 246, 0.16);
+  background: rgba(99, 102, 241, 0.16);
   border-color: var(--border-strong);
-  color: #93c5fd;
+  color: #c7d2fe;
 }
 
 html[data-theme="midnight"] .card,
@@ -3301,14 +3304,14 @@ html[data-theme="midnight"] .media-item-card {
 
 html[data-theme="midnight"] .action-tile:hover,
 html[data-theme="midnight"] .kpi-card:hover {
-  background: #162542;
-  border-color: #3b82f6;
+  background: #1a2240;
+  border-color: #6366f1;
 }
 
 html[data-theme="midnight"] .action-tile-icon,
 html[data-theme="midnight"] .kpi-icon-box {
-  background: rgba(59, 130, 246, 0.16);
-  color: #60a5fa;
+  background: rgba(99, 102, 241, 0.16);
+  color: #a5b4fc;
 }
 
 html[data-theme="midnight"] .mobile-menu-btn,
@@ -3316,7 +3319,7 @@ html[data-theme="midnight"] .topbar-date-chip,
 html[data-theme="midnight"] .topbar-pref-select,
 html[data-theme="midnight"] .topbar-search-input,
 html[data-theme="midnight"] .search-bar-input {
-  background: rgba(22, 36, 64, 0.72);
+  background: rgba(24, 30, 56, 0.72);
   border-color: var(--border-strong);
   color: var(--text);
 }
@@ -3324,7 +3327,7 @@ html[data-theme="midnight"] .search-bar-input {
 html[data-theme="midnight"] input,
 html[data-theme="midnight"] select,
 html[data-theme="midnight"] textarea {
-  background: #0e182c;
+  background: #101728;
   border-color: var(--border-strong);
   color: var(--text);
 }
@@ -3332,8 +3335,8 @@ html[data-theme="midnight"] textarea {
 html[data-theme="midnight"] input:focus,
 html[data-theme="midnight"] select:focus,
 html[data-theme="midnight"] textarea:focus {
-  background: #13213c;
-  border-color: #3b82f6;
+  background: #161f36;
+  border-color: #6366f1;
 }
 
 html[data-theme="midnight"] .table-wrap,
@@ -3341,14 +3344,14 @@ html[data-theme="midnight"] .multi-subject-box,
 html[data-theme="midnight"] .upload-dropzone-box,
 html[data-theme="midnight"] .analytics-svg-wrap,
 html[data-theme="midnight"] .tt-slot-card {
-  background: #0e182c;
+  background: #101728;
   border-color: var(--border);
   color: var(--text);
 }
 
 html[data-theme="midnight"] th {
-  background: #15233f;
-  color: #b7caea;
+  background: #161e34;
+  color: #b9c0dc;
   border-color: var(--border);
 }
 
@@ -3358,64 +3361,64 @@ html[data-theme="midnight"] td {
 }
 
 html[data-theme="midnight"] tbody tr:hover {
-  background: rgba(59, 130, 246, 0.08);
+  background: rgba(99, 102, 241, 0.08);
 }
 
 html[data-theme="midnight"] .subnav-tabs {
-  background: rgba(14, 24, 44, 0.72);
+  background: rgba(20, 28, 48, 0.72);
   border-color: var(--border);
 }
 
 html[data-theme="midnight"] .subtab-btn.active {
-  background: #2563eb;
+  background: #4f46e5;
   color: #ffffff;
 }
 
 html[data-theme="midnight"] .btn-secondary {
-  background: #192949;
+  background: #1b2340;
   border-color: var(--border-strong);
-  color: #dbe8ff;
+  color: #dde3f7;
 }
 
 html[data-theme="midnight"] .btn-secondary:hover {
-  background: #223761;
+  background: #232d4d;
 }
 
 html[data-theme="midnight"] code,
 html[data-theme="midnight"] .subject-badge-tag,
 html[data-theme="midnight"] .subject-check-pill {
-  background: #182848;
+  background: #1a2138;
   border-color: var(--border-strong);
-  color: #cfe1ff;
+  color: #ccd4f5;
 }
 
 html[data-theme="midnight"] .login-page-bg {
-  background: radial-gradient(circle at 20% 20%, #162a52 0%, #091120 100%);
+  background: radial-gradient(circle at 20% 20%, #1a2242 0%, #06080f 100%);
 }
 
 html[data-theme="midnight"] .login-split-card {
-  background: #111c32;
+  background: #0e1424;
   border-color: var(--border);
 }
 
 html[data-theme="midnight"] .login-welcome-heading {
-  color: #60a5fa;
+  color: #a5b4fc;
 }
 
 html[data-theme="midnight"] .login-welcome-sub,
 html[data-theme="midnight"] .login-bottom-prompt,
 html[data-theme="midnight"] .login-text-link {
-  color: #b5c7e6;
+  color: #b8c0da;
 }
 
 html[data-theme="midnight"] .google-btn {
-  background: #162440;
+  background: #171f36;
   border-color: var(--border-strong);
   color: var(--text);
 }
 
 html[data-theme="midnight"] .terms-agree-row {
-  color: #cbd5e1;
+  color: #ccd2e4;
 }
 
 html[data-theme="midnight"] .form-group input,
@@ -3425,9 +3428,9 @@ html[data-theme="midnight"] .form-grid input,
 html[data-theme="midnight"] .form-grid select,
 html[data-theme="midnight"] .form-grid textarea,
 html[data-theme="midnight"] .card-header select {
-  background: #0e182c;
+  background: #101728;
   border-color: var(--border-strong);
-  box-shadow: inset 0 1px 2px rgba(2, 6, 18, 0.25);
+  box-shadow: inset 0 1px 2px rgba(2, 4, 12, 0.25);
 }
 
 html[data-theme="midnight"] .form-group input:hover,
@@ -3436,8 +3439,8 @@ html[data-theme="midnight"] .form-group textarea:hover,
 html[data-theme="midnight"] .form-grid input:hover,
 html[data-theme="midnight"] .form-grid select:hover,
 html[data-theme="midnight"] .form-grid textarea:hover {
-  background: #13213c;
-  border-color: #3b82f6;
+  background: #161f36;
+  border-color: #6366f1;
 }
 
 html[data-theme="midnight"] .form-group input:focus,
@@ -3447,28 +3450,28 @@ html[data-theme="midnight"] .form-grid input:focus,
 html[data-theme="midnight"] .form-grid select:focus,
 html[data-theme="midnight"] .form-grid textarea:focus,
 html[data-theme="midnight"] .card-header select:focus {
-  background: #13213c;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.22);
+  background: #161f36;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.22);
 }
 
 html[data-theme="midnight"] .form-group select,
 html[data-theme="midnight"] .form-grid select,
 html[data-theme="midnight"] .card-header select {
   background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239eb2d0' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"),
-    linear-gradient(180deg, #0e182c 0%, #0e182c 100%);
+    linear-gradient(180deg, #101728 0%, #101728 100%);
 }
 
 html[data-theme="midnight"] .form-group input[type="file"],
 html[data-theme="midnight"] .form-grid input[type="file"] {
-  background: #0e182c;
+  background: #101728;
   border-color: var(--border-strong);
   color: var(--text-muted);
 }
 
 html[data-theme="midnight"] .form-group input[type="file"]::file-selector-button,
 html[data-theme="midnight"] .form-grid input[type="file"]::file-selector-button {
-  background: #162440;
+  background: #171f36;
   border-color: var(--border-strong);
   color: var(--text);
 }
@@ -3476,20 +3479,20 @@ html[data-theme="midnight"] .form-grid input[type="file"]::file-selector-button 
 html[data-theme="midnight"] .form-group input:disabled,
 html[data-theme="midnight"] .form-group select:disabled,
 html[data-theme="midnight"] .form-group textarea:disabled {
-  background: #0b1425;
+  background: #0c1220;
   color: var(--text-light);
 }
 
 html[data-theme="midnight"] .btn-secondary {
-  background: linear-gradient(180deg, #162440 0%, #142139 100%);
+  background: linear-gradient(180deg, #171f36 0%, #161d33 100%);
   border-color: var(--border-strong);
   color: var(--text);
 }
 
 html[data-theme="midnight"] .btn-secondary:hover:not(:disabled) {
-  background: #1b2c4d;
-  border-color: #3b82f6;
-  color: #93c5fd;
+  background: #1e2745;
+  border-color: #6366f1;
+  color: #c7d2fe;
 }
 
 html[data-theme="midnight"] .form-actions-end {
@@ -3499,7 +3502,7 @@ html[data-theme="midnight"] .form-actions-end {
 html[data-theme="midnight"] .multi-subject-box input[type="text"],
 html[data-theme="midnight"] .subject-row-item input[type="text"],
 html[data-theme="midnight"] .subject-inline-adder input[type="text"] {
-  background: #0e182c;
+  background: #101728;
   border-color: var(--border-strong);
   color: var(--text);
 }
@@ -3507,15 +3510,18 @@ html[data-theme="midnight"] .subject-inline-adder input[type="text"] {
 html[data-theme="midnight"] .multi-subject-box input[type="text"]:focus,
 html[data-theme="midnight"] .subject-row-item input[type="text"]:focus,
 html[data-theme="midnight"] .subject-inline-adder input[type="text"]:focus {
-  background: #13213c;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.22);
+  background: #161f36;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.22);
 }
 
+
+/* --- plum: the dark component rules, re-tinted for this palette --- */
+
 html[data-theme="plum"] .profile-avatar-lg {
-  background: rgba(59, 130, 246, 0.16);
+  background: rgba(192, 38, 211, 0.16);
   border-color: var(--border-strong);
-  color: #93c5fd;
+  color: #f5d0fe;
 }
 
 html[data-theme="plum"] .card,
@@ -3532,14 +3538,14 @@ html[data-theme="plum"] .media-item-card {
 
 html[data-theme="plum"] .action-tile:hover,
 html[data-theme="plum"] .kpi-card:hover {
-  background: #162542;
-  border-color: #3b82f6;
+  background: #2a1a44;
+  border-color: #c026d3;
 }
 
 html[data-theme="plum"] .action-tile-icon,
 html[data-theme="plum"] .kpi-icon-box {
-  background: rgba(59, 130, 246, 0.16);
-  color: #60a5fa;
+  background: rgba(192, 38, 211, 0.16);
+  color: #f0abfc;
 }
 
 html[data-theme="plum"] .mobile-menu-btn,
@@ -3547,7 +3553,7 @@ html[data-theme="plum"] .topbar-date-chip,
 html[data-theme="plum"] .topbar-pref-select,
 html[data-theme="plum"] .topbar-search-input,
 html[data-theme="plum"] .search-bar-input {
-  background: rgba(22, 36, 64, 0.72);
+  background: rgba(38, 22, 64, 0.72);
   border-color: var(--border-strong);
   color: var(--text);
 }
@@ -3555,7 +3561,7 @@ html[data-theme="plum"] .search-bar-input {
 html[data-theme="plum"] input,
 html[data-theme="plum"] select,
 html[data-theme="plum"] textarea {
-  background: #0e182c;
+  background: #1a1030;
   border-color: var(--border-strong);
   color: var(--text);
 }
@@ -3563,8 +3569,8 @@ html[data-theme="plum"] textarea {
 html[data-theme="plum"] input:focus,
 html[data-theme="plum"] select:focus,
 html[data-theme="plum"] textarea:focus {
-  background: #13213c;
-  border-color: #3b82f6;
+  background: #21143a;
+  border-color: #c026d3;
 }
 
 html[data-theme="plum"] .table-wrap,
@@ -3572,14 +3578,14 @@ html[data-theme="plum"] .multi-subject-box,
 html[data-theme="plum"] .upload-dropzone-box,
 html[data-theme="plum"] .analytics-svg-wrap,
 html[data-theme="plum"] .tt-slot-card {
-  background: #0e182c;
+  background: #1a1030;
   border-color: var(--border);
   color: var(--text);
 }
 
 html[data-theme="plum"] th {
-  background: #15233f;
-  color: #b7caea;
+  background: #231540;
+  color: #d7bcf0;
   border-color: var(--border);
 }
 
@@ -3589,64 +3595,64 @@ html[data-theme="plum"] td {
 }
 
 html[data-theme="plum"] tbody tr:hover {
-  background: rgba(59, 130, 246, 0.08);
+  background: rgba(192, 38, 211, 0.08);
 }
 
 html[data-theme="plum"] .subnav-tabs {
-  background: rgba(14, 24, 44, 0.72);
+  background: rgba(30, 16, 52, 0.72);
   border-color: var(--border);
 }
 
 html[data-theme="plum"] .subtab-btn.active {
-  background: #2563eb;
+  background: #a21caf;
   color: #ffffff;
 }
 
 html[data-theme="plum"] .btn-secondary {
-  background: #192949;
+  background: #291940;
   border-color: var(--border-strong);
-  color: #dbe8ff;
+  color: #f6e8ff;
 }
 
 html[data-theme="plum"] .btn-secondary:hover {
-  background: #223761;
+  background: #36204f;
 }
 
 html[data-theme="plum"] code,
 html[data-theme="plum"] .subject-badge-tag,
 html[data-theme="plum"] .subject-check-pill {
-  background: #182848;
+  background: #26173d;
   border-color: var(--border-strong);
-  color: #cfe1ff;
+  color: #eddcff;
 }
 
 html[data-theme="plum"] .login-page-bg {
-  background: radial-gradient(circle at 20% 20%, #162a52 0%, #091120 100%);
+  background: radial-gradient(circle at 20% 20%, #2c1447 0%, #100720 100%);
 }
 
 html[data-theme="plum"] .login-split-card {
-  background: #111c32;
+  background: #1d1230;
   border-color: var(--border);
 }
 
 html[data-theme="plum"] .login-welcome-heading {
-  color: #60a5fa;
+  color: #f0abfc;
 }
 
 html[data-theme="plum"] .login-welcome-sub,
 html[data-theme="plum"] .login-bottom-prompt,
 html[data-theme="plum"] .login-text-link {
-  color: #b5c7e6;
+  color: #d9c2ee;
 }
 
 html[data-theme="plum"] .google-btn {
-  background: #162440;
+  background: #241638;
   border-color: var(--border-strong);
   color: var(--text);
 }
 
 html[data-theme="plum"] .terms-agree-row {
-  color: #cbd5e1;
+  color: #e3d3f2;
 }
 
 html[data-theme="plum"] .form-group input,
@@ -3656,9 +3662,9 @@ html[data-theme="plum"] .form-grid input,
 html[data-theme="plum"] .form-grid select,
 html[data-theme="plum"] .form-grid textarea,
 html[data-theme="plum"] .card-header select {
-  background: #0e182c;
+  background: #1a1030;
   border-color: var(--border-strong);
-  box-shadow: inset 0 1px 2px rgba(2, 6, 18, 0.25);
+  box-shadow: inset 0 1px 2px rgba(10, 3, 20, 0.25);
 }
 
 html[data-theme="plum"] .form-group input:hover,
@@ -3667,8 +3673,8 @@ html[data-theme="plum"] .form-group textarea:hover,
 html[data-theme="plum"] .form-grid input:hover,
 html[data-theme="plum"] .form-grid select:hover,
 html[data-theme="plum"] .form-grid textarea:hover {
-  background: #13213c;
-  border-color: #3b82f6;
+  background: #21143a;
+  border-color: #c026d3;
 }
 
 html[data-theme="plum"] .form-group input:focus,
@@ -3678,28 +3684,28 @@ html[data-theme="plum"] .form-grid input:focus,
 html[data-theme="plum"] .form-grid select:focus,
 html[data-theme="plum"] .form-grid textarea:focus,
 html[data-theme="plum"] .card-header select:focus {
-  background: #13213c;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.22);
+  background: #21143a;
+  border-color: #c026d3;
+  box-shadow: 0 0 0 4px rgba(192, 38, 211, 0.22);
 }
 
 html[data-theme="plum"] .form-group select,
 html[data-theme="plum"] .form-grid select,
 html[data-theme="plum"] .card-header select {
   background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239eb2d0' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"),
-    linear-gradient(180deg, #0e182c 0%, #0e182c 100%);
+    linear-gradient(180deg, #1a1030 0%, #1a1030 100%);
 }
 
 html[data-theme="plum"] .form-group input[type="file"],
 html[data-theme="plum"] .form-grid input[type="file"] {
-  background: #0e182c;
+  background: #1a1030;
   border-color: var(--border-strong);
   color: var(--text-muted);
 }
 
 html[data-theme="plum"] .form-group input[type="file"]::file-selector-button,
 html[data-theme="plum"] .form-grid input[type="file"]::file-selector-button {
-  background: #162440;
+  background: #241638;
   border-color: var(--border-strong);
   color: var(--text);
 }
@@ -3707,20 +3713,20 @@ html[data-theme="plum"] .form-grid input[type="file"]::file-selector-button {
 html[data-theme="plum"] .form-group input:disabled,
 html[data-theme="plum"] .form-group select:disabled,
 html[data-theme="plum"] .form-group textarea:disabled {
-  background: #0b1425;
+  background: #170e28;
   color: var(--text-light);
 }
 
 html[data-theme="plum"] .btn-secondary {
-  background: linear-gradient(180deg, #162440 0%, #142139 100%);
+  background: linear-gradient(180deg, #241638 0%, #22143a 100%);
   border-color: var(--border-strong);
   color: var(--text);
 }
 
 html[data-theme="plum"] .btn-secondary:hover:not(:disabled) {
-  background: #1b2c4d;
-  border-color: #3b82f6;
-  color: #93c5fd;
+  background: #2f1c4b;
+  border-color: #c026d3;
+  color: #f5d0fe;
 }
 
 html[data-theme="plum"] .form-actions-end {
@@ -3730,7 +3736,7 @@ html[data-theme="plum"] .form-actions-end {
 html[data-theme="plum"] .multi-subject-box input[type="text"],
 html[data-theme="plum"] .subject-row-item input[type="text"],
 html[data-theme="plum"] .subject-inline-adder input[type="text"] {
-  background: #0e182c;
+  background: #1a1030;
   border-color: var(--border-strong);
   color: var(--text);
 }
@@ -3738,9 +3744,9 @@ html[data-theme="plum"] .subject-inline-adder input[type="text"] {
 html[data-theme="plum"] .multi-subject-box input[type="text"]:focus,
 html[data-theme="plum"] .subject-row-item input[type="text"]:focus,
 html[data-theme="plum"] .subject-inline-adder input[type="text"]:focus {
-  background: #13213c;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.22);
+  background: #21143a;
+  border-color: #c026d3;
+  box-shadow: 0 0 0 4px rgba(192, 38, 211, 0.22);
 }
 
 
