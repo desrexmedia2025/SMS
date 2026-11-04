@@ -1,3 +1,4 @@
+// build: driver-agnostic dates, zero-date tolerance (2026-11-04g)
 // build: driver-agnostic calendar dates, diagnostic removed (2026-11-04f)
 // build: diagnostic round 2 - full row/range dump (2026-11-04e)
 const env = require('../src/config/environment');

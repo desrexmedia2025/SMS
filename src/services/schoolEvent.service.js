@@ -83,12 +83,16 @@ function normaliseEvent(row) {
   if (!row) return row;
   // mysql2 can hand back DATE columns as Date objects; SQLite hands back strings
   const start = toDateKey(row.start_date);
-  const end = toDateKey(row.end_date) || start;
+  const rawEnd = toDateKey(row.end_date);
+  // Stored data can still hold a zero date ('0000-00-00') or an end that lands
+  // before the start. Clamp those to a single day on the start date so the event
+  // still reaches the calendars instead of vanishing from every view.
+  const end = rawEnd && rawEnd >= start ? rawEnd : start;
   return {
     ...row,
     id: Number(row.id),
     start_date: start,
-    end_date: end || start,
+    end_date: end,
     event_type: cleanType(row.event_type),
     event_type_label: TYPE_LABELS[cleanType(row.event_type)] || TYPE_LABELS.other,
     audience: cleanAudience(row.audience),
@@ -102,7 +106,7 @@ async function listSchoolEvents({ from = '', to = '' } = {}) {
   const params = [];
   let where = 'WHERE 1=1';
   if (from) {
-    where += ' AND end_date >= ?';
+    where += " AND COALESCE(NULLIF(end_date, '0000-00-00'), start_date) >= ?";
     params.push(from);
   }
   if (to) {
@@ -235,7 +239,7 @@ async function getSchoolEventsForRole(role, range) {
     `SELECT *
      FROM school_events
      WHERE audience IN (${placeholders})
-       AND end_date >= ? AND start_date <= ?
+       AND COALESCE(NULLIF(end_date, '0000-00-00'), start_date) >= ? AND start_date <= ?
      ORDER BY start_date ASC, id ASC
      LIMIT 200`,
     [...audiences, range.from, range.to]

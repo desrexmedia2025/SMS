@@ -35,7 +35,20 @@ function toDateKey(value) {
 
   // 'YYYY-MM-DD', 'YYYY-MM-DD HH:MM:SS', 'YYYY-MM-DDTHH:MM:SSZ', ...
   const leading = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (leading) return `${leading[1]}-${leading[2]}-${leading[3]}`;
+  if (leading) {
+    const candidate = `${leading[1]}-${leading[2]}-${leading[3]}`;
+    // Reject real-world impossible values a database can still hold, such as the
+    // MySQL "zero date" '0000-00-00' or '2026-02-30' (which would silently roll
+    // over to March). An unreadable date must return '' so callers skip the row
+    // instead of comparing it against a range it can never match.
+    const parsed = new Date(`${candidate}T00:00:00Z`);
+    if (!isValidDate(parsed)) return '';
+    const roundTrip = `${parsed.getUTCFullYear()}-${String(parsed.getUTCMonth() + 1).padStart(
+      2,
+      '0'
+    )}-${String(parsed.getUTCDate()).padStart(2, '0')}`;
+    return roundTrip === candidate ? candidate : '';
+  }
 
   // Anything else textual ('Wed Nov 04 2026 00:00:00 GMT+0000', '11/04/2026', ...) - let
   // the platform parse it, then read the day back in UTC so the result is stable.

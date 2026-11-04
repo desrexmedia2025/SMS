@@ -4483,3 +4483,80 @@ test('38. Calendar dates survive MySQL-style Date columns (production driver sha
     db.get = originalGet;
   }
 });
+
+test('39. Events with a stored zero date or a reversed range still reach the calendars', async () => {
+  // Older rows (and any insert that slipped past validation) can hold MySQL's zero date
+  // '0000-00-00' in `end_date`, or an end that lands before the start. Both used to make
+  // the event invisible everywhere. The range query and the normaliser now treat such a
+  // row as a single-day event on its start date.
+  const db = require('../src/config/database');
+  const schoolEventService = require('../src/services/schoolEvent.service');
+  const { toDateKey } = require('../src/utils/dateKey');
+
+  const originalQuery = db.query;
+
+  const rows = [
+    {
+      id: 11,
+      title: 'Zero End Date Assembly',
+      event_type: 'meeting',
+      start_date: '2026-11-10',
+      end_date: '0000-00-00',
+      color: '#2563eb',
+      audience: 'all',
+    },
+    {
+      id: 12,
+      title: 'Reversed Range Sports',
+      event_type: 'sports',
+      start_date: '2026-11-20',
+      end_date: '2026-11-18',
+      color: '#059669',
+      audience: 'all',
+    },
+  ];
+
+  try {
+    // Impossible calendar dates are rejected outright instead of rolling over
+    assert.equal(toDateKey('0000-00-00'), '');
+    assert.equal(toDateKey('2026-02-30'), '');
+    assert.equal(toDateKey('2026-13-01'), '');
+    assert.equal(toDateKey('2026-11-20'), '2026-11-20');
+
+    // The range query must tolerate a zero end date on both drivers
+    const sql = [];
+    db.query = async (query) => {
+      sql.push(String(query));
+      return rows;
+    };
+    const feed = await schoolEventService.getSchoolEventsForRole('superadmin', {
+      from: '2026-11-01',
+      to: '2026-11-30',
+    });
+    assert.match(
+      sql.join('\n'),
+      /COALESCE\(NULLIF\(end_date, '0000-00-00'\), start_date\) >= \?/,
+      'the range filter must fall back to the start date when the end date is a zero date'
+    );
+
+    const dates = feed.map((e) => `${e.date}:${e.title}`).sort();
+    assert.deepEqual(dates, [
+      '2026-11-10:Zero End Date Assembly',
+      '2026-11-20:Reversed Range Sports',
+    ]);
+    const zeroEnd = feed.find((e) => e.id === 'school-11-2026-11-10');
+    assert.equal(zeroEnd.start_date, '2026-11-10');
+    assert.equal(zeroEnd.end_date, '2026-11-10', 'a zero end date clamps to the start date');
+    assert.equal(zeroEnd.meta, 'PTA Meeting', 'a clamped event is shown as a single-day entry');
+
+    // The Events tab clamps those rows too, so they can still be edited
+    const listed = await schoolEventService.listSchoolEvents({
+      from: '2026-11-01',
+      to: '2026-11-30',
+    });
+    assert.equal(listed.items.find((e) => e.id === 11).end_date, '2026-11-10');
+    assert.equal(listed.items.find((e) => e.id === 12).end_date, '2026-11-20');
+  } finally {
+    db.query = originalQuery;
+  }
+});
