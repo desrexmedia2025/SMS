@@ -1,3 +1,4 @@
+// build: diagnostic round 2 - full row/range dump (2026-11-04e)
 const env = require('../src/config/environment');
 const db = require('../src/config/database');
 const { runMigrations } = require('../database/migrate');

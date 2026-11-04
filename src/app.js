@@ -269,25 +269,63 @@ function createApp() {
     try {
       const db = require('./config/database');
       const { driver } = await db.initDatabase();
-      const months = await db.query('SELECT COUNT(*) AS c FROM school_events');
-      const sample = await db.query('SELECT id, title, start_date, end_date, color, audience FROM school_events ORDER BY id DESC LIMIT 3');
       const now = new Date();
-      const from = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-      const to = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-31`;
+      const from = req.query.from || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const to = req.query.to || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-31`;
+      const range = { from, to };
+
+      const rows = await db.query('SELECT * FROM school_events ORDER BY id DESC LIMIT 10');
+      const sqlProbe = await db.query(
+        `SELECT id, start_date, end_date, audience,
+                (end_date >= ?) AS sql_ge_from,
+                (start_date <= ?) AS sql_le_to,
+                (audience IN ('all','teachers','students','staff')) AS sql_audience_ok
+         FROM school_events ORDER BY id DESC LIMIT 10`,
+        [from, to]
+      );
+
       const schoolEventService = require('./services/schoolEvent.service');
-      const emitted = await schoolEventService.getSchoolEventsForRole('superadmin', { from, to });
-      const feedRaw = await db.query('SELECT * FROM school_events LIMIT 1');
-      const firstDate = feedRaw[0] ? feedRaw[0].start_date : null;
+      const calendarService = require('./services/calendar.service');
+      const roleCounts = {};
+      for (const role of ['superadmin', 'teacher', 'student', 'financial']) {
+        // eslint-disable-next-line no-await-in-loop
+        const emitted = await schoolEventService.getSchoolEventsForRole(role, range);
+        roleCounts[role] = emitted.length;
+      }
+      const emitted = await schoolEventService.getSchoolEventsForRole('superadmin', range);
+      const feed = await calendarService.getCalendarEvents({ id: 0, role: 'superadmin' }, range);
+
       return res.json({
         ok: true,
         driver,
-        tableCount: months[0] ? Number(months[0].c || 0) : 0,
-        start_date_js_type: firstDate === null ? 'no rows' : Object.prototype.toString.call(firstDate),
-        start_date_stringified: firstDate === null ? null : String(firstDate),
-        range: { from, to },
+        server_now_utc: now.toISOString(),
+        range,
+        tableCount: rows.length,
+        rows: rows.map((r) => ({
+          id: r.id,
+          title: r.title,
+          audience: r.audience,
+          color: r.color,
+          start_date: String(r.start_date),
+          start_type: Object.prototype.toString.call(r.start_date),
+          end_date: String(r.end_date),
+          end_type: Object.prototype.toString.call(r.end_date),
+        })),
+        sqlProbe: sqlProbe.map((r) => ({
+          id: r.id,
+          start_date: String(r.start_date),
+          end_date: String(r.end_date),
+          audience: r.audience,
+          sql_ge_from: r.sql_ge_from,
+          sql_le_to: r.sql_le_to,
+          sql_audience_ok: r.sql_audience_ok,
+        })),
+        roleCounts,
         emitted_for_superadmin: emitted.length,
-        emitted_sample: emitted.slice(0, 3).map((e) => ({ date: e.date, title: e.title, color: e.color })),
-        rows: sample.map((r) => ({ id: r.id, title: r.title, audience: r.audience, color: r.color })),
+        emitted_sample: emitted.slice(0, 5).map((e) => ({ date: e.date, title: e.title, color: e.color })),
+        feed_events: feed.events.length,
+        feed_school_events: feed.events.filter((e) => e.kind === 'school_event').length,
+        feed_days: feed.days.length,
       });
     } catch (err) {
       return res.status(500).json({ ok: false, error: err.message });
