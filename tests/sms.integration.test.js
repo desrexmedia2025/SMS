@@ -4406,3 +4406,80 @@ test('37. School events reach every dashboard calendar in the colour they were g
   const del = await admin.request(`/api/superadmin/events/${created.json.event.id}`, { method: 'DELETE' });
   assert.equal(del.status, 200);
 });
+
+test('38. Calendar dates survive MySQL-style Date columns (production driver shapes)', async () => {
+  // mysql2 returns DATE/DATETIME columns as JavaScript Date objects unless `dateStrings`
+  // is set, while SQLite returns 'YYYY-MM-DD' strings. The calendar used to slice those
+  // values as text, which silently dropped every event on MySQL/TiDB while the SQLite
+  // tests kept passing. This test drives the real service code with both shapes.
+  const db = require('../src/config/database');
+  const schoolEventService = require('../src/services/schoolEvent.service');
+  const calendarService = require('../src/services/calendar.service');
+  const { toDateKey } = require('../src/utils/dateKey');
+
+  const originalQuery = db.query;
+  const originalGet = db.get;
+
+  const mysqlRow = {
+    id: 7,
+    title: 'Driver Shape Sports Day',
+    description: 'created by the date-shape test',
+    event_type: 'sports',
+    start_date: new Date('2026-11-04T00:00:00Z'),
+    end_date: new Date('2026-11-06T00:00:00Z'),
+    color: '#7c3aed',
+    audience: 'all',
+    created_by_user_id: 1,
+    created_at: new Date('2026-11-01T09:00:00Z'),
+    updated_at: new Date('2026-11-01T09:00:00Z'),
+  };
+
+  try {
+    // The unit under test: normalising every shape a driver can hand back
+    assert.equal(toDateKey('2026-11-04'), '2026-11-04');
+    assert.equal(toDateKey('2026-11-04 13:45:00'), '2026-11-04');
+    assert.equal(toDateKey('2026-11-04T13:45:00.000Z'), '2026-11-04');
+    assert.equal(toDateKey(new Date('2026-11-04T00:00:00Z')), '2026-11-04');
+    assert.equal(toDateKey(new Date('2026-11-04T23:59:59Z')), '2026-11-04');
+    assert.equal(toDateKey('Wed Nov 04 2026 00:00:00 GMT+0000'), '2026-11-04');
+    assert.equal(toDateKey(''), '');
+    assert.equal(toDateKey(null), '');
+
+    // MySQL-shaped rows must expand into one calendar entry per day, in the event's colour
+    db.query = async () => [mysqlRow];
+    db.get = async () => null;
+    const feed = await schoolEventService.getSchoolEventsForRole('superadmin', {
+      from: '2026-11-01',
+      to: '2026-11-30',
+    });
+    assert.equal(feed.length, 3, 'a three-day event must produce three calendar days');
+    assert.deepEqual(
+      feed.map((e) => e.date),
+      ['2026-11-04', '2026-11-05', '2026-11-06']
+    );
+    assert.equal(feed[0].color, '#7c3aed', 'the chosen colour must survive');
+
+    // The Events tab must print real dates, not "Wed Nov 04"
+    const listed = await schoolEventService.listSchoolEvents({ from: '2026-11-01', to: '2026-11-30' });
+    assert.equal(listed.items[0].start_date, '2026-11-04');
+    assert.equal(listed.items[0].end_date, '2026-11-06');
+    assert.equal(listed.items[0].multi_day, true);
+
+    // And the full role feed carries them through to the browser
+    db.query = async (sql) => (String(sql).includes('school_events') ? [mysqlRow] : []);
+    const calendar = await calendarService.getCalendarEvents(
+      { id: 1, role: 'superadmin' },
+      { from: '2026-11-01', to: '2026-11-30' }
+    );
+    const schoolEvents = calendar.events.filter((ev) => ev.kind === 'school_event');
+    assert.equal(schoolEvents.length, 3, 'the calendar feed must include school events on MySQL');
+    assert.equal(calendar.days.filter((d) => d.items.some((i) => i.kind === 'school_event')).length, 3);
+
+    // The pool itself is configured so MySQL behaves like SQLite
+    const dbSrc = fs.readFileSync(path.join(process.cwd(), 'src', 'config', 'database.js'), 'utf8');
+    assert.match(dbSrc, /dateStrings:\s*true/, 'the MySQL pool must request date strings');
+  } finally {
+    db.query = originalQuery;
+    db.get = originalGet;
+  }
+});

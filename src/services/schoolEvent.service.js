@@ -1,6 +1,7 @@
 const db = require('../config/database');
 const { AppError } = require('../middleware/errorHandler');
 const { recordAudit } = require('./audit.service');
+const { toDateKey } = require('../utils/dateKey');
 
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -80,8 +81,9 @@ function cleanAudience(value) {
 
 function normaliseEvent(row) {
   if (!row) return row;
-  const start = String(row.start_date || '').slice(0, 10);
-  const end = String(row.end_date || '').slice(0, 10);
+  // mysql2 can hand back DATE columns as Date objects; SQLite hands back strings
+  const start = toDateKey(row.start_date);
+  const end = toDateKey(row.end_date) || start;
   return {
     ...row,
     id: Number(row.id),
@@ -177,10 +179,10 @@ async function updateSchoolEvent({
 
   const nextTitle = title === undefined ? existing.title : cleanTitle(title);
   const nextType = eventType === undefined ? existing.event_type : cleanType(eventType);
-  const start = startDate === undefined ? String(existing.start_date).slice(0, 10) : requireDateKey(startDate, 'Start date');
+  const start = startDate === undefined ? toDateKey(existing.start_date) : requireDateKey(startDate, 'Start date');
   const end =
     endDate === undefined
-      ? String(existing.end_date).slice(0, 10) || start
+      ? toDateKey(existing.end_date) || start
       : requireDateKey(endDate || startDate, 'End date');
   if (end < start) throw new AppError(400, 'The end date cannot be before the start date.');
   const nextColor = color === undefined ? existing.color : cleanColor(color, nextType);

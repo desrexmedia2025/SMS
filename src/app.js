@@ -262,6 +262,38 @@ function createApp() {
   app.use('/api/messages', messageRoutes);
   app.use('/api/notifications', notificationRoutes);
 
+  // TEMPORARY read-only diagnostic (removed after the production date-shape check)
+  const DIAG_TOKEN = 'smsdiag7f3c19a4';
+  app.get('/api/_diag/calendar', async (req, res) => {
+    if (req.query.token !== DIAG_TOKEN) return res.status(404).json({ ok: false });
+    try {
+      const db = require('./config/database');
+      const { driver } = await db.initDatabase();
+      const months = await db.query('SELECT COUNT(*) AS c FROM school_events');
+      const sample = await db.query('SELECT id, title, start_date, end_date, color, audience FROM school_events ORDER BY id DESC LIMIT 3');
+      const now = new Date();
+      const from = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const to = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-31`;
+      const schoolEventService = require('./services/schoolEvent.service');
+      const emitted = await schoolEventService.getSchoolEventsForRole('superadmin', { from, to });
+      const feedRaw = await db.query('SELECT * FROM school_events LIMIT 1');
+      const firstDate = feedRaw[0] ? feedRaw[0].start_date : null;
+      return res.json({
+        ok: true,
+        driver,
+        tableCount: months[0] ? Number(months[0].c || 0) : 0,
+        start_date_js_type: firstDate === null ? 'no rows' : Object.prototype.toString.call(firstDate),
+        start_date_stringified: firstDate === null ? null : String(firstDate),
+        range: { from, to },
+        emitted_for_superadmin: emitted.length,
+        emitted_sample: emitted.slice(0, 3).map((e) => ({ date: e.date, title: e.title, color: e.color })),
+        rows: sample.map((r) => ({ id: r.id, title: r.title, audience: r.audience, color: r.color })),
+      });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
   // Personal notes: a lightweight word processor available on every dashboard
   app.use('/api/notes', notesRoutes);
 

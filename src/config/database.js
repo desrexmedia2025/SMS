@@ -52,6 +52,9 @@ async function initDatabase(options = {}) {
         connectTimeout: env.db.connectTimeoutMs,
         enableKeepAlive: true,
         keepAliveInitialDelay: 10000,
+        // Return DATE/DATETIME columns as 'YYYY-MM-DD' / 'YYYY-MM-DD HH:MM:SS' strings,
+        // exactly like the SQLite driver, so date handling never depends on the engine.
+        dateStrings: true,
         ...(env.db.ssl ? { ssl: env.db.ssl } : {}),
       });
       const conn = await pool.getConnection();

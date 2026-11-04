@@ -1,6 +1,7 @@
 const db = require('../config/database');
 const schoolEventService = require('./schoolEvent.service');
 const { AppError } = require('../middleware/errorHandler');
+const { toDateKey } = require('../utils/dateKey');
 
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_RANGE_DAYS = 124;
@@ -14,13 +15,7 @@ const KIND_LABELS = {
 };
 
 function dateKeyOf(value) {
-  const raw = String(value ?? '').trim();
-  if (!raw) return '';
-  const direct = raw.match(/^(\d{4}-\d{2}-\d{2})/);
-  if (direct) return direct[1];
-  const parsed = new Date(raw.replace(' ', 'T'));
-  if (Number.isNaN(parsed.getTime())) return '';
-  return parsed.toISOString().slice(0, 10);
+  return toDateKey(value);
 }
 
 function normaliseRange(from, to) {
