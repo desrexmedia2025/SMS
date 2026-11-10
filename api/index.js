@@ -1,3 +1,4 @@
+// build: prospectus-style landing page, static Get Started, centred grids (2026-11-10d)
 // build: Desrex Studio credit + visible hover states on the landing page (2026-11-10c)
 // build: landing page in the Fripal house style (2026-11-10b)
 // build: public landing page at / (2026-11-10a)
