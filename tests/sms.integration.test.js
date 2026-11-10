@@ -4610,11 +4610,14 @@ test('40. The public landing page greets visitors before they sign in', async ()
   assert.match(html, /class="lp-mock[ "]/, 'the page must illustrate the dashboard');
   assert.match(html, /Illustration of the layout/, 'the illustration must say it is an illustration');
 
-  // Footer with the studio contact details, plus the floating WhatsApp shortcut
-  assert.match(html, /mailto:fripalsolutiongh@gmail\.com/, 'the footer must publish a contact email');
-  assert.match(html, /tel:\+233548144940/, 'the footer must publish a phone number');
-  assert.match(html, /wa\.me\/233548144940/, 'the page must offer the WhatsApp shortcut');
-  assert.match(html, /class="lp-whatsapp"/, 'the WhatsApp shortcut must be a fixed button');
+  // The page credits the studio that built it, and carries no outside branding
+  assert.match(html, /The Desrex Studio \(Acura Solutions\)/, 'the page must credit The Desrex Studio');
+  assert.doesNotMatch(html, /fripal/i, 'no unrelated studio branding may appear on the page');
+  assert.doesNotMatch(html, /wa\.me\//, 'the page must not publish a chat number that was never supplied');
+
+  // The footer contact column is filled from the school's own settings, and stays
+  // out of the way when the school has not published contact details
+  assert.match(html, /id="lp-contact-block" class="hidden"/, 'the contact column must start hidden');
   assert.match(html, /id="lp-year"/, 'the footer must stamp the current year');
 
   // No emoji, no decorative AI-style copy, no gradients anywhere in the page
@@ -4622,6 +4625,16 @@ test('40. The public landing page greets visitors before they sign in', async ()
   assert.doesNotMatch(html, /gradient/i, 'the page must not use gradients');
   const landingCss = fs.readFileSync(path.join(process.cwd(), 'src', 'public', 'css', 'landing.css'), 'utf8');
   assert.doesNotMatch(landingCss, /gradient/i, 'the landing stylesheet must not use gradients');
+
+  // Hover feedback has to be obvious, not a 2% opacity change nobody notices
+  const hoverRules = (landingCss.match(/:hover/g) || []).length;
+  assert.ok(hoverRules >= 14, `the stylesheet must carry visible hover states (found ${hoverRules})`);
+  assert.match(landingCss, /\.lp-card:hover\s*\{/, 'cards must react to hover');
+  assert.match(landingCss, /\.lp-card:hover \.lp-card-icon/, 'the card icon must change on hover');
+  assert.match(landingCss, /\.lp-nav-links a:hover::after/, 'nav links must underline on hover');
+  assert.match(landingCss, /\.lp-btn-primary:hover/, 'buttons must react to hover');
+  assert.match(landingCss, /\.lp-chip:hover/, 'the portal chips must react to hover');
+  assert.match(landingCss, /\.lp-faq details:hover/, 'FAQ rows must react to hover');
 
   // The page must run inside the app's strict Content-Security-Policy: no inline scripts at all
   assert.doesNotMatch(html, /<script(?![^>]*\ssrc=)/, 'scripts must come from a file, never inline');
@@ -4642,6 +4655,15 @@ test('40. The public landing page greets visitors before they sign in', async ()
   const authedHome = await admin.request('/');
   assert.equal(authedHome.status, 302, 'a signed-in visitor must be sent to their dashboard');
   assert.equal(authedHome.headers.get('location'), '/dashboard/superadmin');
+
+  // The public session endpoint feeds the page its branding and the school's contact details
+  const sessionRes = await anon.request('/api/auth/session');
+  assert.equal(sessionRes.status, 200);
+  assert.equal(sessionRes.json?.ok, true);
+  assert.equal(typeof sessionRes.json.school.school_name, 'string', 'the school name must be public');
+  assert.ok('email' in sessionRes.json.school, 'the school email must be exposed for the footer');
+  assert.ok('phone' in sessionRes.json.school, 'the school phone must be exposed for the footer');
+  assert.ok('address' in sessionRes.json.school, 'the school address must be exposed for the footer');
 
   // The landing links into the two panels on the sign-in screen
   const loginJs = fs.readFileSync(path.join(process.cwd(), 'src', 'public', 'js', 'login.js'), 'utf8');

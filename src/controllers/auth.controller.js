@@ -179,7 +179,7 @@ async function issuePopupHandoffToken(stateToken, userId, redirectTo) {
 async function getSessionStatus(req, res) {
   const [settings, registrationClasses, oauthCfg] = await Promise.all([
     db.get(
-      'SELECT school_name, school_code, motto, currency_code, currency_symbol, timezone, student_fee_portal_enabled FROM school_settings WHERE id = 1'
+      'SELECT school_name, school_code, motto, email, phone, address, currency_code, currency_symbol, timezone, student_fee_portal_enabled FROM school_settings WHERE id = 1'
     ),
     db.query("SELECT id, name FROM classes WHERE status = 'active' ORDER BY level_order ASC, name ASC"),
     resolveGoogleOAuthSettings(req),
@@ -207,6 +207,10 @@ async function getSessionStatus(req, res) {
     registrationClasses: registrationClasses || [],
     school: settings || {
       school_name: 'School Management System',
+      motto: '',
+      email: '',
+      phone: '',
+      address: '',
       currency_code: env.defaults.currencyCode,
       currency_symbol: env.defaults.currencySymbol,
     },
