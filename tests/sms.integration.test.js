@@ -4632,9 +4632,47 @@ test('40. The public landing page greets visitors before they sign in', async ()
   assert.match(landingCss, /\.lp-card:hover\s*\{/, 'cards must react to hover');
   assert.match(landingCss, /\.lp-card:hover \.lp-card-icon/, 'the card icon must change on hover');
   assert.match(landingCss, /\.lp-nav-links a:hover::after/, 'nav links must underline on hover');
-  assert.match(landingCss, /\.lp-btn-primary:hover/, 'buttons must react to hover');
+  assert.match(landingCss, /\.lp-btn-outline:hover/, 'secondary buttons must react to hover');
   assert.match(landingCss, /\.lp-chip:hover/, 'the portal chips must react to hover');
   assert.match(landingCss, /\.lp-faq details:hover/, 'FAQ rows must react to hover');
+
+  // "Get Started" is the exception: always-on solid button, hard offset shadow, and
+  // deliberately no hover state at all so it never moves under the pointer
+  assert.equal(
+    (html.match(/class="lp-btn lp-btn-cta[^"]*" href="\/login">Get Started</g) || []).length,
+    3,
+    'the top bar, the hero and the closing band must each carry the Get Started call to action'
+  );
+  assert.match(html, /lp-btn-cta lp-btn-cta-light[^"]*" href="\/login">Get Started</, 'the closing band must carry it too');
+  assert.doesNotMatch(landingCss, /\.lp-btn-cta:hover/, 'the call to action must have no hover state');
+  assert.match(landingCss, /\.lp-btn-cta \{[^}]*box-shadow: \d+px \d+px 0 0/, 'the call to action must be raised at rest');
+
+  // Every grid divides its items into whole rows, so no stray card sits off-centre
+  assert.match(html, /class="lp-grid lp-grid--4"/, 'the module and portal grids must declare four columns');
+  assert.match(html, /class="lp-grid lp-grid--3"/, 'the safeguards grid must declare three columns');
+  for (const [rule, columns] of [['lp-grid--4', 4], ['lp-grid--3', 3]]) {
+    assert.match(
+      landingCss,
+      new RegExp(`\\.${rule} \\{\\s*grid-template-columns: repeat\\(${columns}, minmax\\(0, 1fr\\)\\)`),
+      `${rule} must lay out ${columns} equal columns`
+    );
+  }
+  assert.match(landingCss, /\.lp-grid \{\s*[^}]*justify-content: center/, 'grids must be centred');
+  assert.match(landingCss, /\.lp-section-head \{\s*text-align: center/, 'section headings must be centred');
+  assert.match(landingCss, /\.lp-card \{\s*[^}]*text-align: center/, 'cards must be centred');
+  assert.match(landingCss, /\.lp-footer-cols \{\s*[^}]*justify-content: center/, 'the footer columns must be centred');
+
+  // It reads like print rather than like a template: serif display headings on warm paper,
+  // hairline rules and small-caps section labels instead of gradients and glow
+  assert.match(landingCss, /--lp-serif:/, 'the page must define a serif display face');
+  assert.match(landingCss, /--lp-paper:/, 'the page must sit on a paper background');
+  assert.match(
+    landingCss,
+    /body\.lp h1,\s*body\.lp h2,\s*body\.lp h3 \{[^}]*font-family: var\(--lp-serif\)/,
+    'headings must be set in the serif face'
+  );
+  assert.match(landingCss, /\.lp-section-head h2::after/, 'section headings must carry a centred rule');
+  assert.match(landingCss, /\.lp-eyebrow \{[^}]*text-transform: uppercase/, 'section eyebrows must be small caps');
 
   // The page must run inside the app's strict Content-Security-Policy: no inline scripts at all
   assert.doesNotMatch(html, /<script(?![^>]*\ssrc=)/, 'scripts must come from a file, never inline');
