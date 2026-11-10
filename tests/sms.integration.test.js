@@ -4575,6 +4575,7 @@ test('40. The public landing page greets visitors before they sign in', async ()
   const home = await anon.request('/');
   assert.equal(home.status, 200, 'the landing page must be served at /');
   const html = home.text;
+  const landingCss = fs.readFileSync(path.join(process.cwd(), 'src', 'public', 'css', 'landing.css'), 'utf8');
   assert.match(html, /<title>/);
   assert.ok(html.length > 8000, 'the landing page must carry real content');
 
@@ -4595,9 +4596,17 @@ test('40. The public landing page greets visitors before they sign in', async ()
     assert.ok(html.includes(phrase), `the landing page must describe ${phrase}`);
   }
 
-  // House-style structure: eyebrow badge over a centred hero, trust pills, section eyebrows
-  assert.match(html, /class="lp-badge">School Management System</, 'the hero must open with a badge');
-  assert.equal((html.match(/class="lp-pill"/g) || []).length >= 4, true, 'the hero must carry trust pills');
+  // The school's photograph is the backdrop of the page, with the hero copy sitting on top
+  assert.match(html, /class="lp-hero"/, 'the page must open on a full-bleed hero');
+  assert.match(landingCss, /url\('\/img\/landing-bg\.jpg'\)/, 'the stylesheet must set the school photograph as the backdrop');
+  const heroImg = await anon.request('/img/landing-bg.jpg');
+  assert.equal(heroImg.status, 200, 'the school photograph must be served');
+  assert.match(String(heroImg.headers.get('content-type') || ''), /image\/jpeg/, 'it must be a JPEG');
+
+  // House-style structure: rule-set label over a centred hero, a facts strip, section eyebrows
+  assert.match(html, /class="lp-hero-eyebrow">School Management System</, 'the hero must open with a label');
+  assert.match(html, /class="lp-facts lp-shell"/, 'the hero must be followed by a facts strip');
+  assert.equal((html.match(/<li>Four role dashboards<\/li>/g) || []).length, 1, 'the facts strip must carry the four facts');
   for (const eyebrow of ['What it does', 'Portals', 'Payments', 'Security', 'FAQ']) {
     assert.ok(
       html.includes(`class="lp-eyebrow">${eyebrow}<`),
@@ -4623,18 +4632,25 @@ test('40. The public landing page greets visitors before they sign in', async ()
   // No emoji, no decorative AI-style copy, no gradients anywhere in the page
   assert.doesNotMatch(html, /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u, 'the page must not use emoji');
   assert.doesNotMatch(html, /gradient/i, 'the page must not use gradients');
-  const landingCss = fs.readFileSync(path.join(process.cwd(), 'src', 'public', 'css', 'landing.css'), 'utf8');
   assert.doesNotMatch(landingCss, /gradient/i, 'the landing stylesheet must not use gradients');
+  assert.match(landingCss, /--lp-scrim: rgba\(/, 'the photo must be legible through a flat ink scrim');
+  assert.match(landingCss, /\.lp-hero::before \{[^}]*background: var\(--lp-scrim\)/, 'the hero must carry that scrim');
 
   // Hover feedback has to be obvious, not a 2% opacity change nobody notices
   const hoverRules = (landingCss.match(/:hover/g) || []).length;
   assert.ok(hoverRules >= 14, `the stylesheet must carry visible hover states (found ${hoverRules})`);
-  assert.match(landingCss, /\.lp-card:hover\s*\{/, 'cards must react to hover');
-  assert.match(landingCss, /\.lp-card:hover \.lp-card-icon/, 'the card icon must change on hover');
+  assert.match(landingCss, /\.lp-item:hover::before/, 'the ruled index entries must draw a rule on hover');
+  assert.match(landingCss, /\.lp-item:hover h3/, 'their headings must take the spot colour on hover');
+  assert.match(landingCss, /\.lp-portal:hover \.lp-portal-tag/, 'the portal initials must fill on hover');
   assert.match(landingCss, /\.lp-nav-links a:hover::after/, 'nav links must underline on hover');
   assert.match(landingCss, /\.lp-btn-outline:hover/, 'secondary buttons must react to hover');
-  assert.match(landingCss, /\.lp-chip:hover/, 'the portal chips must react to hover');
+  assert.match(landingCss, /\.lp-checklist li:hover \.lp-tick/, 'the payments list must fill its ticks on hover');
   assert.match(landingCss, /\.lp-faq details:hover/, 'FAQ rows must react to hover');
+  assert.match(landingCss, /\.lp-hero-roles a:hover/, 'the hero role links must react to hover');
+
+  // Simple by construction: no card boxes, no icon tiles, no pill chips anywhere
+  assert.doesNotMatch(html, /lp-card|lp-chip|lp-pill|lp-card-icon/, 'the page must not use card boxes, chips or icon tiles');
+  assert.doesNotMatch(landingCss, /\.lp-card|\.lp-chip|\.lp-pill/, 'the stylesheet must not define them either');
 
   // "Get Started" is the exception: always-on solid button, hard offset shadow, and
   // deliberately no hover state at all so it never moves under the pointer
@@ -4659,7 +4675,8 @@ test('40. The public landing page greets visitors before they sign in', async ()
   }
   assert.match(landingCss, /\.lp-grid \{\s*[^}]*justify-content: center/, 'grids must be centred');
   assert.match(landingCss, /\.lp-section-head \{\s*text-align: center/, 'section headings must be centred');
-  assert.match(landingCss, /\.lp-card \{\s*[^}]*text-align: center/, 'cards must be centred');
+  assert.match(landingCss, /\.lp-item \{\s*[^}]*text-align: center/, 'index entries must be centred');
+  assert.match(landingCss, /\.lp-hero \{[^}]*text-align: center/, 'the hero must be centred');
   assert.match(landingCss, /\.lp-footer-cols \{\s*[^}]*justify-content: center/, 'the footer columns must be centred');
 
   // It reads like print rather than like a template: serif display headings on warm paper,
@@ -4668,9 +4685,13 @@ test('40. The public landing page greets visitors before they sign in', async ()
   assert.match(landingCss, /--lp-paper:/, 'the page must sit on a paper background');
   assert.match(
     landingCss,
-    /body\.lp h1,\s*body\.lp h2,\s*body\.lp h3 \{[^}]*font-family: var\(--lp-serif\)/,
+    /\nh1,\nh2,\nh3 \{[^}]*font-family: var\(--lp-serif\)/,
     'headings must be set in the serif face'
   );
+  // ...and the reset that sets them must stay weaker than a component rule,
+  // otherwise every margin in the page collapses to zero
+  assert.doesNotMatch(landingCss, /body\.lp (h1|h2|h3|p|a|ul) \{/, 'the type reset must not outrank component rules');
+  assert.match(landingCss, /\np \{\s*margin: 0;\s*\}/, 'paragraphs must be reset at element specificity');
   assert.match(landingCss, /\.lp-section-head h2::after/, 'section headings must carry a centred rule');
   assert.match(landingCss, /\.lp-eyebrow \{[^}]*text-transform: uppercase/, 'section eyebrows must be small caps');
 
