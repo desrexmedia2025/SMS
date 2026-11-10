@@ -286,4 +286,13 @@
       resetFeedbackEl.classList.remove('hidden');
     }
   });
+
+  // Deep links from the public landing page:
+  //   /login?panel=register - open the student join proposal form straight away
+  //   /login?terms=1        - open the Terms & Conditions
+  if (params.get('panel') === 'register') {
+    showRegisterView();
+  } else if (params.get('terms') === '1') {
+    document.getElementById('login-terms-modal')?.classList.add('open');
+  }
 })();

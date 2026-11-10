@@ -199,6 +199,8 @@ function createApp() {
   });
 
   // Root & Login routes
+  // "/" is the public landing page: what a visitor reads before signing in.
+  // Signed-in accounts go straight to their dashboard instead.
   app.get('/', noStoreCache, async (req, res) => {
     if (req.session?.user?.id) {
       const fresh = await userModel.findById(req.session.user.id);
@@ -206,7 +208,8 @@ function createApp() {
         return res.redirect(userModel.dashboardPathForRole(fresh.role));
       }
     }
-    return res.redirect('/login');
+    await recordSiteHit('landing', null);
+    return res.sendFile(path.join(__dirname, 'views', 'landing.html'));
   });
 
   app.get('/login', noStoreCache, async (req, res) => {

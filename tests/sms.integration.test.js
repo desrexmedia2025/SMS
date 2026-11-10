@@ -4198,7 +4198,14 @@ test('34. Dashboard scripts and stylesheets are never served from a stale browse
 
 test('35. Every page ships the school logo favicon and the icons are really served', async () => {
   const anon = new SessionClient();
-  const views = ['login.html', 'superadmin.html', 'teacher.html', 'student.html', 'financial.html'];
+  const views = [
+    'landing.html',
+    'login.html',
+    'superadmin.html',
+    'teacher.html',
+    'student.html',
+    'financial.html',
+  ];
 
   for (const view of views) {
     const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'views', view), 'utf8');
@@ -4559,4 +4566,65 @@ test('39. Events with a stored zero date or a reversed range still reach the cal
   } finally {
     db.query = originalQuery;
   }
+});
+
+test('40. The public landing page greets visitors before they sign in', async () => {
+  const anon = new SessionClient();
+
+  // "/" is the front door: the page a visitor reads before clicking Sign in or Get started
+  const home = await anon.request('/');
+  assert.equal(home.status, 200, 'the landing page must be served at /');
+  const html = home.text;
+  assert.match(html, /<title>/);
+  assert.ok(html.length > 8000, 'the landing page must carry real content');
+
+  // The two calls to action everyone arrives for
+  assert.match(html, /href="\/login"[^>]*>Get started</, 'the hero must offer "Get started"');
+  assert.match(html, /href="\/login"[^>]*>Sign in</, 'the top bar must offer "Sign in"');
+
+  // Honest, concrete content about what the portal does
+  for (const phrase of [
+    'Students and admissions',
+    'Classwork and exams',
+    'Report cards',
+    'Fees and payments',
+    'Announcements and messages',
+    'Four dashboards, one account each',
+    'How the portal is protected',
+  ]) {
+    assert.ok(html.includes(phrase), `the landing page must describe ${phrase}`);
+  }
+
+  // No emoji, no decorative AI-style copy, no gradients anywhere in the page
+  assert.doesNotMatch(html, /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u, 'the page must not use emoji');
+  assert.doesNotMatch(html, /gradient/i, 'the page must not use gradients');
+  const landingCss = fs.readFileSync(path.join(process.cwd(), 'src', 'public', 'css', 'landing.css'), 'utf8');
+  assert.doesNotMatch(landingCss, /gradient/i, 'the landing stylesheet must not use gradients');
+
+  // The page must run inside the app's strict Content-Security-Policy: no inline scripts at all
+  assert.doesNotMatch(html, /<script(?![^>]*\ssrc=)/, 'scripts must come from a file, never inline');
+  assert.match(html, /\/js\/landing\.js\?v=\d+\.\d+/, 'the landing script must be versioned');
+  assert.match(html, /\/css\/landing\.css\?v=\d+\.\d+/, 'the landing stylesheet must be versioned');
+
+  // Its assets are really served, and revalidated so a new version always reaches the browser
+  for (const asset of ['/js/landing.js', '/css/landing.css']) {
+    const res = await anon.request(asset);
+    assert.equal(res.status, 200, `${asset} must be served`);
+    assert.match(String(res.headers.get('cache-control') || ''), /no-cache/, `${asset} must revalidate`);
+  }
+
+  // A signed-in account never sees the marketing page, it goes straight to its dashboard
+  const admin = new SessionClient();
+  const login = await admin.login('admin@school.edu.gh', 'Admin@2026!');
+  assert.equal(login.json?.ok, true);
+  const authedHome = await admin.request('/');
+  assert.equal(authedHome.status, 302, 'a signed-in visitor must be sent to their dashboard');
+  assert.equal(authedHome.headers.get('location'), '/dashboard/superadmin');
+
+  // The landing links into the two panels on the sign-in screen
+  const loginJs = fs.readFileSync(path.join(process.cwd(), 'src', 'public', 'js', 'login.js'), 'utf8');
+  assert.match(loginJs, /panel'\)\s*===\s*'register'/, 'the login screen must honour ?panel=register');
+  assert.match(loginJs, /terms'\)\s*===\s*'1'/, 'the login screen must honour ?terms=1');
+  assert.match(html, /\/login\?panel=register/, 'the landing page must link to the join proposal form');
+  assert.match(html, /\/login\?terms=1/, 'the landing page must link to the terms');
 });
