@@ -4579,7 +4579,7 @@ test('40. The public landing page greets visitors before they sign in', async ()
   assert.ok(html.length > 8000, 'the landing page must carry real content');
 
   // The two calls to action everyone arrives for
-  assert.match(html, /href="\/login"[^>]*>Get started</, 'the hero must offer "Get started"');
+  assert.match(html, /href="\/login"[^>]*>Get Started</, 'the hero must offer "Get Started"');
   assert.match(html, /href="\/login"[^>]*>Sign in</, 'the top bar must offer "Sign in"');
 
   // Honest, concrete content about what the portal does
@@ -4589,11 +4589,33 @@ test('40. The public landing page greets visitors before they sign in', async ()
     'Report cards',
     'Fees and payments',
     'Announcements and messages',
-    'Four dashboards, one account each',
+    'A dashboard for every role',
     'How the portal is protected',
   ]) {
     assert.ok(html.includes(phrase), `the landing page must describe ${phrase}`);
   }
+
+  // House-style structure: eyebrow badge over a centred hero, trust pills, section eyebrows
+  assert.match(html, /class="lp-badge">School Management System</, 'the hero must open with a badge');
+  assert.equal((html.match(/class="lp-pill"/g) || []).length >= 4, true, 'the hero must carry trust pills');
+  for (const eyebrow of ['What it does', 'Portals', 'Payments', 'Security', 'FAQ']) {
+    assert.ok(
+      html.includes(`class="lp-eyebrow">${eyebrow}<`),
+      `the ${eyebrow} section must carry an eyebrow label`
+    );
+  }
+
+  // A dashboard illustration that is drawn in CSS and clearly labelled as an illustration,
+  // so the page never has to pretend a screenshot is real
+  assert.match(html, /class="lp-mock[ "]/, 'the page must illustrate the dashboard');
+  assert.match(html, /Illustration of the layout/, 'the illustration must say it is an illustration');
+
+  // Footer with the studio contact details, plus the floating WhatsApp shortcut
+  assert.match(html, /mailto:fripalsolutiongh@gmail\.com/, 'the footer must publish a contact email');
+  assert.match(html, /tel:\+233548144940/, 'the footer must publish a phone number');
+  assert.match(html, /wa\.me\/233548144940/, 'the page must offer the WhatsApp shortcut');
+  assert.match(html, /class="lp-whatsapp"/, 'the WhatsApp shortcut must be a fixed button');
+  assert.match(html, /id="lp-year"/, 'the footer must stamp the current year');
 
   // No emoji, no decorative AI-style copy, no gradients anywhere in the page
   assert.doesNotMatch(html, /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u, 'the page must not use emoji');
