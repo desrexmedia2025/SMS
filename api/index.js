@@ -1,3 +1,4 @@
+// build: plain Get Started button, numbered sections, photographic pull quote (2026-11-10f)
 // build: landing page rebuilt on the school photograph (2026-11-10e)
 // build: prospectus-style landing page, static Get Started, centred grids (2026-11-10d)
 // build: Desrex Studio credit + visible hover states on the landing page (2026-11-10c)
