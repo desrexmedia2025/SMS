@@ -1,3 +1,4 @@
+// build: landing page de-vibecoded - no fake metrics, no scroll animation, full SEO and security pass (2026-11-11a)
 // build: landing buttons match the app, how-it-works section, richer page (2026-11-10g)
 // build: plain Get Started button, numbered sections, photographic pull quote (2026-11-10f)
 // build: landing page rebuilt on the school photograph (2026-11-10e)

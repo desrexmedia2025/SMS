@@ -35,13 +35,26 @@ function cleanObjectInPlace(obj, depth = 0) {
   }
 }
 
-function securityPolicyHeaders(_req, res, next) {
+// The marketing page, the sign-in screen and the public images are the only things a
+// search engine should ever be offered. Everything else - dashboards, the API and
+// uploaded files - is told to stay out of the index.
+const INDEXABLE = 'index, follow, max-image-preview:large';
+const NOT_INDEXABLE = 'noindex, nofollow, noarchive';
+
+function robotsTagFor(pathname) {
+  if (pathname === '/' || pathname === '/login' || pathname.startsWith('/img/')) {
+    return INDEXABLE;
+  }
+  return NOT_INDEXABLE;
+}
+
+function securityPolicyHeaders(req, res, next) {
   res.setHeader(
     'Permissions-Policy',
     'camera=(), microphone=(), geolocation=(), usb=(), payment=(self)'
   );
   res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
-  res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+  res.setHeader('X-Robots-Tag', robotsTagFor(String(req.path || '/')));
   next();
 }
 
@@ -104,6 +117,7 @@ function applySessionCookiePolicy(req) {
 
 module.exports = {
   securityPolicyHeaders,
+  robotsTagFor,
   noStoreCache,
   sanitizeRequest,
   applySessionCookiePolicy,

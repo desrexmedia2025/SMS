@@ -1,3 +1,4 @@
+const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const session = require('express-session');
@@ -198,6 +199,73 @@ function createApp() {
     });
   });
 
+  // Crawler files. Only the public pages are offered to search engines: every
+  // signed-in area, the API and uploaded files are kept out of the index.
+  const CRAWL_DISALLOW = [
+    '/api/',
+    '/auth/',
+    '/dashboard/',
+    '/uploads/',
+    '/superadmin',
+    '/admin',
+    '/teacher',
+    '/student',
+    '/financial',
+  ];
+
+  app.get('/robots.txt', (req, res) => {
+    const origin = String(env.appBaseUrl || '').replace(/\/+$/, '');
+    const body = [
+      'User-agent: *',
+      'Allow: /',
+      ...CRAWL_DISALLOW.map((route) => `Disallow: ${route}`),
+      '',
+      `Sitemap: ${origin}/sitemap.xml`,
+      '',
+    ].join('\n');
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.send(body);
+  });
+
+  app.get('/sitemap.xml', (req, res) => {
+    const origin = String(env.appBaseUrl || '').replace(/\/+$/, '');
+    const pages = [
+      { loc: `${origin}/`, priority: '1.0' },
+      { loc: `${origin}/login`, priority: '0.6' },
+    ];
+    const body = [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+      ...pages.map(
+        (page) =>
+          `  <url><loc>${page.loc}</loc><changefreq>weekly</changefreq><priority>${page.priority}</priority></url>`
+      ),
+      '</urlset>',
+      '',
+    ].join('\n');
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.send(body);
+  });
+
+  // The landing page carries absolute URLs (canonical, Open Graph, structured data)
+  // that have to match the deployed origin, so they are filled in per request.
+  const LANDING_FILE = path.join(__dirname, 'views', 'landing.html');
+  let landingCache = { mtimeMs: 0, html: '' };
+
+  function renderLanding() {
+    const { mtimeMs } = fs.statSync(LANDING_FILE);
+    if (!landingCache.html || landingCache.mtimeMs !== mtimeMs) {
+      const origin = String(env.appBaseUrl || '').replace(/\/+$/, '');
+      landingCache = {
+        mtimeMs,
+        html: fs.readFileSync(LANDING_FILE, 'utf8').split('__ORIGIN__').join(origin),
+      };
+    }
+    return landingCache.html;
+  }
+
   // Root & Login routes
   // "/" is the public landing page: what a visitor reads before signing in.
   // Signed-in accounts go straight to their dashboard instead.
@@ -209,7 +277,8 @@ function createApp() {
       }
     }
     await recordSiteHit('landing', null);
-    return res.sendFile(path.join(__dirname, 'views', 'landing.html'));
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.send(renderLanding());
   });
 
   app.get('/login', noStoreCache, async (req, res) => {

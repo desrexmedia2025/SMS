@@ -144,7 +144,7 @@ const APPLE_TOUCH_ICON_BASE64 =
   '+hJPmuQnZq2FPqKz0CuomsCZCjmVyuidpjG7l2hMrnc0JncIj03JFLMlENJZ6LfJeK6p1U1TFXlRZXCK1uydTRldZsrofkxjcr2h' +
   'Mbu/pUzuRo3J7afM7jCeARQnZq0lENZZA36dJdCotdDf6iyBN7RW+jEyn5kZaRufApqD+n9dy48dshI6PgAAAABJRU5ErkJggg==';
 
-const FAVICON_SVG = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\" width=\"64\" height=\"64\" role=\"img\" aria-label=\"School Management System\">\n  <defs>\n    <linearGradient id=\"smsCapGradient\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\">\n      <stop offset=\"0\" stop-color=\"#1d4ed8\" />\n      <stop offset=\"1\" stop-color=\"#2563eb\" />\n    </linearGradient>\n  </defs>\n  <rect width=\"64\" height=\"64\" rx=\"14\" fill=\"url(#smsCapGradient)\" />\n  <path d=\"M32 15 L5 28 L32 41 L59 28 Z\" fill=\"#ffffff\" />\n  <path d=\"M15 33.8 V45 C15 49.7 22.6 53.6 32 53.6 C41.4 53.6 49 49.7 49 45 V33.8 L32 41.6 Z\" fill=\"#dbeafe\" />\n  <path d=\"M55.5 30.8 V44.5\" stroke=\"#bfdbfe\" stroke-width=\"4\" stroke-linecap=\"round\" />\n  <circle cx=\"55.5\" cy=\"47\" r=\"3.6\" fill=\"#bfdbfe\" />\n</svg>";
+const FAVICON_SVG = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\" width=\"64\" height=\"64\" role=\"img\" aria-label=\"School Management System\">\n  <rect width=\"64\" height=\"64\" rx=\"14\" fill=\"#1a4fd6\" />\n  <path d=\"M32 15 L5 28 L32 41 L59 28 Z\" fill=\"#ffffff\" />\n  <path d=\"M15 33.8 V45 C15 49.7 22.6 53.6 32 53.6 C41.4 53.6 49 49.7 49 45 V33.8 L32 41.6 Z\" fill=\"#dbeafe\" />\n  <path d=\"M55.5 30.8 V44.5\" stroke=\"#bfdbfe\" stroke-width=\"4\" stroke-linecap=\"round\" />\n  <circle cx=\"55.5\" cy=\"47\" r=\"3.6\" fill=\"#bfdbfe\" />\n</svg>";
 
 module.exports = {
   faviconIco: Buffer.from(FAVICON_ICO_BASE64, 'base64'),

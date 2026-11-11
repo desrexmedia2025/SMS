@@ -1,7 +1,7 @@
 {
   "name": "school-management-system",
   "version": "2.1.0",
-  "description": "Four-Dashboard School Management System (Superadmin, Teachers, Students, Financial) \u2014 Node.js + Express + MySQL/MariaDB + Google OAuth 2.0",
+  "description": "Four-Dashboard School Management System (Superadmin, Teachers, Students, Financial) — Node.js + Express + MySQL/MariaDB + Google OAuth 2.0",
   "main": "src/server.js",
   "scripts": {
     "start": "node --no-warnings src/server.js",
@@ -21,7 +21,7 @@
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^3.0.3",
-    "dotenv": "^17.2.3",
+    "dotenv": "^18.0.10",
     "express": "^5.1.0",
     "express-session": "^1.18.2",
     "helmet": "^8.1.0",

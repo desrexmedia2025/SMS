@@ -116,6 +116,19 @@ ul {
   display: none !important;
 }
 
+.lp-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .lp-skip {
   position: absolute;
   left: -9999px;
@@ -989,20 +1002,29 @@ html[data-theme='plum'] .lp-checklist li:hover .lp-tick::after {
   padding: 13px;
 }
 
-.lp-mock-card strong {
+.lp-bar {
   display: block;
-  font-family: var(--lp-serif);
-  font-size: 22px;
-  color: var(--lp-ink);
-  letter-spacing: -0.02em;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--lp-line);
 }
 
-.lp-mock-card em {
-  display: block;
-  margin-top: 3px;
-  font-style: normal;
-  font-size: 12.5px;
-  color: var(--lp-ink-3);
+.lp-bar-figure {
+  width: 44px;
+  height: 19px;
+  margin-bottom: 9px;
+}
+
+.lp-bar-label {
+  width: 72%;
+}
+
+.lp-bar-narrow {
+  width: 62%;
+}
+
+.lp-mock-row .lp-bar {
+  margin-top: 5px;
 }
 
 .lp-mock-table {
@@ -1333,31 +1355,6 @@ html[data-theme='plum'] .lp-checklist li:hover .lp-tick::after {
 .lp-credit strong {
   color: var(--lp-on-dark);
   font-weight: 650;
-}
-
-/* ------------------------------ Scroll reveal ------------------------------- */
-
-.lp-reveal {
-  opacity: 1;
-}
-
-html.lp-js .lp-reveal {
-  opacity: 0;
-  transform: translateY(14px);
-  transition: opacity 0.5s ease, transform 0.5s ease;
-}
-
-html.lp-js .lp-reveal.is-visible {
-  opacity: 1;
-  transform: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html.lp-js .lp-reveal {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
 }
 
 /* -------------------------------- Responsive -------------------------------- */

@@ -13,7 +13,8 @@
      6. stamps the footer year.
 
    Everything is optional: if an element is missing the step is skipped, and the
-   page stays fully usable when the script never runs.
+   page stays fully usable when the script never runs. Nothing here animates on
+   scroll - the page is simply there when you arrive.
    ============================================================================= */
 
 (function initLandingPage() {
@@ -171,6 +172,10 @@
         setText('lp-copyright-name', name);
         setText('lp-school-motto', school.motto || '');
         document.title = name;
+        ['og:site_name', 'og:title', 'twitter:title'].forEach(function (prop) {
+          var tag = document.querySelector('meta[property="' + prop + '"], meta[name="' + prop + '"]');
+          if (tag) tag.setAttribute('content', name);
+        });
 
         var shown = 0;
         if (setContact({ row: 'lp-contact-email', target: 'lp-contact-email-link' }, school.email, 'mailto:' + school.email)) {
@@ -200,32 +205,28 @@
       });
   }
 
-  // Reveal sections as they scroll into view, with a small stagger inside each grid
-  var reveals = document.querySelectorAll('.lp-reveal');
-  if (reveals.length && 'IntersectionObserver' in window) {
-    document.documentElement.classList.add('lp-js');
-    var observer = new IntersectionObserver(
-      function (entries) {
-        entries.forEach(function (entry) {
-          if (!entry.isIntersecting) return;
-          entry.target.classList.add('is-visible');
-          observer.unobserve(entry.target);
-        });
-      },
-      { rootMargin: '0px 0px -8% 0px', threshold: 0.05 }
-    );
-
-    var seenGroups = new Map();
-    Array.prototype.forEach.call(reveals, function (el) {
-      var parent = el.parentElement;
-      var index = seenGroups.get(parent) || 0;
-      seenGroups.set(parent, index + 1);
-      if (index > 0 && index < 8) {
-        el.style.transitionDelay = Math.min(index * 60, 360) + 'ms';
-      }
-      observer.observe(el);
+  // Structured data for the questions, built from the words already on the page so
+  // the two can never disagree.
+  (function addFaqSchema() {
+    var pairs = [];
+    document.querySelectorAll('.lp-faq details').forEach(function (item) {
+      var question = item.querySelector('summary');
+      var answer = item.querySelector('.lp-faq-body');
+      if (!question || !answer) return;
+      var text = answer.textContent.replace(/\s+/g, ' ').trim();
+      if (!text) return;
+      pairs.push({
+        '@type': 'Question',
+        name: question.textContent.replace(/\s+/g, ' ').trim(),
+        acceptedAnswer: { '@type': 'Answer', text: text }
+      });
     });
-  }
+    if (!pairs.length) return;
+    var tag = document.createElement('script');
+    tag.type = 'application/ld+json';
+    tag.textContent = JSON.stringify({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: pairs });
+    document.head.appendChild(tag);
+  })();
 
   setText('lp-year', String(new Date().getFullYear()));
 })();

@@ -4614,10 +4614,16 @@ test('40. The public landing page greets visitors before they sign in', async ()
     );
   }
 
-  // A dashboard illustration that is drawn in CSS and clearly labelled as an illustration,
-  // so the page never has to pretend a screenshot is real
-  assert.match(html, /class="lp-mock[ "]/, 'the page must illustrate the dashboard');
-  assert.match(html, /Illustration of the layout/, 'the illustration must say it is an illustration');
+  // A dashboard wireframe drawn in CSS, carrying no invented figures and no invented people:
+  // the page never has to pretend a screenshot or a statistic is real
+  const mockBlock = html.slice(html.indexOf('<div class="lp-mock"'), html.indexOf('<p class="lp-mock-note">'));
+  assert.ok(mockBlock.length > 400, 'the page must illustrate the dashboard layout');
+  assert.match(mockBlock, /role="img" aria-label="[^"]{40,}"/, 'the wireframe must describe itself to screen readers');
+  assert.doesNotMatch(mockBlock, /\d/, 'the wireframe must not carry invented figures');
+  for (const invented of ['Adjoa', 'Kwame', 'Abena', 'Yaw Boateng']) {
+    assert.doesNotMatch(html, new RegExp(invented), `the page must not invent a pupil called ${invented}`);
+  }
+  assert.match(html, /shown empty on purpose/, 'the page must say the wireframe holds no data');
 
   // The page credits the studio that built it, and carries no outside branding
   assert.match(html, /The Desrex Studio \(Acura Solutions\)/, 'the page must credit The Desrex Studio');
@@ -4685,9 +4691,9 @@ test('40. The public landing page greets visitors before they sign in', async ()
     ['01', '02', '03', '04', '05', '06', '07'],
     'every section must be numbered in reading order'
   );
-  assert.equal((html.match(/class="lp-step lp-reveal"/g) || []).length, 3, 'the page must carry a three-step how-it-works row');
+  assert.equal((html.match(/class="lp-step"/g) || []).length, 3, 'the page must carry a three-step how-it-works row');
   assert.match(html, /class="lp-hero-note"/, 'the hero must carry a note under its calls to action');
-  assert.match(html, /class="lp-quote lp-reveal"/, 'the page must carry a photographic pull quote');
+  assert.match(html, /class="lp-quote"/, 'the page must carry a photographic pull quote');
   assert.match(landingCss, /\.lp-quote \{[^}]*background-image: url\('\/img\/landing-bg\.jpg'\)/, 'the pull quote must use the school photograph');
   assert.match(landingCss, /\.lp-quote::before \{[^}]*background: var\(--lp-scrim\)/, 'the pull quote must carry the same flat scrim');
 
@@ -4724,7 +4730,11 @@ test('40. The public landing page greets visitors before they sign in', async ()
   assert.match(landingCss, /\.lp-eyebrow \{[^}]*text-transform: uppercase/, 'section eyebrows must be small caps');
 
   // The page must run inside the app's strict Content-Security-Policy: no inline scripts at all
-  assert.doesNotMatch(html, /<script(?![^>]*\ssrc=)/, 'scripts must come from a file, never inline');
+  assert.doesNotMatch(
+    html,
+    /<script(?![^>]*\ssrc=)(?![^>]*application\/ld\+json)/,
+    'executable scripts must come from a file, never inline'
+  );
   assert.match(html, /\/js\/landing\.js\?v=\d+\.\d+/, 'the landing script must be versioned');
   assert.match(html, /\/css\/landing\.css\?v=\d+\.\d+/, 'the landing stylesheet must be versioned');
 
@@ -4751,6 +4761,100 @@ test('40. The public landing page greets visitors before they sign in', async ()
   assert.ok('email' in sessionRes.json.school, 'the school email must be exposed for the footer');
   assert.ok('phone' in sessionRes.json.school, 'the school phone must be exposed for the footer');
   assert.ok('address' in sessionRes.json.school, 'the school address must be exposed for the footer');
+
+  // No scroll choreography: the page is simply there when you arrive, and the one
+  // motion preference a visitor can state is still honoured
+  const landingJs = fs.readFileSync(path.join(process.cwd(), 'src', 'public', 'js', 'landing.js'), 'utf8');
+  assert.doesNotMatch(html, /lp-reveal/, 'nothing on the page may fade or slide in on scroll');
+  assert.doesNotMatch(landingCss, /lp-reveal/, 'the stylesheet must not define a scroll reveal');
+  assert.doesNotMatch(landingJs, /IntersectionObserver/, 'the landing script must not watch the scroll position');
+  assert.match(landingCss, /prefers-reduced-motion/, 'hover motion must still be dropped for reduced motion');
+
+  // Search essentials: a canonical URL, a share card, structured data and crawler files
+  assert.doesNotMatch(html, /__ORIGIN__/, 'absolute URLs must be filled in from the environment');
+  assert.match(html, /<link rel="canonical" href="https?:\/\/[^"\s]+\/">/, 'the page must name its canonical URL');
+  assert.match(html, /<meta name="robots" content="index, follow/, 'the page must invite indexing');
+  assert.match(html, /<meta property="og:title" content="[^"]+">/, 'the page must carry an Open Graph title');
+  assert.match(html, /<meta property="og:image" content="https?:\/\/[^"]+\/img\/og-image\.jpg">/, 'and a share image');
+  assert.match(html, /<meta property="og:image:width" content="1200">/, 'the share image must declare its size');
+  assert.match(html, /<meta name="twitter:card" content="summary_large_image">/, 'and a Twitter card');
+  assert.match(html, /<meta name="description" content="[^"]{80,}">/, 'and a real meta description');
+  assert.match(
+    String(home.headers.get('x-robots-tag') || ''),
+    /index/,
+    'the landing page must not be excluded from search engines by a header'
+  );
+
+  const ldBlocks = Array.from(html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)).map((m) =>
+    JSON.parse(m[1])
+  );
+  assert.equal(ldBlocks.length, 1, 'the page must carry one structured data block');
+  const ldTypes = ldBlocks[0]['@graph'].map((node) => node['@type']);
+  for (const type of ['Organization', 'WebSite', 'WebPage', 'BreadcrumbList', 'SoftwareApplication']) {
+    assert.ok(ldTypes.includes(type), `the structured data must describe a ${type}`);
+  }
+  const breadcrumb = ldBlocks[0]['@graph'].find((node) => node['@type'] === 'BreadcrumbList');
+  assert.equal(breadcrumb.itemListElement.length, 1, 'the breadcrumb trail must list the page itself');
+  assert.match(breadcrumb.itemListElement[0].item, /^https?:\/\//, 'and point at an absolute URL');
+
+  const shareImage = await anon.request('/img/og-image.jpg');
+  assert.equal(shareImage.status, 200, 'the share image must be served');
+  assert.match(String(shareImage.headers.get('content-type') || ''), /image\/jpeg/, 'the share image must be a JPEG');
+
+  const robots = await anon.request('/robots.txt');
+  assert.equal(robots.status, 200, 'robots.txt must be served');
+  assert.match(robots.text, /^User-agent: \*$/m, 'robots.txt must address every crawler');
+  assert.match(robots.text, /^Disallow: \/api\/$/m, 'robots.txt must keep the API out of the index');
+  assert.match(robots.text, /^Sitemap: https?:\/\/[^\s]+\/sitemap\.xml$/m, 'robots.txt must point at the sitemap');
+
+  const sitemap = await anon.request('/sitemap.xml');
+  assert.equal(sitemap.status, 200, 'sitemap.xml must be served');
+  assert.match(String(sitemap.headers.get('content-type') || ''), /xml/, 'sitemap.xml must be XML');
+  assert.match(sitemap.text, /<urlset xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9">/, 'and be a sitemap');
+  assert.match(sitemap.text, /<loc>https?:\/\/[^<]+\/<\/loc>/, 'sitemap.xml must list the page by absolute URL');
+
+  // Every graphic is accounted for: icons are hidden from assistive technology, and the
+  // one meaningful graphic carries a description
+  const svgTags = html.match(/<svg\b[^>]*>/g) || [];
+  assert.ok(svgTags.length > 10, 'the page must carry its inline icons');
+  for (const tag of svgTags) {
+    assert.match(tag, /aria-hidden="true"/, `icon markup must be hidden from screen readers: ${tag.slice(0, 60)}`);
+  }
+  assert.doesNotMatch(html, /<img(?![^>]*\salt=)/, 'every image must carry alt text');
+
+  // Heading order: one h1, and no level is ever skipped
+  const headingLevels = Array.from(html.matchAll(/<h([1-6])\b[^>]*>/g)).map((m) => Number(m[1]));
+  assert.equal(headingLevels.filter((level) => level === 1).length, 1, 'the page must carry exactly one h1');
+  let previousLevel = 1;
+  for (const level of headingLevels) {
+    assert.ok(level <= previousLevel + 1, `h${level} must not follow h${previousLevel}`);
+    previousLevel = level;
+  }
+
+  // The payload stays small: one modest script, one stylesheet, no framework
+  assert.equal((html.match(/<script\b[^>]*\ssrc=/g) || []).length, 1, 'the page must load exactly one script');
+  assert.ok(
+    Buffer.byteLength(landingJs, 'utf8') < 20000,
+    `the landing script must stay small (${Buffer.byteLength(landingJs, 'utf8')} bytes)`
+  );
+  assert.ok(
+    Buffer.byteLength(landingCss, 'utf8') < 40000,
+    `the landing stylesheet must stay small (${Buffer.byteLength(landingCss, 'utf8')} bytes)`
+  );
+
+  // Security headers ride along with the page, and nothing opens the site up cross-origin
+  assert.equal(home.headers.get('x-content-type-options'), 'nosniff', 'MIME sniffing must be disabled');
+  assert.match(String(home.headers.get('content-security-policy') || ''), /script-src 'self'/, 'scripts must be same-origin');
+  for (const header of ['referrer-policy', 'permissions-policy', 'strict-transport-security']) {
+    assert.ok(home.headers.get(header), `${header} must be set on the public page`);
+  }
+  assert.equal(home.headers.get('access-control-allow-origin'), null, 'the page must not open itself to other origins');
+  const healthHeaders = await anon.request('/api/health');
+  assert.equal(
+    healthHeaders.headers.get('access-control-allow-origin'),
+    null,
+    'the API must not allow wildcard cross-origin reads'
+  );
 
   // The landing links into the two panels on the sign-in screen
   const loginJs = fs.readFileSync(path.join(process.cwd(), 'src', 'public', 'js', 'login.js'), 'utf8');
