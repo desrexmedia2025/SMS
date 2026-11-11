@@ -4663,11 +4663,30 @@ test('40. The public landing page greets visitors before they sign in', async ()
   assert.doesNotMatch(landingCss, /\.lp-btn-cta:hover/, 'the call to action must have no hover state');
   // ...and it must be plain: the same rectangle as the other buttons, just filled,
   // with no hard offset shadow or outline setting it apart from the interface
-  assert.doesNotMatch(landingCss, /\.lp-btn-cta[^{]*\{[^}]*box-shadow/, 'the call to action must carry no drop shadow');
-  assert.match(landingCss, /\.lp-btn-cta \{\s*background: var\(--lp-brand\);\s*color: #ffffff;\s*border-color: var\(--lp-brand\);\s*\}/, 'the call to action must be a plain filled button');
+  assert.doesNotMatch(landingCss, /\.lp-btn-cta[^{]*\{[^}]*box-shadow: \d+px \d+px 0 0/, 'the call to action must carry no hard offset shadow');
 
-  // The page keeps moving: numbered sections and a second photographic pause
-  assert.equal((html.match(/class="lp-section-num"/g) || []).length, 6, 'each section must be numbered');
+  // It must fit the interface the visitor lands in: same radius, same weight and
+  // the same soft shadow as the dashboard's own .btn / .btn-primary
+  const appCss = fs.readFileSync(path.join(process.cwd(), 'src', 'public', 'css', 'styles.css'), 'utf8');
+  const appRadius = appCss.match(/\n\.btn \{\s*[^}]*border-radius: (\d+)px/);
+  assert.ok(appRadius, 'the dashboard stylesheet must define a button radius to match');
+  assert.match(
+    landingCss,
+    new RegExp(`\\.lp-btn \\{\\s*[^}]*border-radius: ${appRadius[1]}px`),
+    `the landing buttons must use the dashboard's ${appRadius[1]}px radius`
+  );
+  assert.match(landingCss, /\.lp-btn \{\s*[^}]*font-weight: 600;/, 'the landing buttons must use the dashboard weight');
+  assert.match(landingCss, /\.lp-btn-cta \{[^}]*box-shadow: 0 2px 6px rgba\(26, 79, 214, 0\.24\)/, 'the call to action must use the dashboard primary shadow');
+  assert.doesNotMatch(landingCss, /\.lp-btn-cta \{[^}]*gradient/, 'but never a gradient fill');
+
+  // The page keeps moving: numbered sections, a how-it-works row and a photographic pull quote
+  assert.deepEqual(
+    (html.match(/class="lp-section-num">(\d+)</g) || []).map((m) => m.match(/>(\d+)</)[1]),
+    ['01', '02', '03', '04', '05', '06', '07'],
+    'every section must be numbered in reading order'
+  );
+  assert.equal((html.match(/class="lp-step lp-reveal"/g) || []).length, 3, 'the page must carry a three-step how-it-works row');
+  assert.match(html, /class="lp-hero-note"/, 'the hero must carry a note under its calls to action');
   assert.match(html, /class="lp-quote lp-reveal"/, 'the page must carry a photographic pull quote');
   assert.match(landingCss, /\.lp-quote \{[^}]*background-image: url\('\/img\/landing-bg\.jpg'\)/, 'the pull quote must use the school photograph');
   assert.match(landingCss, /\.lp-quote::before \{[^}]*background: var\(--lp-scrim\)/, 'the pull quote must carry the same flat scrim');

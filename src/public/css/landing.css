@@ -284,44 +284,51 @@ html[data-theme='plum'] .lp-mark {
 
 /* -------------------------------- Buttons --------------------------------- */
 
+/* Buttons copy the dashboard's own .btn / .btn-primary: the same 9px radius,
+   the same 600 weight, the same soft shadows. A visitor who signs in should feel
+   they never left the same interface. */
 .lp-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
-  height: 44px;
-  padding: 0 26px;
-  border-radius: var(--lp-radius);
+  gap: 7px;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 9px;
   border: 1px solid transparent;
   font-family: var(--lp-sans);
-  font-size: 14.5px;
-  font-weight: 650;
+  font-size: 13.5px;
+  font-weight: 600;
   text-decoration: none;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+  box-shadow: 0 1px 2px rgba(14, 34, 66, 0.05);
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-/* The one call to action. Deliberately plain: the same rectangle as every other
-   button on the page, just filled with the spot colour, so it belongs to the
-   interface instead of standing apart from it - and, as before, it has no hover
-   state at all. */
+/* The one call to action: the app's own primary button, flat-filled rather than
+   shaded top-to-bottom so the page keeps its no-wash rule. Same shape, same soft
+   shadow, same weight as the dashboard - and no hover state, as before. */
 .lp-btn-cta {
-  background: var(--lp-brand);
+  background: #1a4fd6;
   color: #ffffff;
-  border-color: var(--lp-brand);
+  border-color: #1746be;
+  box-shadow: 0 2px 6px rgba(26, 79, 214, 0.24);
 }
 
 html[data-theme='dark'] .lp-btn-cta,
 html[data-theme='midnight'] .lp-btn-cta,
 html[data-theme='plum'] .lp-btn-cta {
+  background: var(--lp-brand);
   color: #0e1014;
+  border-color: var(--lp-brand);
 }
 
 .lp-btn-cta-light {
   background: #ffffff;
   color: #10131a;
   border-color: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
 }
 
 .lp-btn-outline {
@@ -355,9 +362,9 @@ html[data-theme='plum'] .lp-btn-outline-light {
 }
 
 .lp-btn-lg {
-  height: 54px;
-  padding: 0 36px;
-  font-size: 15.5px;
+  height: 50px;
+  padding: 0 30px;
+  font-size: 15px;
 }
 
 /* --------------------------- Hero (on the photo) --------------------------- */
@@ -431,6 +438,15 @@ html[data-theme='plum'] .lp-btn-outline-light {
   justify-content: center;
   align-items: center;
   gap: 22px;
+}
+
+.lp-hero-note {
+  margin-top: 26px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .lp-hero-roles {
@@ -574,6 +590,11 @@ html[data-theme='plum'] .lp-btn-outline-light {
   padding-top: 20px;
   text-align: center;
   border-top: 1px solid var(--lp-line);
+  transition: transform 0.2s ease;
+}
+
+.lp-item:hover {
+  transform: translateY(-3px);
 }
 
 .lp-item::before {
@@ -624,6 +645,62 @@ html[data-theme='plum'] .lp-btn-outline-light {
 .lp-item p {
   margin: 8px auto 0;
   max-width: 32ch;
+  font-size: 14.6px;
+  color: var(--lp-ink-2);
+}
+
+/* ------------------------------- How it works ------------------------------- */
+
+.lp-step {
+  position: relative;
+  padding-top: 20px;
+  text-align: center;
+  border-top: 1px solid var(--lp-line);
+  transition: transform 0.2s ease;
+}
+
+.lp-step::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--lp-brand);
+  transform: scaleX(0);
+  transition: transform 0.26s ease;
+}
+
+.lp-step:hover {
+  transform: translateY(-3px);
+}
+
+.lp-step:hover::before {
+  transform: scaleX(1);
+}
+
+.lp-step-num {
+  display: block;
+  font-family: var(--lp-serif);
+  font-size: 30px;
+  line-height: 1;
+  color: var(--lp-brand);
+  opacity: 0.85;
+}
+
+.lp-step h3 {
+  margin-top: 12px;
+  font-size: 18px;
+  transition: color 0.2s ease;
+}
+
+.lp-step:hover h3 {
+  color: var(--lp-brand);
+}
+
+.lp-step p {
+  margin: 8px auto 0;
+  max-width: 34ch;
   font-size: 14.6px;
   color: var(--lp-ink-2);
 }
@@ -964,8 +1041,13 @@ html[data-theme='plum'] .lp-checklist li:hover .lp-tick::after {
 }
 
 .lp-mock-note {
-  margin: 16px auto 0;
-  font-size: 13.8px;
+  max-width: 58ch;
+  margin: 20px auto 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--lp-line);
+  font-family: var(--lp-serif);
+  font-style: italic;
+  font-size: 14px;
   color: var(--lp-ink-3);
   text-align: center;
 }
@@ -1139,6 +1221,19 @@ html[data-theme='plum'] .lp-checklist li:hover .lp-tick::after {
 
 .lp-footer-inner {
   padding: 56px 24px 0;
+}
+
+.lp-ornament {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 26px;
+}
+
+.lp-ornament span {
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--lp-on-dark-muted);
+  transform: rotate(45deg);
 }
 
 .lp-footer-brand {
