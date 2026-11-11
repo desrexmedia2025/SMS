@@ -302,28 +302,26 @@ html[data-theme='plum'] .lp-mark {
   transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
 }
 
-/* The one call to action: solid, outlined, raised on a hard offset shadow so it
-   reads at a glance - and the only button on the page with no hover state. */
+/* The one call to action. Deliberately plain: the same rectangle as every other
+   button on the page, just filled with the spot colour, so it belongs to the
+   interface instead of standing apart from it - and, as before, it has no hover
+   state at all. */
 .lp-btn-cta {
   background: var(--lp-brand);
   color: #ffffff;
-  border-color: var(--lp-brand-deep);
-  box-shadow: 4px 4px 0 0 var(--lp-brand-deep);
-  font-weight: 700;
+  border-color: var(--lp-brand);
 }
 
 html[data-theme='dark'] .lp-btn-cta,
 html[data-theme='midnight'] .lp-btn-cta,
 html[data-theme='plum'] .lp-btn-cta {
   color: #0e1014;
-  border-color: #060c1c;
 }
 
 .lp-btn-cta-light {
-  background: var(--lp-paper);
+  background: #ffffff;
   color: #10131a;
-  border-color: #10131a;
-  box-shadow: 4px 4px 0 0 #10131a;
+  border-color: #ffffff;
 }
 
 .lp-btn-outline {
@@ -367,7 +365,7 @@ html[data-theme='plum'] .lp-btn-outline-light {
 .lp-hero {
   position: relative;
   isolation: isolate;
-  min-height: 74vh;
+  min-height: 82vh;
   display: flex;
   align-items: center;
   text-align: center;
@@ -498,6 +496,17 @@ html[data-theme='plum'] .lp-btn-outline-light {
   max-width: 54ch;
 }
 
+.lp-section-num {
+  display: block;
+  margin-bottom: 12px;
+  font-family: var(--lp-serif);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: var(--lp-brand);
+  opacity: 0.75;
+}
+
 .lp-eyebrow {
   display: inline-flex;
   align-items: center;
@@ -608,6 +617,10 @@ html[data-theme='plum'] .lp-btn-outline-light {
   color: var(--lp-brand);
 }
 
+.lp-item:hover p {
+  color: var(--lp-ink);
+}
+
 .lp-item p {
   margin: 8px auto 0;
   max-width: 32ch;
@@ -680,6 +693,10 @@ html[data-theme='plum'] .lp-portal:hover .lp-portal-tag {
 
 .lp-portal:hover h3 {
   color: var(--lp-brand);
+}
+
+.lp-portal:hover .lp-mini-list li {
+  color: var(--lp-ink);
 }
 
 .lp-portal > p {
@@ -951,6 +968,50 @@ html[data-theme='plum'] .lp-checklist li:hover .lp-tick::after {
   font-size: 13.8px;
   color: var(--lp-ink-3);
   text-align: center;
+}
+
+/* ----------------------------- Pull quote ---------------------------------- */
+
+.lp-quote {
+  position: relative;
+  isolation: isolate;
+  text-align: center;
+  color: var(--lp-on-dark);
+  background-color: #12151a;
+  background-image: url('/img/landing-bg.jpg');
+  background-size: cover;
+  background-position: center 64%;
+  background-repeat: no-repeat;
+}
+
+.lp-quote::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--lp-scrim);
+}
+
+.lp-quote-inner {
+  padding: 96px 24px;
+}
+
+.lp-quote-text {
+  margin: 0 auto;
+  max-width: 26ch;
+  color: #ffffff;
+  font-family: var(--lp-serif);
+  font-size: clamp(25px, 3.6vw, 40px);
+  line-height: 1.22;
+  letter-spacing: -0.02em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.lp-quote-note {
+  margin: 20px auto 0;
+  max-width: 52ch;
+  font-size: 15.5px;
+  color: rgba(255, 255, 255, 0.82);
 }
 
 /* ----------------------------- Closing band -------------------------------- */

@@ -4661,7 +4661,16 @@ test('40. The public landing page greets visitors before they sign in', async ()
   );
   assert.match(html, /lp-btn-cta lp-btn-cta-light[^"]*" href="\/login">Get Started</, 'the closing band must carry it too');
   assert.doesNotMatch(landingCss, /\.lp-btn-cta:hover/, 'the call to action must have no hover state');
-  assert.match(landingCss, /\.lp-btn-cta \{[^}]*box-shadow: \d+px \d+px 0 0/, 'the call to action must be raised at rest');
+  // ...and it must be plain: the same rectangle as the other buttons, just filled,
+  // with no hard offset shadow or outline setting it apart from the interface
+  assert.doesNotMatch(landingCss, /\.lp-btn-cta[^{]*\{[^}]*box-shadow/, 'the call to action must carry no drop shadow');
+  assert.match(landingCss, /\.lp-btn-cta \{\s*background: var\(--lp-brand\);\s*color: #ffffff;\s*border-color: var\(--lp-brand\);\s*\}/, 'the call to action must be a plain filled button');
+
+  // The page keeps moving: numbered sections and a second photographic pause
+  assert.equal((html.match(/class="lp-section-num"/g) || []).length, 6, 'each section must be numbered');
+  assert.match(html, /class="lp-quote lp-reveal"/, 'the page must carry a photographic pull quote');
+  assert.match(landingCss, /\.lp-quote \{[^}]*background-image: url\('\/img\/landing-bg\.jpg'\)/, 'the pull quote must use the school photograph');
+  assert.match(landingCss, /\.lp-quote::before \{[^}]*background: var\(--lp-scrim\)/, 'the pull quote must carry the same flat scrim');
 
   // Every grid divides its items into whole rows, so no stray card sits off-centre
   assert.match(html, /class="lp-grid lp-grid--4"/, 'the module and portal grids must declare four columns');
