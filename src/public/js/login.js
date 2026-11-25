@@ -171,6 +171,24 @@
     if (e.target === loginTermsModal) loginTermsModal.classList.remove('open');
   });
 
+  // A wrong password shakes the field and paints it red until the visitor
+  // starts typing again, so the mistake is obvious at a glance.
+  function shakePasswordField() {
+    const passwordInput = document.getElementById('password');
+    const field = passwordInput ? passwordInput.closest('.login-pill-field') : null;
+    if (!field) return;
+    field.classList.remove('shake', 'input-error');
+    // Restart the animation if it is already running.
+    void field.offsetWidth;
+    field.classList.add('shake', 'input-error');
+    window.setTimeout(() => field.classList.remove('shake'), 500);
+  }
+
+  document.getElementById('password').addEventListener('input', () => {
+    const field = document.getElementById('password').closest('.login-pill-field');
+    if (field) field.classList.remove('input-error');
+  });
+
   async function performLogin(identifier, password) {
     alertEl.classList.add('hidden');
     infoEl.classList.add('hidden');
@@ -184,6 +202,7 @@
       SMS.navigateAuthenticated(res.redirectTo, res.sessionToken);
     } catch (err) {
       showError(err.message);
+      shakePasswordField();
       submitBtn.disabled = false;
       submitBtn.textContent = 'LOG IN';
     }
@@ -216,12 +235,17 @@
     registerSubmitBtn.disabled = true;
     registerSubmitBtn.textContent = 'SUBMITTING...';
     try {
+      const ageInput = registerForm.querySelector('[data-age-input]');
+      const pickedAge = ageInput ? Number(ageInput.value) : NaN;
       const payload = {
         firstName: document.getElementById('reg-first-name').value.trim(),
         lastName: document.getElementById('reg-last-name').value.trim(),
         email: document.getElementById('reg-email').value.trim(),
         requestedClassId: document.getElementById('reg-class-select').value || null,
         gender: document.getElementById('reg-gender').value,
+        dateOfBirth: Number.isFinite(pickedAge)
+          ? window.SMSAgePicker.dateOfBirthForAge(pickedAge)
+          : '',
         guardianPhone: document.getElementById('reg-guardian-phone').value.trim(),
         password: document.getElementById('reg-password').value,
         acceptTerms: true,

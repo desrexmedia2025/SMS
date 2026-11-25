@@ -131,7 +131,7 @@
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
                 <span class="cw-type-badge cw-type-${esc(wType)}">${esc(formatWorkTypeLabel(wType))}</span>
                 <span class="badge badge-neutral">${esc(item.subject_code)} - ${esc(item.subject_name)}</span>
-                <span style="font-size:12px;color:var(--text-muted);">Max Score: <strong>${item.max_score}</strong> &middot; ${dueLabel}</span>
+                <span style="font-size:12px;color:var(--text-muted);">Max Score: <strong>${item.max_score}</strong>, ${dueLabel}</span>
               </div>
               <h3 style="margin:4px 0;font-size:16px;color:var(--text);">${esc(item.title)}</h3>
               <div class="subject-badges-wrap" style="margin-top:4px;">
@@ -187,7 +187,7 @@
               <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
                 <div>
                   <strong>${esc(row.firstName)} ${esc(row.lastName)}</strong>
-                  <span style="color:var(--text-light);font-size:12px;margin-left:6px;">(${esc(row.admissionNumber)} &middot; ${esc(row.className)})</span>
+                  <span style="color:var(--text-light);font-size:12px;margin-left:6px;">(${esc(row.admissionNumber)}, ${esc(row.className)})</span>
                 </div>
                 <span class="badge badge-neutral">Not Submitted</span>
               </div>
@@ -206,7 +206,7 @@
             <div class="coursework-card-head">
               <div>
                 <strong>${esc(row.firstName)} ${esc(row.lastName)}</strong>
-                <span style="color:var(--text-light);font-size:12.5px;margin-left:6px;"><code>${esc(row.admissionNumber)}</code> &middot; ${esc(row.className)}</span>
+                <span style="color:var(--text-light);font-size:12.5px;margin-left:6px;"><code>${esc(row.admissionNumber)}</code>, ${esc(row.className)}</span>
               </div>
               <div>
                 ${
@@ -284,7 +284,7 @@
       ? `<div class="subject-badges-wrap">${regSubjects
           .map(
             (s) =>
-              `<span class="subject-badge-tag"><strong>${esc(s.code)}</strong> &middot; ${esc(s.name)}</span>`
+              `<span class="subject-badge-tag"><strong>${esc(s.code)}</strong>, ${esc(s.name)}</span>`
           )
           .join('')}</div>`
       : '<div class="empty-state" style="padding:14px 0;">No subjects linked yet.</div>';

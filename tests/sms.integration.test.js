@@ -1853,7 +1853,7 @@ test('20. Simplified Dashboard UI across all 4 roles & Frictionless Academic Per
   // Every dashboard includes Show/Hide Menu button, modern action tiles & clean v3.x assets
   for (const html of [saHtml, tcHtml, stHtml, fnHtml]) {
     assert.match(html, /id="mobile-menu-btn"/);
-    assert.match(html, /\?v=3\.\d+/, 'dashboards must pin their assets to a cache-busting version');
+    assert.match(html, /\?v=\d+\.\d+/, 'dashboards must pin their assets to a cache-busting version');
     assert.match(html, /class="action-tile-grid"/);
     assert.doesNotMatch(html, /Hide Figures/i);
     assert.doesNotMatch(html, /Audit Log/i);
@@ -4603,16 +4603,12 @@ test('40. The public landing page greets visitors before they sign in', async ()
   assert.equal(heroImg.status, 200, 'the school photograph must be served');
   assert.match(String(heroImg.headers.get('content-type') || ''), /image\/jpeg/, 'it must be a JPEG');
 
-  // House-style structure: rule-set label over a centred hero, a facts strip, section eyebrows
-  assert.match(html, /class="lp-hero-eyebrow">School Management System</, 'the hero must open with a label');
+  // House-style structure: a facts strip under the hero, and no eyebrow labels
+  // anywhere - the section numbers and the headings carry the structure instead
+  assert.doesNotMatch(html, /lp-hero-eyebrow|lp-eyebrow/, 'the page must not use eyebrow labels');
+  assert.doesNotMatch(landingCss, /lp-hero-eyebrow|lp-eyebrow/, 'the stylesheet must not define eyebrow labels');
   assert.match(html, /class="lp-facts lp-shell"/, 'the hero must be followed by a facts strip');
   assert.equal((html.match(/<li>Four role dashboards<\/li>/g) || []).length, 1, 'the facts strip must carry the four facts');
-  for (const eyebrow of ['What it does', 'Portals', 'Payments', 'Security', 'FAQ']) {
-    assert.ok(
-      html.includes(`class="lp-eyebrow">${eyebrow}<`),
-      `the ${eyebrow} section must carry an eyebrow label`
-    );
-  }
 
   // A dashboard wireframe drawn in CSS, carrying no invented figures and no invented people:
   // the page never has to pretend a screenshot or a statistic is real
@@ -4708,9 +4704,14 @@ test('40. The public landing page greets visitors before they sign in', async ()
     );
   }
   assert.match(landingCss, /\.lp-grid \{\s*[^}]*justify-content: center/, 'grids must be centred');
-  assert.match(landingCss, /\.lp-section-head \{\s*text-align: center/, 'section headings must be centred');
-  assert.match(landingCss, /\.lp-item \{\s*[^}]*text-align: center/, 'index entries must be centred');
-  assert.match(landingCss, /\.lp-hero \{[^}]*text-align: center/, 'the hero must be centred');
+  // Long paragraphs read left-aligned; the layout stays centred, the text does not
+  for (const block of ['lp-hero', 'lp-section-head', 'lp-item', 'lp-step', 'lp-portal', 'lp-quote', 'lp-band', 'lp-faq-body', 'lp-footer']) {
+    assert.match(
+      landingCss,
+      new RegExp(`\\.${block} \\{[^}]*text-align: left;`),
+      `${block} must left-align its paragraphs`
+    );
+  }
   assert.match(landingCss, /\.lp-footer-cols \{\s*[^}]*justify-content: center/, 'the footer columns must be centred');
 
   // It reads like print rather than like a template: serif display headings on warm paper,
@@ -4727,7 +4728,6 @@ test('40. The public landing page greets visitors before they sign in', async ()
   assert.doesNotMatch(landingCss, /body\.lp (h1|h2|h3|p|a|ul) \{/, 'the type reset must not outrank component rules');
   assert.match(landingCss, /\np \{\s*margin: 0;\s*\}/, 'paragraphs must be reset at element specificity');
   assert.match(landingCss, /\.lp-section-head h2::after/, 'section headings must carry a centred rule');
-  assert.match(landingCss, /\.lp-eyebrow \{[^}]*text-transform: uppercase/, 'section eyebrows must be small caps');
 
   // The page must run inside the app's strict Content-Security-Policy: no inline scripts at all
   assert.doesNotMatch(
@@ -4862,4 +4862,68 @@ test('40. The public landing page greets visitors before they sign in', async ()
   assert.match(loginJs, /terms'\)\s*===\s*'1'/, 'the login screen must honour ?terms=1');
   assert.match(html, /\/login\?panel=register/, 'the landing page must link to the join proposal form');
   assert.match(html, /\/login\?terms=1/, 'the landing page must link to the terms');
+
+  // The whole webapp is flat: no gradient anywhere in the dashboard stylesheet
+  assert.doesNotMatch(appCss, /gradient/i, 'the dashboard stylesheet must not use gradients');
+  const logoSvg = fs.readFileSync(path.join(process.cwd(), 'src', 'public', 'img', 'logo.svg'), 'utf8');
+  assert.doesNotMatch(logoSvg, /gradient/i, 'the logo must be a flat mark');
+
+  // One font stack across the app and the landing page
+  const appFont = appCss.match(/--font-sans: ([^;]+);/);
+  const landingFont = landingCss.match(/--lp-sans: ([^;]+);/);
+  assert.ok(appFont && landingFont, 'both stylesheets must define a sans stack');
+  assert.equal(appFont[1].trim(), landingFont[1].trim(), 'the app and the landing page must share one font stack');
+
+  // No little dots between words anywhere in the shipped source
+  for (const file of [
+    'src/views/landing.html',
+    'src/public/js/common.js',
+    'src/public/js/superadmin.js',
+    'src/public/js/teacher.js',
+    'src/public/js/student.js',
+    'src/public/js/login.js',
+    'src/services/notification.service.js',
+  ]) {
+    const body = fs.readFileSync(path.join(process.cwd(), file), 'utf8');
+    assert.doesNotMatch(body, /&middot;|·/, `${file} must not use middle dots between words`);
+  }
+
+  // The brown and pale gold theme ships with the app and the landing page
+  assert.match(appCss, /html\[data-theme="gold"\] \{[^}]*--primary: #d4af37/, 'the gold theme must define its palette');
+  assert.match(appCss, /html\[data-theme="gold"\] \.btn-primary[^}]*box-shadow: 0 0 18px rgba\(212, 175, 55/, 'gold primary buttons must carry the soft gold glow');
+  assert.match(landingCss, /html\[data-theme='gold'\] \{[^}]*--lp-brand: #d4af37/, 'the landing page must follow the gold theme');
+  const commonJs = fs.readFileSync(path.join(process.cwd(), 'src', 'public', 'js', 'common.js'), 'utf8');
+  assert.match(commonJs, /'gold'\]/, 'the gold theme must be selectable');
+  assert.match(commonJs, /gold: 'Brown & Gold'/, 'and labelled for the settings picker');
+
+  // Card grids lay out three across
+  assert.match(appCss, /\.kpi-grid \{[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/, 'the metric cards must lay out three across');
+  assert.match(appCss, /\.action-tile-grid \{[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/, 'the action tiles must lay out three across');
+
+  // A wrong password shakes the field and paints it red
+  assert.match(appCss, /@keyframes shake/, 'the stylesheet must define the shake');
+  assert.match(appCss, /\.login-pill-field\.input-error input/, 'the error state must paint the field red');
+  const loginJsBody = fs.readFileSync(path.join(process.cwd(), 'src', 'public', 'js', 'login.js'), 'utf8');
+  assert.match(loginJsBody, /shakePasswordField\(\)/, 'a failed sign-in must shake the password field');
+
+  // The age wheel sits on the signup form and the staff form
+  const agePickerJs = fs.readFileSync(path.join(process.cwd(), 'src', 'public', 'js', 'age-picker.js'), 'utf8');
+  assert.match(agePickerJs, /rotateX\(/, 'the wheel must bend its years around a cylinder');
+  assert.match(agePickerJs, /applyMomentum/, 'the wheel must carry momentum after a flick');
+  assert.match(agePickerJs, /animateTo\(Math\.round\(position\)/, 'the wheel must snap onto the nearest year');
+  assert.match(agePickerJs, /blur\(/, 'years away from the centre must blur');
+  assert.match(agePickerJs, /data-age-picker/, 'the picker must mount on data-age-picker containers');
+  assert.match(appCss, /\.age-wheel-item\.is-selected/, 'the selected year must stand out in the hierarchy');
+  const loginHtml = fs.readFileSync(path.join(process.cwd(), 'src', 'views', 'login.html'), 'utf8');
+  assert.match(loginHtml, /data-age-picker data-min="3" data-max="30"/, 'the signup form must carry the age wheel');
+  const superadminHtml = fs.readFileSync(path.join(process.cwd(), 'src', 'views', 'superadmin.html'), 'utf8');
+  assert.match(superadminHtml, /data-age-picker data-min="18" data-max="80"/, 'the staff form must carry the age wheel');
+  assert.match(loginJsBody, /dateOfBirthForAge/, 'signup must turn the picked age into a date of birth');
+  const superadminJs = fs.readFileSync(path.join(process.cwd(), 'src', 'public', 'js', 'superadmin.js'), 'utf8');
+  assert.match(superadminJs, /dateOfBirthForAge/, 'staff registration must turn the picked age into a date of birth');
+  const teacherMigration = fs.readFileSync(
+    path.join(process.cwd(), 'database', 'migrations', '021_teacher_date_of_birth.sql'),
+    'utf8'
+  );
+  assert.match(teacherMigration, /ALTER TABLE teachers ADD COLUMN date_of_birth/, 'teachers must store a date of birth');
 });

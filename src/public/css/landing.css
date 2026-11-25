@@ -58,6 +58,24 @@ html[data-theme='plum'] {
   --lp-on-dark-muted: #949cab;
 }
 
+html[data-theme='gold'] {
+  --lp-paper: #1f150c;
+  --lp-surface: #2b1d12;
+  --lp-surface-2: #241809;
+  --lp-ink: #f0e0b0;
+  --lp-ink-2: #c9b183;
+  --lp-ink-3: #a68d5f;
+  --lp-line: #4a3823;
+  --lp-line-strong: #5f4a2d;
+  --lp-brand: #d4af37;
+  --lp-brand-deep: #170f08;
+  --lp-brand-tint: rgba(212, 175, 55, 0.12);
+  --lp-scrim: rgba(12, 8, 3, 0.72);
+  --lp-footer-bg: #170f08;
+  --lp-on-dark: #f0e0b0;
+  --lp-on-dark-muted: #c9b183;
+}
+
 *,
 *::before,
 *::after {
@@ -218,7 +236,8 @@ ul {
 
 html[data-theme='dark'] .lp-mark,
 html[data-theme='midnight'] .lp-mark,
-html[data-theme='plum'] .lp-mark {
+html[data-theme='plum'] .lp-mark,
+html[data-theme='gold'] .lp-mark {
   color: #0e1014;
 }
 
@@ -331,7 +350,8 @@ html[data-theme='plum'] .lp-mark {
 
 html[data-theme='dark'] .lp-btn-cta,
 html[data-theme='midnight'] .lp-btn-cta,
-html[data-theme='plum'] .lp-btn-cta {
+html[data-theme='plum'] .lp-btn-cta,
+html[data-theme='gold'] .lp-btn-cta {
   background: var(--lp-brand);
   color: #0e1014;
   border-color: var(--lp-brand);
@@ -369,7 +389,8 @@ html[data-theme='plum'] .lp-btn-cta {
 
 html[data-theme='dark'] .lp-btn-outline-light,
 html[data-theme='midnight'] .lp-btn-outline-light,
-html[data-theme='plum'] .lp-btn-outline-light {
+html[data-theme='plum'] .lp-btn-outline-light,
+html[data-theme='gold'] .lp-btn-outline-light {
   color: var(--lp-on-dark);
   border-color: rgba(236, 231, 221, 0.55);
 }
@@ -388,7 +409,7 @@ html[data-theme='plum'] .lp-btn-outline-light {
   min-height: 82vh;
   display: flex;
   align-items: center;
-  text-align: center;
+  text-align: left;
   color: var(--lp-on-dark);
   background-color: #12151a;
   background-image: url('/img/landing-bg.jpg');
@@ -409,18 +430,6 @@ html[data-theme='plum'] .lp-btn-outline-light {
 
 .lp-hero-inner {
   padding: 96px 24px;
-}
-
-.lp-hero-eyebrow {
-  display: inline-block;
-  padding: 6px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.45);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.45);
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.26em;
-  text-transform: uppercase;
 }
 
 .lp-hero h1 {
@@ -516,7 +525,7 @@ html[data-theme='plum'] .lp-btn-outline-light {
 }
 
 .lp-section-head {
-  text-align: center;
+  text-align: left;
   max-width: 60ch;
   margin: 0 auto 46px;
 }
@@ -534,28 +543,6 @@ html[data-theme='plum'] .lp-btn-outline-light {
   letter-spacing: 0.22em;
   color: var(--lp-brand);
   opacity: 0.75;
-}
-
-.lp-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  font-family: var(--lp-sans);
-  font-size: 11.5px;
-  font-weight: 750;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: var(--lp-brand);
-  margin-bottom: 16px;
-}
-
-.lp-eyebrow::before,
-.lp-eyebrow::after {
-  content: '';
-  width: 22px;
-  height: 1px;
-  background: var(--lp-brand);
-  opacity: 0.55;
 }
 
 .lp-section-head h2 {
@@ -601,7 +588,7 @@ html[data-theme='plum'] .lp-btn-outline-light {
 .lp-item {
   position: relative;
   padding-top: 20px;
-  text-align: center;
+  text-align: left;
   border-top: 1px solid var(--lp-line);
   transition: transform 0.2s ease;
 }
@@ -667,7 +654,7 @@ html[data-theme='plum'] .lp-btn-outline-light {
 .lp-step {
   position: relative;
   padding-top: 20px;
-  text-align: center;
+  text-align: left;
   border-top: 1px solid var(--lp-line);
   transition: transform 0.2s ease;
 }
@@ -726,7 +713,7 @@ html[data-theme='plum'] .lp-btn-outline-light {
   flex-direction: column;
   align-items: center;
   padding-top: 20px;
-  text-align: center;
+  text-align: left;
   border-top: 1px solid var(--lp-line);
 }
 
@@ -771,7 +758,8 @@ html[data-theme='plum'] .lp-btn-outline-light {
 
 html[data-theme='dark'] .lp-portal:hover .lp-portal-tag,
 html[data-theme='midnight'] .lp-portal:hover .lp-portal-tag,
-html[data-theme='plum'] .lp-portal:hover .lp-portal-tag {
+html[data-theme='plum'] .lp-portal:hover .lp-portal-tag,
+html[data-theme='gold'] .lp-portal:hover .lp-portal-tag {
   color: #0e1014;
 }
 
@@ -898,7 +886,8 @@ html[data-theme='plum'] .lp-portal:hover .lp-portal-tag {
 
 html[data-theme='dark'] .lp-checklist li:hover .lp-tick::after,
 html[data-theme='midnight'] .lp-checklist li:hover .lp-tick::after,
-html[data-theme='plum'] .lp-checklist li:hover .lp-tick::after {
+html[data-theme='plum'] .lp-checklist li:hover .lp-tick::after,
+html[data-theme='gold'] .lp-checklist li:hover .lp-tick::after {
   border-color: #0e1014;
 }
 
@@ -1079,7 +1068,7 @@ html[data-theme='plum'] .lp-checklist li:hover .lp-tick::after {
 .lp-quote {
   position: relative;
   isolation: isolate;
-  text-align: center;
+  text-align: left;
   color: var(--lp-on-dark);
   background-color: #12151a;
   background-image: url('/img/landing-bg.jpg');
@@ -1123,7 +1112,7 @@ html[data-theme='plum'] .lp-checklist li:hover .lp-tick::after {
 .lp-band {
   position: relative;
   isolation: isolate;
-  text-align: center;
+  text-align: left;
   color: var(--lp-on-dark);
   background-color: #12151a;
   background-image: url('/img/landing-bg.jpg');
@@ -1230,7 +1219,7 @@ html[data-theme='plum'] .lp-checklist li:hover .lp-tick::after {
   padding: 0 44px 22px;
   font-size: 15.4px;
   color: var(--lp-ink-2);
-  text-align: center;
+  text-align: left;
 }
 
 /* -------------------------------- Footer ----------------------------------- */
@@ -1238,7 +1227,7 @@ html[data-theme='plum'] .lp-checklist li:hover .lp-tick::after {
 .lp-footer {
   background: var(--lp-footer-bg);
   color: var(--lp-on-dark);
-  text-align: center;
+  text-align: left;
 }
 
 .lp-footer-inner {

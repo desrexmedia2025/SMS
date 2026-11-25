@@ -195,6 +195,7 @@ async function createTeacher(req, res) {
     specialization: optionalString(req.body.specialization, 250),
     department: optionalString(req.body.department, 100),
     hireDate: optionalString(req.body.hireDate, 20),
+    dateOfBirth: optionalString(req.body.dateOfBirth, 20),
     subjectIds: req.body.subjectIds,
     customSubjects: req.body.customSubjects,
     classIds: req.body.classIds,

@@ -654,6 +654,7 @@ async function createTeacher({
   specialization,
   department,
   hireDate,
+  dateOfBirth,
   subjectIds,
   customSubjects,
   classIds,
@@ -702,8 +703,8 @@ async function createTeacher({
       actor.id,
     ]);
     const tRes = await tx.run(
-      `INSERT INTO teachers (user_id, staff_number, first_name, last_name, qualification, specialization, department, hire_date, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
+      `INSERT INTO teachers (user_id, staff_number, first_name, last_name, qualification, specialization, department, hire_date, date_of_birth, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
       [
         uRes.insertId,
         resolvedStaffNo,
@@ -713,6 +714,7 @@ async function createTeacher({
         effectiveSpecialization.slice(0, 255),
         department || '',
         hireDate || new Date().toISOString().slice(0, 10),
+        dateOfBirth || '',
       ]
     );
 

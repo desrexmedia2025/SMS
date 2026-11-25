@@ -78,7 +78,7 @@
       .map(
         (s) => `<label class="subject-check-pill">
           <input type="checkbox" value="${s.id}" ${set.has(Number(s.id)) ? 'checked' : ''}>
-          <span><strong>${esc(s.code)}</strong> &middot; ${esc(s.name)}</span>
+          <span><strong>${esc(s.code)}</strong>, ${esc(s.name)}</span>
         </label>`
       )
       .join('');
@@ -446,7 +446,7 @@
         return `<div class="analytics-bar-row">
           <div class="analytics-bar-head">
             <span class="analytics-bar-label">${esc(m.label)}</span>
-            <span class="analytics-bar-meta"><strong>${m.events || 0}</strong> event(s) &middot; ${esc(m.recordLabel || '')}</span>
+            <span class="analytics-bar-meta"><strong>${m.events || 0}</strong> event(s), ${esc(m.recordLabel || '')}</span>
           </div>
           <div class="analytics-bar-track">
             <div class="analytics-bar-fill" style="width:${pct}%;"></div>
@@ -502,7 +502,7 @@
                 ${esc(role.label)}
               </span>
               <span class="donut-legend-stats">
-                <strong>${Number(role.visits || 0) + Number(role.actions || 0)}</strong> activity &middot; ${role.accounts || 0} acct &middot; ${role.activeSessions || 0} online
+                <strong>${Number(role.visits || 0) + Number(role.actions || 0)}</strong> activity, ${role.accounts || 0} acct, ${role.activeSessions || 0} online
               </span>
             </div>`
           )
@@ -557,7 +557,7 @@
             <span class="activity-stream-dot" aria-hidden="true"></span>
             <div>
               <div class="activity-stream-title">${esc(item.label)}</div>
-              <div class="activity-stream-sub">${esc(item.actorName)} &middot; <span class="badge badge-neutral" style="padding:1px 6px;font-size:10.5px;">${esc(item.actorRole)}</span></div>
+              <div class="activity-stream-sub">${esc(item.actorName)}, <span class="badge badge-neutral" style="padding:1px 6px;font-size:10.5px;">${esc(item.actorRole)}</span></div>
             </div>
           </div>
           <div class="activity-stream-time">${esc(formatShortTime(item.createdAt))}</div>
@@ -624,7 +624,7 @@
       SMS.kpiCard({
         label: 'Site Actions',
         value: s.actionsPeriod || 0,
-        sub: `${s.actionsToday || 0} today · ${s.mediaUploadsCount || 0} file upload(s)`,
+        sub: `${s.actionsToday || 0} today, ${s.mediaUploadsCount || 0} file upload(s)`,
         icon: 'clipboard',
         tone: 'sky',
       }),
@@ -783,7 +783,7 @@
           const badges = (t.subjects || [])
             .map(
               (s) =>
-                `<span class="subject-badge-tag"><strong>${esc(s.code)}</strong> &middot; ${esc(s.name)}</span>`
+                `<span class="subject-badge-tag"><strong>${esc(s.code)}</strong>, ${esc(s.name)}</span>`
             )
             .join('');
           return `<tr>
@@ -1434,7 +1434,7 @@
           <td>
             ${subjects || classes ? `<div class="subject-badges-wrap">${subjects}${classes}</div>` : '<span class="feed-item-meta">Not assigned</span>'}
           </td>
-          <td><div class="feed-item-meta">${detailBits.length ? detailBits.join(' &middot; ') : 'No extra details'}</div></td>
+          <td><div class="feed-item-meta">${detailBits.length ? detailBits.join(', ') : 'No extra details'}</div></td>
           <td>${statusBadge(st.status)}</td>
           <td>${actionBtn}</td>
         </tr>`;
@@ -2077,6 +2077,11 @@
           .map((s) => s.trim())
           .filter(Boolean)
       : [];
+    // The age wheel hands the form a bare age; the record stores a date.
+    if (fd.age !== undefined && fd.age !== '') {
+      fd.dateOfBirth = window.SMSAgePicker.dateOfBirthForAge(Number(fd.age));
+    }
+    delete fd.age;
     fd.subjectIds = getCheckedValues('tch-reg-subject-checkboxes');
     fd.customSubjects = Array.from(
       new Set([...getSubjectRowValues('tch-subject-rows-list'), ...customRegSubjects, ...extraQuick])

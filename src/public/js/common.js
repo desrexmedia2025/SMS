@@ -4,7 +4,7 @@ window.SMS = (() => {
   const THEME_STORAGE_KEY = 'sms_theme_pref';
   // Every palette that ships with the app. Dark palettes resolve through `data-theme`
   // directly; `system` follows the operating system's light/dark setting.
-  const AVAILABLE_THEMES = ['light', 'dark', 'ocean', 'midnight', 'plum', 'forest', 'sandstone', 'slate'];
+  const AVAILABLE_THEMES = ['light', 'dark', 'ocean', 'midnight', 'plum', 'forest', 'sandstone', 'slate', 'gold'];
   const THEME_CHOICES = [...AVAILABLE_THEMES, 'system'];
   const THEME_LABELS = {
     light: 'Light',
@@ -15,6 +15,7 @@ window.SMS = (() => {
     forest: 'Forest Green',
     sandstone: 'Sandstone',
     slate: 'Slate Grey',
+    gold: 'Brown & Gold',
     system: 'System',
   };
   const LANG_STORAGE_KEY = 'sms_lang_pref';
@@ -1686,7 +1687,7 @@ window.SMS = (() => {
           const dlUrl = esc(withNavSession(att.downloadUrl || `${att.url}?download=1`));
           const kindLabel = String(att.mediaKind || 'file').toUpperCase();
           const targetHref = att.mediaKind === 'document' ? dlUrl : viewUrl;
-          return `<a href="${targetHref}" target="_blank" rel="noopener" class="subject-badge-tag" style="text-decoration:none;"><strong>${esc(kindLabel)}</strong> &middot; ${esc(att.originalName)}</a>`;
+          return `<a href="${targetHref}" target="_blank" rel="noopener" class="subject-badge-tag" style="text-decoration:none;"><strong>${esc(kindLabel)}</strong>, ${esc(att.originalName)}</a>`;
         })
         .join('')}</div>`;
     }
@@ -1705,7 +1706,7 @@ window.SMS = (() => {
             </a>
             <div class="media-item-meta">
               <span class="media-item-name" title="${esc(att.originalName)}">${esc(att.originalName)}</span>
-              <span class="media-item-sub">Image &middot; ${sizeLabel} &middot; <a href="${dlUrl}">Download</a></span>
+              <span class="media-item-sub">Image, ${sizeLabel}, <a href="${dlUrl}">Download</a></span>
             </div>
           </div>`;
         }
@@ -1715,7 +1716,7 @@ window.SMS = (() => {
             <video controls preload="metadata" src="${viewUrl}" class="media-video-player"></video>
             <div class="media-item-meta">
               <span class="media-item-name" title="${esc(att.originalName)}">${esc(att.originalName)}</span>
-              <span class="media-item-sub">Video &middot; ${sizeLabel} &middot; <a href="${dlUrl}">Download</a></span>
+              <span class="media-item-sub">Video, ${sizeLabel}, <a href="${dlUrl}">Download</a></span>
             </div>
           </div>`;
         }
@@ -1725,7 +1726,7 @@ window.SMS = (() => {
             <div class="media-doc-badge">PDF</div>
             <div class="media-item-meta">
               <span class="media-item-name" title="${esc(att.originalName)}">${esc(att.originalName)}</span>
-              <span class="media-item-sub">${sizeLabel} &middot; <a href="${viewUrl}" target="_blank" rel="noopener">Open PDF</a> &middot; <a href="${dlUrl}">Download</a></span>
+              <span class="media-item-sub">${sizeLabel}, <a href="${viewUrl}" target="_blank" rel="noopener">Open PDF</a>, <a href="${dlUrl}">Download</a></span>
             </div>
           </div>`;
         }
@@ -1734,7 +1735,7 @@ window.SMS = (() => {
           <div class="media-doc-badge">DOC</div>
           <div class="media-item-meta">
             <span class="media-item-name" title="${esc(att.originalName)}">${esc(att.originalName)}</span>
-            <span class="media-item-sub">${sizeLabel} &middot; <a href="${dlUrl}">Download File</a></span>
+            <span class="media-item-sub">${sizeLabel}, <a href="${dlUrl}">Download File</a></span>
           </div>
         </div>`;
       })
@@ -2070,7 +2071,7 @@ window.SMS = (() => {
         }"${ev.color ? ` style="background:${esc(ev.color)}"` : ''}></span>
         <div class="cal-agenda-copy">
           <div class="cal-agenda-title">${esc(ev.title)}</div>
-          <div class="cal-agenda-meta">${esc(ev.date)} &middot; ${esc(ev.meta || ev.kindLabel || '')}</div>
+          <div class="cal-agenda-meta">${esc(ev.date)}, ${esc(ev.meta || ev.kindLabel || '')}</div>
         </div>
       </div>`;
 
@@ -2414,7 +2415,7 @@ window.SMS = (() => {
           <span class="notes-list-copy">
             <span class="notes-list-title">${n.pinned ? '<span class="notes-pin-flag">Pinned</span>' : ''}${esc(n.title || 'Untitled note')}</span>
             <span class="notes-list-excerpt">${esc(n.excerpt || 'Empty note')}</span>
-            <span class="notes-list-date">${esc(noteDateLabel(n.updatedAt))}${noteTimeLabel(n.updatedAt) ? ` &middot; ${esc(noteTimeLabel(n.updatedAt))}` : ''}</span>
+            <span class="notes-list-date">${esc(noteDateLabel(n.updatedAt))}${noteTimeLabel(n.updatedAt) ? `, ${esc(noteTimeLabel(n.updatedAt))}` : ''}</span>
           </span>
         </button>`;
       })
@@ -2450,7 +2451,7 @@ window.SMS = (() => {
     const host = notesEl('note-counts');
     const note = activeNote();
     if (!host || !note) return;
-    host.textContent = `${note.wordCount || 0} word(s) · ${note.characterCount || 0} characters`;
+    host.textContent = `${note.wordCount || 0} word(s), ${note.characterCount || 0} characters`;
   }
 
   async function renderNoteAttachments() {
@@ -2468,7 +2469,7 @@ window.SMS = (() => {
       host.innerHTML = items
         .map(
           (a) =>
-            `<a class="note-file-chip" href="${esc(a.url)}?download=1" target="_blank" rel="noopener noreferrer" title="Download ${esc(a.name)}">${esc(a.kind)} · ${esc(a.name)}</a>`
+            `<a class="note-file-chip" href="${esc(a.url)}?download=1" target="_blank" rel="noopener noreferrer" title="Download ${esc(a.name)}">${esc(a.kind)}, ${esc(a.name)}</a>`
         )
         .join('');
     } catch (_) {
@@ -2717,7 +2718,7 @@ window.SMS = (() => {
         (g) =>
           `<span class="rc-scale-item"><strong>${esc(g.grade)}</strong> ${esc(
             String(g.min_score)
-          )}-${esc(String(g.max_score))} &middot; ${esc(g.remark || '')}</span>`
+          )}-${esc(String(g.max_score))}, ${esc(g.remark || '')}</span>`
       )
       .join('');
 
@@ -2740,7 +2741,7 @@ window.SMS = (() => {
         <div class="rc-head">
           <div class="rc-school-name">${esc(school.school_name || 'School Management System')}</div>
           <div class="rc-school-meta">${esc(
-            [school.school_address, school.school_phone, school.school_email].filter(Boolean).join(' &middot; ')
+            [school.school_address, school.school_phone, school.school_email].filter(Boolean).join(', ')
           )}</div>
           <div class="rc-doc-title">End of Term Report Card</div>
         </div>
@@ -3025,7 +3026,7 @@ window.SMS = (() => {
             </span>
             <span class="msg-thread-meta">${esc(t.audienceLabel || '')}</span>
             <span class="msg-thread-body">${esc(t.lastBody || '')}</span>
-            <span class="msg-thread-foot">${esc(t.lastSender)} &middot; ${esc(
+            <span class="msg-thread-foot">${esc(t.lastSender)}, ${esc(
               String(t.lastAt || '').slice(0, 16)
             )}</span>
           </button>`
@@ -3046,7 +3047,7 @@ window.SMS = (() => {
       <div class="msg-conv-head">
         <div>
           <strong>${esc(t.subject || '(no subject)')}</strong>
-          <div class="muted-sm">${esc(t.audienceLabel || '')} &middot; started by ${esc(t.createdByName)}</div>
+          <div class="muted-sm">${esc(t.audienceLabel || '')}, started by ${esc(t.createdByName)}</div>
         </div>
         <button type="button" class="btn btn-secondary btn-sm" id="msg-close-thread">Close</button>
       </div>
@@ -3057,7 +3058,7 @@ window.SMS = (() => {
             <div class="msg-bubble-head">
               <strong>${m.isMine ? 'You' : esc(m.senderName)}</strong>
               <span class="muted-sm">${esc(String(m.createdAt || '').slice(0, 16))}${
-                m.senderRole ? ` &middot; ${esc(m.senderRole)}` : ''
+                m.senderRole ? `, ${esc(m.senderRole)}` : ''
               }</span>
             </div>
             <div class="msg-bubble-body">${esc(m.body)}</div>

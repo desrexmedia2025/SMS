@@ -94,7 +94,7 @@
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
                 <span class="cw-type-badge cw-type-${esc(wType)}">${esc(formatWorkTypeLabel(wType))}</span>
                 <span class="badge badge-neutral">${esc(item.subject_code)} - ${esc(item.subject_name)}</span>
-                <span style="font-size:12px;color:var(--text-muted);">Teacher: <strong>${esc(item.teacher_name || 'Subject Teacher')}</strong> &middot; Max Score: <strong>${item.max_score}</strong> &middot; ${dueText}</span>
+                <span style="font-size:12px;color:var(--text-muted);">Teacher: <strong>${esc(item.teacher_name || 'Subject Teacher')}</strong>, Max Score: <strong>${item.max_score}</strong>, ${dueText}</span>
               </div>
               <h3 style="margin:4px 0;font-size:16px;color:var(--text);">${esc(item.title)}</h3>
             </div>
